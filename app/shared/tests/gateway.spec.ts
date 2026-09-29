@@ -15,6 +15,12 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 describe("buildGatewayUrl", () => {
+  it("builds a same-origin relative URL for the local proxy", () => {
+    expect(buildGatewayUrl("/", "v1", "players/player-id/heroes")).toBe(
+      "/api/v1/players/player-id/heroes",
+    );
+  });
+
   it("builds a versioned route", () => {
     expect(buildGatewayUrl("http://gw.test", "v1", "public/universe")).toBe(
       "http://gw.test/api/v1/public/universe",

@@ -92,12 +92,16 @@ export function buildGatewayUrl(
 ): string {
   const normalisedBase = baseUrl.replace(/\/+$/, "");
   const normalisedPath = path.replace(/^\/+/, "");
-  const url = new URL(`${normalisedBase}/api/${apiVersion}/${normalisedPath}`);
+  const isRelativeBase = normalisedBase === "" || normalisedBase.startsWith("/");
+  const url = new URL(
+    `${normalisedBase}/api/${apiVersion}/${normalisedPath}`,
+    "http://local-gateway.invalid",
+  );
 
   for (const [key, value] of Object.entries(query ?? {})) {
     if (value !== undefined) url.searchParams.set(key, String(value));
   }
-  return url.toString();
+  return isRelativeBase ? `${url.pathname}${url.search}` : url.toString();
 }
 
 export function createGatewayClient(options: GatewayClientOptions): GatewayClient {

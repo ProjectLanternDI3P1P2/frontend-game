@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 // is a parsing hazard on both sides, and building it needed a backslash regex
 // that broke the parser reading this very file.
 const stylesDir = fileURLToPath(new URL("./app/assets/styles", import.meta.url));
+const localPlayerBackendUrl = process.env.PLAYER_BACKEND_URL || "http://localhost:8080";
 
 export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
@@ -58,6 +59,16 @@ export default defineNuxtConfig({
   css: ["~/assets/styles/main.scss"],
 
   vite: {
+    // In local development the browser calls Nuxt on its own origin. Vite then
+    // proxies `/api` to the Player service, avoiding a browser-side CORS request.
+    server: {
+      proxy: {
+        "/api": {
+          target: localPlayerBackendUrl,
+          changeOrigin: true,
+        },
+      },
+    },
     css: {
       preprocessorOptions: {
         scss: {
@@ -78,7 +89,9 @@ export default defineNuxtConfig({
   // ADR-FE-011: the small number of public API calls goes through the Gateway.
   runtimeConfig: {
     public: {
-      apiGatewayUrl: process.env.NUXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080",
+      // A relative URL uses Nitro's development proxy. Deployments can still
+      // provide their public API Gateway URL through the environment.
+      apiGatewayUrl: process.env.NUXT_PUBLIC_API_GATEWAY_URL || "/",
       apiVersion: process.env.NUXT_PUBLIC_API_VERSION || "v1",
       telemetryEndpoint: process.env.NUXT_PUBLIC_TELEMETRY_ENDPOINT || "",
       appName: "public-site",
