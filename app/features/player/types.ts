@@ -27,6 +27,7 @@ export interface HeroSummary {
   level: number;
   maximumHealth: number;
   isEngagedInActiveSession: boolean;
+  createdAt: string;
 }
 
 export interface CreateHeroRequest {

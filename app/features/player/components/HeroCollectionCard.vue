@@ -2,11 +2,21 @@
 import type { HeroSummary } from "../types";
 import HeroPortraitPlaceholder from "./HeroPortraitPlaceholder.vue";
 
-defineProps<{
+const props = defineProps<{
   hero: HeroSummary;
   selected?: boolean;
   to: string;
 }>();
+
+const createdAt = computed(() => {
+  const date = new Date(props.hero.createdAt);
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+});
 </script>
 
 <template>
@@ -19,10 +29,9 @@ defineProps<{
     :to="to"
     :aria-label="`View ${hero.name}'s hero sheet`"
   >
-    <span v-if="selected" class="hero-collection-card__flag">Selected</span>
-    <span v-else-if="hero.isEngagedInActiveSession" class="hero-collection-card__flag"
-      >In session</span
-    >
+    <span class="hero-collection-card__flag">
+      {{ selected ? "Selected" : hero.isEngagedInActiveSession ? "In session" : "" }}
+    </span>
     <span class="hero-collection-card__portrait">
       <HeroPortraitPlaceholder
         :class-code="hero.classCode"
@@ -34,6 +43,7 @@ defineProps<{
     <span class="hero-collection-card__details">
       Level {{ hero.level }} · {{ hero.maximumHealth }} HP
     </span>
+    <span class="hero-collection-card__created">Created {{ createdAt }}</span>
   </NuxtLink>
 </template>
 
@@ -55,8 +65,8 @@ defineProps<{
     background-color var(--duration-fast) var(--easing-standard);
 
   &:hover {
-    border-color: var(--color-border-strong);
-    background: var(--color-surface-overlay);
+    border-color: var(--color-accent-strong);
+    background: var(--color-surface-base);
   }
 
   &--selected {
@@ -97,7 +107,8 @@ defineProps<{
   }
 
   &__class,
-  &__details {
+  &__details,
+  &__created {
     color: var(--color-text-muted);
     font-size: var(--font-size-xs);
     line-height: var(--line-height-tight);
@@ -109,6 +120,10 @@ defineProps<{
 
   &__details {
     margin-top: var(--space-1);
+  }
+
+  &__created {
+    margin-top: auto;
   }
 }
 </style>
