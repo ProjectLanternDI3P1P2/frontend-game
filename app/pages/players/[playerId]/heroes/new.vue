@@ -51,8 +51,10 @@ const selectedClass = computed(
   () =>
     heroClasses.value.find((heroClass) => heroClass.code === classCode.value) ?? null,
 );
-const availableSlots = computed(() => Math.max(MAX_HEROES - heroes.value.length, 0));
 const isAtHeroLimit = computed(() => heroes.value.length >= MAX_HEROES);
+const projectedHeroCount = computed(() =>
+  Math.min(heroes.value.length + 1, MAX_HEROES),
+);
 const heroesPath = computed(
   () => `/players/${encodeURIComponent(playerId.value)}/heroes`,
 );
@@ -136,7 +138,7 @@ onMounted(load);
       </div>
       <p class="hero-creation__capacity">
         <strong
-          >{{ heroes.length }}/{{ MAX_HEROES }} · {{ availableSlots }}/{{
+          >{{ heroes.length }}/{{ MAX_HEROES }} → {{ projectedHeroCount }}/{{
             MAX_HEROES
           }}</strong
         >
