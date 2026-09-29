@@ -96,6 +96,30 @@ describe("createGatewayClient", () => {
     });
   });
 
+  it("preserves field errors from an ASP.NET validation problem", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(
+        {
+          title: "Validation error",
+          detail: "One or more validation errors occurred.",
+          errors: { name: ["Hero name is required."] },
+        },
+        422,
+      ),
+    );
+    const client = createGatewayClient({
+      baseUrl: "http://gw.test",
+      apiVersion: "v1",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    await expect(client.post("players/id/heroes")).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: { errors: { name: ["Hero name is required."] } },
+      status: 422,
+    });
+  });
+
   it("falls back to a usable error when the body is not the documented shape", async () => {
     const fetchImpl = vi
       .fn()

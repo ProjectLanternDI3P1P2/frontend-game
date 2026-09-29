@@ -1,27 +1,104 @@
 <script setup lang="ts">
-import { ButtonType, ButtonVariant } from "~/shared/ui/UiButton.vue";
-import { NoticeTone } from "~/shared/ui/UiNotice.vue";
-import { PanelVariant } from "~/shared/ui/UiPanel.vue";
+import { ButtonType } from "~/shared/ui/UiButton.vue";
 import { GatewayError } from "~/shared/utils/gateway";
 import { createIdempotencyKey } from "~/shared/utils/idempotency";
-import { HERO_CLASS_OPTIONS, type HeroClassCode } from "~/features/player/types";
 import { usePlayerApi } from "~/features/player/api/playerApi";
+import HeroClassSelectionCard from "~/features/player/components/HeroClassSelectionCard.vue";
+import HeroCreationPreview from "~/features/player/components/HeroCreationPreview.vue";
+import PlayerValidatedInput, {
+  type TextValidationRule,
+} from "~/features/player/components/PlayerValidatedInput.vue";
+import type {
+  HeroClassCode,
+  HeroClassOption,
+  HeroSummary,
+} from "~/features/player/types";
+
+definePageMeta({ layout: "player" });
+
+const MAX_HEROES = 10;
+const HERO_NAME_RULES: readonly TextValidationRule[] = [
+  {
+    message: "Enter a hero name.",
+    isValid: (value) => value.trim().length > 0,
+  },
+  {
+    message:
+      "Hero name must contain 3 to 24 letters and may include spaces, hyphens, or apostrophes.",
+    isValid: (value) => {
+      const name = value.trim();
+      return name.length >= 3 && name.length <= 24 && /^\p{L}[\p{L} '-]*$/u.test(name);
+    },
+  },
+];
 
 const route = useRoute();
 const router = useRouter();
 const playerId = computed(() => String(route.params.playerId));
+const heroes = ref<HeroSummary[]>([]);
+const heroClasses = ref<HeroClassOption[]>([]);
 const name = ref("");
-const classCode = ref<HeroClassCode>("warrior");
+const classCode = ref<HeroClassCode | null>(null);
+const nameValid = ref(false);
+const nameServerError = ref("");
 const error = ref("");
+const loading = ref(true);
 const submitting = ref(false);
+const nameField = useTemplateRef<{ validate: () => boolean }>("nameField");
 let idempotencyKey: string | null = null;
+
+const selectedClass = computed(
+  () =>
+    heroClasses.value.find((heroClass) => heroClass.code === classCode.value) ?? null,
+);
+const availableSlots = computed(() => Math.max(MAX_HEROES - heroes.value.length, 0));
+const isAtHeroLimit = computed(() => heroes.value.length >= MAX_HEROES);
+const heroesPath = computed(
+  () => `/players/${encodeURIComponent(playerId.value)}/heroes`,
+);
+const canSubmit = computed(
+  () =>
+    !loading.value &&
+    !isAtHeroLimit.value &&
+    nameValid.value &&
+    selectedClass.value !== null,
+);
+
+async function load() {
+  loading.value = true;
+  error.value = "";
+  try {
+    const [loadedHeroes, loadedClasses] = await Promise.all([
+      usePlayerApi().listHeroes(playerId.value),
+      usePlayerApi().listHeroClasses(),
+    ]);
+    heroes.value = loadedHeroes;
+    heroClasses.value = loadedClasses;
+    classCode.value = loadedClasses[0]?.code ?? null;
+  } catch (cause) {
+    error.value =
+      cause instanceof GatewayError
+        ? cause.message
+        : "Unable to prepare hero creation.";
+  } finally {
+    loading.value = false;
+  }
+}
+
+function updateName(value: string) {
+  name.value = value;
+  nameServerError.value = "";
+}
+
+function validationMessage(cause: GatewayError): string | null {
+  const errors = cause.details as { errors?: Record<string, string[]> } | undefined;
+  return errors?.errors?.name?.[0] ?? null;
+}
 
 async function submit() {
   error.value = "";
-  if (!name.value.trim()) {
-    error.value = "Enter a hero name.";
-    return;
-  }
+  if (!nameField.value?.validate() || !canSubmit.value || !classCode.value) return;
+
   submitting.value = true;
   idempotencyKey ??= createIdempotencyKey();
   try {
@@ -34,135 +111,214 @@ async function submit() {
       `/players/${encodeURIComponent(playerId.value)}/heroes/${hero.id}`,
     );
   } catch (cause) {
-    error.value =
-      cause instanceof GatewayError ? cause.message : "Unable to create this hero.";
+    if (cause instanceof GatewayError) {
+      nameServerError.value = validationMessage(cause) ?? "";
+      error.value = nameServerError.value
+        ? "Correct the highlighted field."
+        : cause.message;
+    } else {
+      error.value = "Unable to create this hero.";
+    }
   } finally {
     submitting.value = false;
   }
 }
+
+onMounted(load);
 </script>
 
 <template>
-  <main class="hero-creation">
-    <header>
-      <p class="eyebrow">Heroes · New</p>
-      <h1>Create a hero</h1>
+  <main id="main" class="hero-creation">
+    <header class="hero-creation__header">
+      <div>
+        <p class="hero-creation__eyebrow">Heroes · New</p>
+        <h1>Create a hero</h1>
+      </div>
+      <p class="hero-creation__capacity">
+        <strong
+          >{{ heroes.length }}/{{ MAX_HEROES }} · {{ availableSlots }}/{{
+            MAX_HEROES
+          }}</strong
+        >
+        <span>heroes</span>
+      </p>
     </header>
-    <UiNotice v-if="error" :tone="NoticeTone.DANGER">{{ error }}</UiNotice>
-    <div class="hero-creation__grid">
-      <UiPanel title="Choose your hero">
-        <form @submit.prevent="submit">
-          <UiInput
+
+    <p v-if="error" class="hero-creation__error" role="alert">{{ error }}</p>
+    <p v-else-if="loading" class="hero-creation__loading" aria-live="polite">
+      Preparing your hero…
+    </p>
+    <p v-else-if="isAtHeroLimit" class="hero-creation__error" role="alert">
+      Your roster already contains {{ MAX_HEROES }} heroes.
+    </p>
+
+    <div v-else class="hero-creation__grid">
+      <form class="hero-creation__form" @submit.prevent="submit">
+        <fieldset>
+          <legend>1 · Name</legend>
+          <PlayerValidatedInput
             id="hero-name"
-            v-model="name"
+            ref="nameField"
+            :model-value="name"
             label="Hero name"
-            :error="error"
+            :rules="HERO_NAME_RULES"
+            hint="3 to 24 letters, spaces and hyphens allowed."
+            :server-error="nameServerError"
+            placeholder="Maëlle"
             required
-            autocomplete="off"
+            @update:model-value="updateName"
+            @validity-change="nameValid = $event"
           />
-          <fieldset>
-            <legend>Class</legend>
-            <div class="classes">
-              <button
-                v-for="heroClass in HERO_CLASS_OPTIONS"
-                :key="heroClass.code"
-                type="button"
-                class="class-card"
-                :class="{ 'class-card--selected': classCode === heroClass.code }"
-                :aria-pressed="classCode === heroClass.code"
-                @click="classCode = heroClass.code"
-              >
-                <strong>{{ heroClass.label }}</strong
-                ><span>Base health: {{ heroClass.baseHealth }}</span>
-              </button>
-            </div>
-          </fieldset>
-          <UiButton
-            :type="ButtonType.SUBMIT"
-            :variant="ButtonVariant.PRIMARY"
-            :busy="submitting"
-            >Confirm</UiButton
-          >
-        </form>
-      </UiPanel>
-      <UiPanel title="Preview" :variant="PanelVariant.INSET"
-        ><p class="preview-name">{{ name || "Unnamed hero" }}</p>
-        <p>{{ classCode }}</p>
-        <p>Level 1 · first ability unlocked</p></UiPanel
-      >
+        </fieldset>
+
+        <fieldset>
+          <legend>2 · Class</legend>
+          <div class="hero-creation__classes" role="radiogroup" aria-label="Hero class">
+            <HeroClassSelectionCard
+              v-for="heroClass in heroClasses"
+              :key="heroClass.code"
+              :hero-class="heroClass"
+              :selected="classCode === heroClass.code"
+              @select="classCode = heroClass.code"
+            />
+          </div>
+        </fieldset>
+
+        <button class="visually-hidden" :type="ButtonType.SUBMIT">Confirm</button>
+      </form>
+
+      <HeroCreationPreview
+        :name="name"
+        :hero-class="selectedClass"
+        :can-confirm="canSubmit"
+        :busy="submitting"
+        :cancel-to="heroesPath"
+        @confirm="submit"
+      />
     </div>
   </main>
 </template>
 
 <style scoped lang="scss">
 .hero-creation {
-  max-width: var(--layout-max-width);
-  margin: 0 auto;
-  padding: var(--space-7) var(--layout-gutter);
-  display: grid;
-  gap: var(--space-5);
+  width: min(100% - (var(--layout-gutter) * 2), 90rem);
+  margin-inline: auto;
+  padding-block: var(--space-6) var(--space-8);
+
+  &__header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-5);
+    border-bottom: 1px solid var(--color-border-subtle);
+    padding-bottom: var(--space-4);
+  }
+
+  &__eyebrow {
+    margin: 0 0 var(--space-1);
+    color: var(--color-text-highlight);
+    font-size: 0.625rem;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: var(--font-size-xl);
+    text-transform: uppercase;
+  }
+
+  &__capacity {
+    display: grid;
+    justify-items: end;
+    margin: 0;
+    color: var(--color-text-highlight);
+    font-size: var(--font-size-xs);
+    line-height: 1;
+  }
+
+  &__capacity span {
+    color: var(--color-text-muted);
+    font-size: 0.625rem;
+    text-transform: uppercase;
+  }
+
+  &__error,
+  &__loading {
+    margin: var(--space-4) 0 0;
+    border: 1px solid var(--color-border-subtle);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface-raised);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+  }
+
+  &__error {
+    border-left: var(--space-1) solid var(--color-danger);
+    color: var(--color-text-primary);
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.42fr);
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+  }
+
+  &__form,
+  fieldset {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  &__form {
+    border: 1px solid var(--color-border-subtle);
+    padding: var(--space-4);
+    background: var(--color-surface-raised);
+  }
+
+  fieldset {
+    border: 0;
+    padding: 0;
+  }
+
+  legend {
+    margin-bottom: var(--space-3);
+    color: var(--color-text-highlight);
+    font-size: 0.625rem;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  &__classes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
 }
-.eyebrow {
-  margin: 0 0 var(--space-2);
-  color: var(--color-text-highlight);
-  font-size: var(--font-size-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-h1 {
-  margin: 0;
-  font-family: var(--font-family-display);
-  color: var(--color-text-primary);
-}
-.hero-creation__grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.45fr);
-  gap: var(--space-5);
-}
-form,
-fieldset {
-  display: grid;
-  gap: var(--space-4);
-}
-fieldset {
-  border: 0;
-  padding: 0;
-}
-legend {
-  color: var(--color-text-highlight);
-  font-weight: var(--font-weight-bold);
-}
-.classes {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  gap: var(--space-3);
-}
-.class-card {
-  display: grid;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border: 1px solid var(--color-border-subtle);
-  background: var(--color-surface-base);
-  color: var(--color-text-primary);
-  text-align: left;
-  cursor: pointer;
-}
-.class-card--selected {
-  border-color: var(--color-accent);
-  box-shadow: var(--shadow-gold);
-}
-.class-card span {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-}
-.preview-name {
-  margin: 0;
-  color: var(--color-text-highlight);
-  font-family: var(--font-family-display);
-  font-size: var(--font-size-xl);
-}
+
 @media (max-width: 48rem) {
-  .hero-creation__grid {
+  .hero-creation {
+    &__header {
+      align-items: start;
+      flex-direction: column;
+    }
+
+    &__capacity {
+      justify-items: start;
+    }
+
+    &__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+@media (max-width: 30rem) {
+  .hero-creation__classes {
     grid-template-columns: 1fr;
   }
 }

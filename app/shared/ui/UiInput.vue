@@ -37,7 +37,10 @@ withDefaults(
   },
 );
 
-defineEmits<{ "update:modelValue": [value: string | number] }>();
+defineEmits<{
+  "update:modelValue": [value: string | number];
+  blur: [];
+}>();
 </script>
 
 <template>
@@ -67,6 +70,7 @@ defineEmits<{ "update:modelValue": [value: string | number] }>();
           hint || error ? (id ? id + '-description' : undefined) : undefined
         "
         @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+        @blur="$emit('blur')"
       />
       <span v-if="$slots.suffix" class="ui-input__adornment"
         ><slot name="suffix"

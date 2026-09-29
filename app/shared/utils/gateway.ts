@@ -18,6 +18,12 @@ export interface GatewayErrorBody {
   details?: unknown;
 }
 
+interface GatewayProblemDetails {
+  title?: string;
+  detail?: string;
+  errors?: Record<string, string[]>;
+}
+
 export class GatewayError extends Error {
   readonly status: number;
   readonly code: string;
@@ -151,10 +157,19 @@ export function createGatewayClient(options: GatewayClientOptions): GatewayClien
     if (!response.ok) {
       const body: GatewayErrorBody = isErrorBody(payload)
         ? payload
-        : {
-            code: "UNEXPECTED_ERROR",
-            message: `Request ${method} ${req.path} failed (${response.status}).`,
-          };
+        : isProblemDetails(payload)
+          ? {
+              code: response.status === 422 ? "VALIDATION_ERROR" : "REQUEST_REJECTED",
+              message:
+                payload.detail ??
+                payload.title ??
+                `Request ${method} ${req.path} failed (${response.status}).`,
+              details: payload,
+            }
+          : {
+              code: "UNEXPECTED_ERROR",
+              message: `Request ${method} ${req.path} failed (${response.status}).`,
+            };
       throw new GatewayError(
         response.status,
         body,
@@ -178,5 +193,14 @@ function isErrorBody(value: unknown): value is GatewayErrorBody {
     value !== null &&
     typeof (value as GatewayErrorBody).code === "string" &&
     typeof (value as GatewayErrorBody).message === "string"
+  );
+}
+
+function isProblemDetails(value: unknown): value is GatewayProblemDetails {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (typeof (value as GatewayProblemDetails).title === "string" ||
+      typeof (value as GatewayProblemDetails).detail === "string")
   );
 }

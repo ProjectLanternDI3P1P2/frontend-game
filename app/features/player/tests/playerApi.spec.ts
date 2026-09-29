@@ -18,6 +18,7 @@ describe("Player API", () => {
     const heroId = "hero/id";
 
     await api.listHeroes(playerId);
+    await api.listHeroClasses();
     await api.getHeroSheet(playerId, heroId);
     await api.createHero(playerId, {
       name: "Maëlle",
@@ -29,8 +30,11 @@ describe("Player API", () => {
     expect(gateway.get).toHaveBeenNthCalledWith(1, "players/player%20id/heroes", {
       signal: undefined,
     });
+    expect(gateway.get).toHaveBeenNthCalledWith(2, "hero-classes", {
+      signal: undefined,
+    });
     expect(gateway.get).toHaveBeenNthCalledWith(
-      2,
+      3,
       "players/player%20id/heroes/hero%2Fid",
       { signal: undefined },
     );

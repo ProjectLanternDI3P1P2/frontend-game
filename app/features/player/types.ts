@@ -10,15 +10,9 @@ export type HeroClassCode = "warrior" | "shaman" | "mage";
 export interface HeroClassOption {
   code: HeroClassCode;
   label: string;
+  description: string;
   baseHealth: number;
 }
-
-/** The three server-supported classes (US-PLAYER-07). */
-export const HERO_CLASS_OPTIONS: readonly HeroClassOption[] = [
-  { code: "warrior", label: "Warrior", baseHealth: 60 },
-  { code: "shaman", label: "Shaman", baseHealth: 50 },
-  { code: "mage", label: "Mage", baseHealth: 45 },
-];
 
 export interface HeroSummary {
   id: string;
