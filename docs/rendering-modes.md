@@ -37,6 +37,10 @@ makes the caching strategy part of the decision, not an afterthought.
 | ------------ | ---- | -------------- | ----------- | ------- | ------------------- |
 | _(none yet)_ |      |                |             |         |                     |
 
+`/demo` and its child routes intentionally follow the static default: their
+component examples contain no request-specific data and remain usable when the
+API Gateway is unavailable.
+
 ## Adding a route
 
 1. Decide the mode. Static unless you can name the request-time concern in one

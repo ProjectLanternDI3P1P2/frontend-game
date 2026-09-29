@@ -43,5 +43,11 @@
     "typescript": "^5.7.0",
     "vitest": "^3.0.0",
     "vue-tsc": "^3.0.0"
+  },
+  "allowScripts": {
+    "cypress@15.21.1": true,
+    "esbuild@0.28.2": true,
+    "unrs-resolver@1.12.2": true,
+    "@parcel/watcher@2.6.0": true
   }
 }

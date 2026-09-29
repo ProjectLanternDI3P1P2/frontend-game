@@ -16,7 +16,7 @@ const config = useRuntimeConfig();
         <NuxtLink to="/" class="site-shell__brand">Project Lantern</NuxtLink>
 
         <nav class="site-shell__nav" aria-label="Main">
-          <!-- Feature routes go here, owned by the squad that ships them. -->
+          <NuxtLink to="/demo">UI kit</NuxtLink>
         </nav>
       </div>
     </header>

@@ -1,7 +1,8 @@
 // ADR-FE-010 — Base element styles, built exclusively from tokens.
 
 body {
-  background-color: var(--color-surface-base);
+  background: var(--background-page);
+  background-attachment: fixed;
   color: var(--color-text-primary);
   font-family: var(--font-family-body);
   font-size: var(--font-size-md);
@@ -14,6 +15,9 @@ h2,
 h3 {
   font-family: var(--font-family-display);
   line-height: var(--line-height-tight);
+  color: var(--color-text-highlight);
+  letter-spacing: 0.025em;
+  text-shadow: var(--shadow-text);
 }
 
 h1 {
@@ -29,6 +33,10 @@ h3 {
 a {
   color: var(--color-accent);
   text-underline-offset: 0.15em;
+
+  &:hover {
+    color: var(--color-text-primary);
+  }
 }
 
 // ADR-FE-015: a visible focus indicator is mandatory and must never be removed

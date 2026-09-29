@@ -1,0 +1,145 @@
+<script lang="ts">
+import { onBeforeUnmount, onMounted } from "vue";
+
+export enum ModalSize {
+  SM = "sm",
+  MD = "md",
+  LG = "lg",
+}
+</script>
+
+<script setup lang="ts">
+const props = withDefaults(
+  defineProps<{
+    modelValue: boolean;
+    title?: string;
+    size?: ModalSize;
+    closeOnBackdrop?: boolean;
+    closeOnEscape?: boolean;
+    showCloseButton?: boolean;
+  }>(),
+  {
+    title: "",
+    size: ModalSize.MD,
+    closeOnBackdrop: true,
+    closeOnEscape: true,
+    showCloseButton: true,
+  },
+);
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean];
+  close: [];
+}>();
+const close = () => {
+  emit("update:modelValue", false);
+  emit("close");
+};
+const onKeydown = (event: KeyboardEvent) => {
+  if (props.modelValue && props.closeOnEscape && event.key === "Escape")
+    close();
+};
+
+onMounted(() => window.addEventListener("keydown", onKeydown));
+onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
+</script>
+
+<template>
+  <Teleport to="body">
+    <div v-if="modelValue" class="ui-modal" role="presentation">
+      <button
+        v-if="closeOnBackdrop"
+        class="ui-modal__backdrop"
+        type="button"
+        aria-label="Close dialog"
+        @click="close"
+      />
+      <section
+        class="ui-modal__dialog"
+        :class="'ui-modal__dialog--' + size"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="title"
+        tabindex="-1"
+      >
+        <header
+          v-if="title || $slots.header || showCloseButton"
+          class="ui-modal__header"
+        >
+          <h2 v-if="title" class="ui-modal__title">{{ title }}</h2>
+          <slot name="header" />
+          <UiIconButton
+            v-if="showCloseButton"
+            label="Close dialog"
+            @click="close"
+            >×</UiIconButton
+          >
+        </header>
+        <div class="ui-modal__body"><slot /></div>
+        <footer v-if="$slots.footer" class="ui-modal__footer">
+          <slot name="footer" />
+        </footer>
+      </section>
+    </div>
+  </Teleport>
+</template>
+
+<style scoped lang="scss">
+.ui-modal {
+  position: fixed;
+  z-index: var(--z-overlay);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background-color: rgb(0 0 0 / 65%);
+}
+.ui-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+.ui-modal__dialog {
+  position: relative;
+  z-index: var(--z-content);
+  width: min(100%, 34rem);
+  max-height: min(42rem, 100%);
+  overflow: auto;
+  border: 1px solid var(--color-border-accent);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-raised);
+  box-shadow: var(--shadow-lg), var(--shadow-gold), var(--shadow-inset);
+}
+.ui-modal__dialog--sm {
+  max-width: 25rem;
+}
+.ui-modal__dialog--lg {
+  max-width: 48rem;
+}
+.ui-modal__header,
+.ui-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+.ui-modal__header {
+  border-bottom: 1px solid var(--color-border-accent);
+}
+.ui-modal__footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--color-border-accent);
+}
+.ui-modal__title {
+  margin: 0;
+  color: var(--color-text-highlight);
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-xl);
+}
+.ui-modal__body {
+  padding: var(--space-5);
+}
+</style>

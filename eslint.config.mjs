@@ -9,6 +9,17 @@ export default withNuxt(...vuejsAccessibility.configs["flat/recommended"], {
     // Pages and layouts are named by their route, not by a compound noun.
     "vue/multi-word-component-names": "off",
 
+    // Prettier serializes Vue void elements as `<input />` and `<img />`.
+    // Keep ESLint aligned so formatting never creates lint warnings.
+    "vue/html-self-closing": [
+      "error",
+      {
+        html: { void: "always", normal: "always", component: "always" },
+        svg: "always",
+        math: "always",
+      },
+    ],
+
     // A `<label for>` pointing at a matching `id` is a correct association.
     // The rule's default also demands nesting, which would force us to wrap
     // every control in its label for no accessibility gain.

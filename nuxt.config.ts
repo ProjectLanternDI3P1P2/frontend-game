@@ -27,6 +27,8 @@ export default defineNuxtConfig({
     // to serve, indexable, readable before JavaScript runs, and it survives the
     // API Gateway being unavailable.
     "/": { prerender: true },
+    "/demo": { prerender: true },
+    "/demo/**": { prerender: true },
 
     // A route that genuinely needs a request-time render is declared here, one
     // entry per route, and justified in docs/rendering-modes.md. Two shapes are

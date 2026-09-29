@@ -14,9 +14,13 @@
   --palette-obsidian-700: #1b1b28;
   --palette-obsidian-600: #262636;
   --palette-obsidian-500: #3a3a4f;
+  --palette-charcoal-700: #28221d;
+  --palette-charcoal-600: #3b3026;
+  --palette-charcoal-500: #594735;
   --palette-parchment-100: #f4efe4;
   --palette-parchment-300: #d8cfba;
   --palette-parchment-500: #a89d84;
+  --palette-parchment-700: #756550;
   --palette-gold-400: #e0b457;
   --palette-gold-600: #a97f24;
   --palette-blood-400: #d1495b;
@@ -26,14 +30,16 @@
 
   // ---- Colour: semantic roles (what components actually use) ----
   --color-surface-base: var(--palette-obsidian-900);
-  --color-surface-raised: var(--palette-obsidian-800);
-  --color-surface-overlay: var(--palette-obsidian-700);
-  --color-border-subtle: var(--palette-obsidian-600);
-  --color-border-strong: var(--palette-obsidian-500);
+  --color-surface-raised: var(--palette-charcoal-700);
+  --color-surface-overlay: var(--palette-charcoal-600);
+  --color-border-subtle: var(--palette-charcoal-500);
+  --color-border-strong: var(--palette-parchment-700);
+  --color-border-accent: var(--palette-gold-600);
 
   --color-text-primary: var(--palette-parchment-100);
   --color-text-muted: var(--palette-parchment-500);
   --color-text-inverse: var(--palette-obsidian-900);
+  --color-text-highlight: var(--palette-gold-400);
 
   --color-accent: var(--palette-gold-400);
   --color-accent-strong: var(--palette-gold-600);
@@ -91,6 +97,10 @@
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
   --shadow-md: 0 4px 12px rgb(0 0 0 / 45%);
   --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%);
+  --shadow-inset:
+    inset 0 1px rgb(255 255 255 / 8%), inset 0 -2px rgb(0 0 0 / 45%);
+  --shadow-gold: 0 0 0 1px rgb(224 180 87 / 20%), 0 8px 20px rgb(0 0 0 / 38%);
+  --shadow-text: 0 2px var(--color-surface-base);
 
   // ---- Motion (ADR-FE-006: CSS only, modest animation) ----
   --duration-instant: 80ms;
@@ -101,6 +111,22 @@
   // ---- Layout ----
   --layout-max-width: 72rem;
   --layout-gutter: var(--space-4);
+  --background-page:
+    radial-gradient(
+      circle at 20% 0%,
+      rgb(123 108 246 / 14%),
+      transparent 30rem
+    ),
+    radial-gradient(
+      circle at 80% 12%,
+      rgb(224 180 87 / 10%),
+      transparent 24rem
+    ),
+    linear-gradient(
+      135deg,
+      var(--palette-obsidian-900),
+      var(--palette-charcoal-700)
+    );
 
   // Mirror of _breakpoints.scss, kept for documentation and JS-side reads.
   --breakpoint-sm: 480px;
