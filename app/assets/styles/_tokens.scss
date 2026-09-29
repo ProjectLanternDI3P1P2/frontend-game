@@ -97,8 +97,7 @@
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
   --shadow-md: 0 4px 12px rgb(0 0 0 / 45%);
   --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%);
-  --shadow-inset:
-    inset 0 1px rgb(255 255 255 / 8%), inset 0 -2px rgb(0 0 0 / 45%);
+  --shadow-inset: inset 0 1px rgb(255 255 255 / 8%), inset 0 -2px rgb(0 0 0 / 45%);
   --shadow-gold: 0 0 0 1px rgb(224 180 87 / 20%), 0 8px 20px rgb(0 0 0 / 38%);
   --shadow-text: 0 2px var(--color-surface-base);
 
@@ -112,21 +111,9 @@
   --layout-max-width: 72rem;
   --layout-gutter: var(--space-4);
   --background-page:
-    radial-gradient(
-      circle at 20% 0%,
-      rgb(123 108 246 / 14%),
-      transparent 30rem
-    ),
-    radial-gradient(
-      circle at 80% 12%,
-      rgb(224 180 87 / 10%),
-      transparent 24rem
-    ),
-    linear-gradient(
-      135deg,
-      var(--palette-obsidian-900),
-      var(--palette-charcoal-700)
-    );
+    radial-gradient(circle at 20% 0%, rgb(123 108 246 / 14%), transparent 30rem),
+    radial-gradient(circle at 80% 12%, rgb(224 180 87 / 10%), transparent 24rem),
+    linear-gradient(135deg, var(--palette-obsidian-900), var(--palette-charcoal-700));
 
   // Mirror of _breakpoints.scss, kept for documentation and JS-side reads.
   --breakpoint-sm: 480px;

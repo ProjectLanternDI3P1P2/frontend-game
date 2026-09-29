@@ -75,7 +75,9 @@ defineEmits<{ select: [] }>();
       :size="BadgeSize.SM"
       >Selected</UiBadge
     >
-    <div v-if="$slots.actions" class="ui-hero-card__actions"><slot name="actions" /></div>
+    <div v-if="$slots.actions" class="ui-hero-card__actions">
+      <slot name="actions" />
+    </div>
   </article>
 </template>
 

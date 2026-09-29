@@ -100,17 +100,14 @@ export function buildGatewayUrl(
   return url.toString();
 }
 
-export function createGatewayClient(
-  options: GatewayClientOptions,
-): GatewayClient {
+export function createGatewayClient(options: GatewayClientOptions): GatewayClient {
   const doFetch = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
   const newCorrelationId = options.correlationIdFactory ?? defaultCorrelationId;
 
   async function request<TResponse>(req: GatewayRequest): Promise<TResponse> {
     const method = req.method ?? "GET";
     const correlationId = newCorrelationId();
-    const token =
-      req.token !== undefined ? req.token : (options.getToken?.() ?? null);
+    const token = req.token !== undefined ? req.token : (options.getToken?.() ?? null);
 
     const headers: Record<string, string> = {
       Accept: "application/json",
@@ -122,12 +119,7 @@ export function createGatewayClient(
     let response: Response;
     try {
       response = await doFetch(
-        buildGatewayUrl(
-          options.baseUrl,
-          options.apiVersion,
-          req.path,
-          req.query,
-        ),
+        buildGatewayUrl(options.baseUrl, options.apiVersion, req.path, req.query),
         {
           method,
           headers,

@@ -37,10 +37,7 @@ defineProps<{
       'ui-panel--padding-' + (padding ?? PanelPadding.REGULAR),
     ]"
   >
-    <header
-      v-if="title || $slots.header || $slots.actions"
-      class="ui-panel__header"
-    >
+    <header v-if="title || $slots.header || $slots.actions" class="ui-panel__header">
       <component
         :is="`h${headingLevel ?? PanelHeadingLevel.TWO}`"
         class="ui-panel__title"

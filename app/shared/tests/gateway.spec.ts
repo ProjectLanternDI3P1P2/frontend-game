@@ -5,11 +5,7 @@
  * tests fast and browser-free.
  */
 import { describe, expect, it, vi } from "vitest";
-import {
-  buildGatewayUrl,
-  createGatewayClient,
-  GatewayError,
-} from "../utils/gateway";
+import { buildGatewayUrl, createGatewayClient, GatewayError } from "../utils/gateway";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -64,9 +60,7 @@ describe("createGatewayClient", () => {
   });
 
   it("returns undefined for a 204 instead of trying to parse a body", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValue(new Response(null, { status: 204 }));
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     const client = createGatewayClient({
       baseUrl: "http://gw.test",
       apiVersion: "v1",
@@ -113,9 +107,7 @@ describe("createGatewayClient", () => {
   });
 
   it("turns a network failure into an uncertain outcome, not a plain failure", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockRejectedValue(new TypeError("failed to fetch"));
+    const fetchImpl = vi.fn().mockRejectedValue(new TypeError("failed to fetch"));
     const client = createGatewayClient({
       baseUrl: "http://gw.test",
       apiVersion: "v1",

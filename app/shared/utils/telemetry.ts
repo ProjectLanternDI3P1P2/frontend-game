@@ -8,8 +8,7 @@
  * or unnecessary personal data. Only the fields below are allowed.
  */
 
-export type TelemetryEventType =
-  "web-vital" | "browser-error" | "custom-timing";
+export type TelemetryEventType = "web-vital" | "browser-error" | "custom-timing";
 
 export interface TelemetryContext {
   /** Application name, e.g. `game-client`. */
@@ -75,9 +74,7 @@ export function sanitiseEvent(event: TelemetryEvent): TelemetryEvent {
 }
 
 export interface TelemetryReporter {
-  report: (
-    event: Omit<TelemetryEvent, "app" | "version" | "timestamp">,
-  ) => void;
+  report: (event: Omit<TelemetryEvent, "app" | "version" | "timestamp">) => void;
 }
 
 /**
@@ -107,10 +104,7 @@ export function createTelemetryReporter(
       typeof navigator !== "undefined" &&
       typeof navigator.sendBeacon === "function"
     ) {
-      navigator.sendBeacon(
-        endpoint,
-        new Blob([payload], { type: "application/json" }),
-      );
+      navigator.sendBeacon(endpoint, new Blob([payload], { type: "application/json" }));
       return;
     }
     void fetch(endpoint, {

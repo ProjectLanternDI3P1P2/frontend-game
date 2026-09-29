@@ -15,11 +15,7 @@ defineEmits<{ "update:modelValue": [value: boolean] }>();
 </script>
 
 <template>
-  <label
-    class="ui-switch"
-    :class="{ 'ui-switch--disabled': disabled }"
-    :for="id"
-  >
+  <label class="ui-switch" :class="{ 'ui-switch--disabled': disabled }" :for="id">
     <span class="ui-switch__content"
       ><span>{{ label }}</span
       ><small v-if="description">{{ description }}</small></span
@@ -31,9 +27,7 @@ defineEmits<{ "update:modelValue": [value: boolean] }>();
       role="switch"
       :checked="modelValue"
       :disabled="disabled"
-      @change="
-        $emit('update:modelValue', ($event.target as HTMLInputElement).checked)
-      "
+      @change="$emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
     />
     <span class="ui-switch__track" aria-hidden="true"
       ><span class="ui-switch__thumb"

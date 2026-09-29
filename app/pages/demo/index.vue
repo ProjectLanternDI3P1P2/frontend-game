@@ -30,9 +30,7 @@ const sections = [
     <header class="demo-home__hero">
       <p class="demo-home__eyebrow">Project Lantern · UI kit</p>
       <h1>The adventurer’s library</h1>
-      <p>
-        Reusable, accessible Vue primitives driven by the game design tokens.
-      </p>
+      <p>Reusable, accessible Vue primitives driven by the game design tokens.</p>
     </header>
     <nav class="demo-home__grid" aria-label="Component categories">
       <NuxtLink

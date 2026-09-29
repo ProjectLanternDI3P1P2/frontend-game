@@ -36,8 +36,7 @@ const close = () => {
   emit("close");
 };
 const onKeydown = (event: KeyboardEvent) => {
-  if (props.modelValue && props.closeOnEscape && event.key === "Escape")
-    close();
+  if (props.modelValue && props.closeOnEscape && event.key === "Escape") close();
 };
 
 onMounted(() => window.addEventListener("keydown", onKeydown));
@@ -68,10 +67,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
         >
           <h2 v-if="title" class="ui-modal__title">{{ title }}</h2>
           <slot name="header" />
-          <UiIconButton
-            v-if="showCloseButton"
-            label="Close dialog"
-            @click="close"
+          <UiIconButton v-if="showCloseButton" label="Close dialog" @click="close"
             >×</UiIconButton
           >
         </header>

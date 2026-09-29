@@ -7,9 +7,7 @@ import { fileURLToPath } from "node:url";
 // injected SCSS source. A Windows absolute path inside an `@use "..."` string
 // is a parsing hazard on both sides, and building it needed a backslash regex
 // that broke the parser reading this very file.
-const stylesDir = fileURLToPath(
-  new URL("./app/assets/styles", import.meta.url),
-);
+const stylesDir = fileURLToPath(new URL("./app/assets/styles", import.meta.url));
 
 export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
@@ -73,17 +71,14 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: { lang: "en" },
-      meta: [
-        { name: "viewport", content: "width=device-width, initial-scale=1" },
-      ],
+      meta: [{ name: "viewport", content: "width=device-width, initial-scale=1" }],
     },
   },
 
   // ADR-FE-011: the small number of public API calls goes through the Gateway.
   runtimeConfig: {
     public: {
-      apiGatewayUrl:
-        process.env.NUXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080",
+      apiGatewayUrl: process.env.NUXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080",
       apiVersion: process.env.NUXT_PUBLIC_API_VERSION || "v1",
       telemetryEndpoint: process.env.NUXT_PUBLIC_TELEMETRY_ENDPOINT || "",
       appName: "public-site",
