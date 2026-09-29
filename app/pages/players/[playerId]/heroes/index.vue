@@ -36,5 +36,11 @@ onMounted(load);
 </template>
 
 <style scoped lang="scss">
-.heroes-page { max-width: var(--layout-max-width); margin: 0 auto; padding: var(--space-7) var(--layout-gutter); display: grid; gap: var(--space-5); }.heroes-page > header { display: flex; justify-content: space-between; align-items: end; gap: var(--space-4); }.eyebrow { margin: 0 0 var(--space-2); color: var(--color-text-highlight); font-size: var(--font-size-sm); text-transform: uppercase; letter-spacing: .08em; } h1 { margin: 0; color: var(--color-text-primary); font-family: var(--font-family-display); }.heroes-page__list { display: grid; gap: var(--space-3); } a { text-decoration: none; } @media (max-width: 36rem) { .heroes-page > header { align-items: start; flex-direction: column; } }
+.heroes-page { display: grid; gap: var(--space-5); max-width: var(--layout-max-width); margin: 0 auto; padding: var(--space-7) var(--layout-gutter); }
+.heroes-page > header { display: flex; align-items: end; justify-content: space-between; gap: var(--space-4); }
+.eyebrow { margin: 0 0 var(--space-2); color: var(--color-text-highlight); font-size: var(--font-size-sm); letter-spacing: 0.08em; text-transform: uppercase; }
+h1 { margin: 0; color: var(--color-text-primary); font-family: var(--font-family-display); }
+.heroes-page__list { display: grid; gap: var(--space-3); }
+a { text-decoration: none; }
+@media (max-width: 36rem) { .heroes-page > header { align-items: start; flex-direction: column; } }
 </style>

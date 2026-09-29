@@ -42,7 +42,7 @@ async function submit() {
     <div class="hero-creation__grid">
       <UiPanel title="Choose your hero">
         <form @submit.prevent="submit">
-          <UiInput v-model="name" id="hero-name" label="Hero name" :error="error" required autocomplete="off" />
+          <UiInput id="hero-name" v-model="name" label="Hero name" :error="error" required autocomplete="off" />
           <fieldset><legend>Class</legend><div class="classes">
             <button v-for="heroClass in HERO_CLASS_OPTIONS" :key="heroClass.code" type="button" class="class-card" :class="{ 'class-card--selected': classCode === heroClass.code }" :aria-pressed="classCode === heroClass.code" @click="classCode = heroClass.code">
               <strong>{{ heroClass.label }}</strong><span>Base health: {{ heroClass.baseHealth }}</span>
@@ -57,10 +57,31 @@ async function submit() {
 </template>
 
 <style scoped lang="scss">
-.hero-creation { max-width: var(--layout-max-width); margin: 0 auto; padding: var(--space-7) var(--layout-gutter); display: grid; gap: var(--space-5); }
-.eyebrow { margin: 0 0 var(--space-2); color: var(--color-text-highlight); font-size: var(--font-size-sm); text-transform: uppercase; letter-spacing: .08em; }
-h1 { margin: 0; font-family: var(--font-family-display); color: var(--color-text-primary); }
-.hero-creation__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(16rem, .45fr); gap: var(--space-5); }
-form, fieldset { display: grid; gap: var(--space-4); } fieldset { border: 0; padding: 0; } legend { color: var(--color-text-highlight); font-weight: var(--font-weight-bold); }
-.classes { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--space-3); }.class-card { display: grid; gap: var(--space-2); padding: var(--space-4); border: 1px solid var(--color-border-subtle); background: var(--color-surface-base); color: var(--color-text-primary); text-align: left; cursor: pointer; }.class-card--selected { border-color: var(--color-accent); box-shadow: var(--shadow-gold); }.class-card span { color: var(--color-text-muted); font-size: var(--font-size-sm); }.preview-name { margin: 0; color: var(--color-text-highlight); font-family: var(--font-family-display); font-size: var(--font-size-xl); } @media (max-width: 48rem) { .hero-creation__grid { grid-template-columns: 1fr; } }
+.hero-creation {
+  display: grid;
+  gap: var(--space-5);
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  padding: var(--space-7) var(--layout-gutter);
+}
+
+.eyebrow {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-highlight);
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1 { margin: 0; color: var(--color-text-primary); font-family: var(--font-family-display); }
+.hero-creation__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.45fr); gap: var(--space-5); }
+form, fieldset { display: grid; gap: var(--space-4); }
+fieldset { border: 0; padding: 0; }
+legend { color: var(--color-text-highlight); font-weight: var(--font-weight-bold); }
+.classes { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--space-3); }
+.class-card { display: grid; gap: var(--space-2); padding: var(--space-4); border: 1px solid var(--color-border-subtle); background: var(--color-surface-base); color: var(--color-text-primary); cursor: pointer; text-align: left; }
+.class-card--selected { border-color: var(--color-accent); box-shadow: var(--shadow-gold); }
+.class-card span { color: var(--color-text-muted); font-size: var(--font-size-sm); }
+.preview-name { margin: 0; color: var(--color-text-highlight); font-family: var(--font-family-display); font-size: var(--font-size-xl); }
+@media (max-width: 48rem) { .hero-creation__grid { grid-template-columns: 1fr; } }
 </style>

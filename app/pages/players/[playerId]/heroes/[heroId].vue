@@ -31,5 +31,18 @@ onMounted(load);
 </template>
 
 <style scoped lang="scss">
-.hero-sheet { max-width: var(--layout-max-width); margin: 0 auto; padding: var(--space-7) var(--layout-gutter); display: grid; gap: var(--space-5); }.back { color: var(--color-text-highlight); } header { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); } .eyebrow { width: 100%; margin: 0; color: var(--color-text-highlight); font-size: var(--font-size-sm); text-transform: uppercase; letter-spacing: .08em; } h1 { margin: 0; color: var(--color-text-primary); font-family: var(--font-family-display); }.hero-sheet__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); } dl { display: grid; gap: var(--space-3); margin: 0; } dl div { display: flex; justify-content: space-between; gap: var(--space-4); } dt { color: var(--color-text-muted); text-transform: capitalize; } dd { margin: 0; color: var(--color-text-primary); font-weight: var(--font-weight-bold); } ul { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; } li { display: flex; justify-content: space-between; gap: var(--space-4); border-bottom: 1px solid var(--color-border-subtle); padding-bottom: var(--space-3); } li span { color: var(--color-text-muted); } @media (max-width: 48rem) { .hero-sheet__grid { grid-template-columns: 1fr; } }
+.hero-sheet { display: grid; gap: var(--space-5); max-width: var(--layout-max-width); margin: 0 auto; padding: var(--space-7) var(--layout-gutter); }
+.back { color: var(--color-text-highlight); }
+header { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); }
+.eyebrow { width: 100%; margin: 0; color: var(--color-text-highlight); font-size: var(--font-size-sm); letter-spacing: 0.08em; text-transform: uppercase; }
+h1 { margin: 0; color: var(--color-text-primary); font-family: var(--font-family-display); }
+.hero-sheet__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); }
+dl { display: grid; gap: var(--space-3); margin: 0; }
+dl div, li { display: flex; justify-content: space-between; gap: var(--space-4); }
+dt, li span { color: var(--color-text-muted); }
+dt { text-transform: capitalize; }
+dd { margin: 0; color: var(--color-text-primary); font-weight: var(--font-weight-bold); }
+ul { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+li { border-bottom: 1px solid var(--color-border-subtle); padding-bottom: var(--space-3); }
+@media (max-width: 48rem) { .hero-sheet__grid { grid-template-columns: 1fr; } }
 </style>

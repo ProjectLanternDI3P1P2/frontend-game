@@ -34,5 +34,10 @@ onMounted(load);
 </template>
 
 <style scoped lang="scss">
-.play-page { max-width: var(--layout-max-width); margin: 0 auto; padding: var(--space-7) var(--layout-gutter); display: grid; gap: var(--space-5); }.eyebrow { margin: 0 0 var(--space-2); color: var(--color-text-highlight); font-size: var(--font-size-sm); letter-spacing: .08em; text-transform: uppercase; } h1 { margin: 0; color: var(--color-text-primary); font-family: var(--font-family-display); }.play-page__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(16rem, .5fr); gap: var(--space-5); }.hero-list { display: grid; gap: var(--space-3); } @media (max-width: 48rem) { .play-page__grid { grid-template-columns: 1fr; } }
+.play-page { display: grid; gap: var(--space-5); max-width: var(--layout-max-width); margin: 0 auto; padding: var(--space-7) var(--layout-gutter); }
+.eyebrow { margin: 0 0 var(--space-2); color: var(--color-text-highlight); font-size: var(--font-size-sm); letter-spacing: 0.08em; text-transform: uppercase; }
+h1 { margin: 0; color: var(--color-text-primary); font-family: var(--font-family-display); }
+.play-page__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.5fr); gap: var(--space-5); }
+.hero-list { display: grid; gap: var(--space-3); }
+@media (max-width: 48rem) { .play-page__grid { grid-template-columns: 1fr; } }
 </style>
