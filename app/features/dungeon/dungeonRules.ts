@@ -30,6 +30,26 @@ export interface Viewport {
   rows: number;
 }
 
+/** Whole or half multiples of the 16 px source tile: the pixel art stays crisp. */
+const TILE_SIZES = [64, 48, 32, 24, 16] as const;
+/** The hero always sees at least this many tiles across and down. */
+const MIN_VISIBLE_TILES = 13;
+
+/**
+ * The largest tile that still shows `MIN_VISIBLE_TILES` in both directions,
+ * and the view that covers the whole screen with it. Odd sizes keep the hero
+ * on the centre tile; the view overflows the screen by less than a tile.
+ */
+export function fitViewport(width: number, height: number): Viewport & { tile: number } {
+  const shortest = Math.min(width, height);
+  const tile = TILE_SIZES.find((size) => shortest / size >= MIN_VISIBLE_TILES) ?? 16;
+  const odd = (length: number) => {
+    const count = Math.max(1, Math.ceil(length / tile));
+    return count % 2 === 1 ? count : count + 1;
+  };
+  return { tile, columns: odd(width), rows: odd(height) };
+}
+
 /**
  * Top-left tile of the camera: centred on the hero, clamped so that the view
  * never shows beyond the floor when the floor is larger than the view.

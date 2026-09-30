@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Cell, cellAt, decodeFloor, roomAt } from "../dungeonMap";
-import { cameraOrigin, directionForKey, reveal } from "../dungeonRules";
+import { cameraOrigin, directionForKey, fitViewport, reveal } from "../dungeonRules";
 import type { DungeonMapResponse } from "../types";
 import fixture from "./fixtures/map-0KX4M2T9QZ7PA-f0.json";
 
@@ -52,6 +52,23 @@ describe("cameraOrigin", () => {
       x: -5,
       y: -3,
     });
+  });
+});
+
+describe("fitViewport", () => {
+  it("picks the largest tile that keeps 13 tiles in view", () => {
+    expect(fitViewport(1920, 1000).tile).toBe(64);
+    expect(fitViewport(1280, 700).tile).toBe(48);
+    expect(fitViewport(390, 780).tile).toBe(24);
+  });
+
+  it("covers the whole screen with an odd number of tiles", () => {
+    expect(fitViewport(1920, 1000)).toEqual({ tile: 64, columns: 31, rows: 17 });
+    expect(fitViewport(390, 780)).toEqual({ tile: 24, columns: 17, rows: 33 });
+  });
+
+  it("falls back to the smallest tile on a tiny screen", () => {
+    expect(fitViewport(100, 100)).toEqual({ tile: 16, columns: 7, rows: 7 });
   });
 });
 

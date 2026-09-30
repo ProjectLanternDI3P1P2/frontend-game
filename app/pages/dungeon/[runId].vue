@@ -6,10 +6,12 @@
 import DungeonControls from "~/features/dungeon/components/DungeonControls.vue";
 import DungeonMinimap from "~/features/dungeon/components/DungeonMinimap.vue";
 import DungeonViewport from "~/features/dungeon/components/DungeonViewport.vue";
+import { useBoardViewport } from "~/features/dungeon/composables/useBoardViewport";
 import { useDungeonExplorer } from "~/features/dungeon/composables/useDungeonExplorer";
 import { directionForKey } from "~/features/dungeon/dungeonRules";
-import { ButtonVariant } from "~/shared/ui/ui.types";
+import { ButtonSize, ButtonVariant } from "~/shared/ui/ui.types";
 
+definePageMeta({ layout: "game" });
 useHead({ title: "Exploration" });
 
 const route = useRoute();
@@ -31,9 +33,8 @@ const {
   canFightBoss,
 } = explorer;
 
-/** Odd sizes keep the hero on the centre tile. */
-const viewport = { columns: 17, rows: 13 };
 const board = ref<HTMLElement | null>(null);
+const viewport = useBoardViewport(board);
 const copied = ref(false);
 
 onMounted(async () => {
@@ -80,15 +81,29 @@ async function copyShareLink() {
     </p>
 
     <template v-else-if="loaded && run">
-      <header class="dungeon-page__hud">
+      <!-- ADR-FE-015: documented gameplay exception. The board takes the
+           arrow keys, so it is a focusable application region with
+           instructions; on touch screens the same moves are buttons.
+           WAI-ARIA makes `application` a focusable widget, which Sonar's
+           tabindex rule (Web:S6845) does not know: hence the NOSONAR. -->
+      <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions -->
+      <div ref="board" class="dungeon-page__board" role="application" aria-label="Dungeon" aria-describedby="dungeon-help" tabindex="0" @keydown="onKeydown"> <!-- NOSONAR -->
+        <DungeonViewport
+          :loaded="loaded"
+          :hero="hero"
+          :revealed="revealed"
+          :reveal-version="revealVersion"
+          :bump="bump"
+          :viewport="viewport"
+          :floor-boss-defeated="floorBossDefeated"
+        />
+      </div>
+
+      <header class="dungeon-page__panel dungeon-page__hud">
         <h1 class="dungeon-page__title">
           Floor {{ run.currentFloor + 1 }}<span v-if="run.floorCount > 1"> / {{ run.floorCount }}</span>
         </h1>
         <dl class="dungeon-page__facts">
-          <div>
-            <dt>Seed</dt>
-            <dd class="dungeon-page__seed">{{ run.seed }}</dd>
-          </div>
           <div>
             <dt>Turn</dt>
             <dd>{{ run.turn }}</dd>
@@ -98,53 +113,46 @@ async function copyShareLink() {
             <dd>{{ visitedRoomIds.length }} / {{ loaded.floor.rooms.length }}</dd>
           </div>
         </dl>
-        <UiButton :variant="ButtonVariant.GHOST" @click="copyShareLink">
-          {{ copied ? "Link copied" : "Share this dungeon" }}
-        </UiButton>
+        <div class="dungeon-page__links">
+          <UiButton :variant="ButtonVariant.GHOST" :size="ButtonSize.SM" @click="copyShareLink">
+            {{ copied ? "Link copied" : "Share" }}
+          </UiButton>
+          <NuxtLink to="/dungeon" class="dungeon-page__leave">Leave</NuxtLink>
+        </div>
       </header>
 
-      <div class="dungeon-page__stage">
-        <!-- ADR-FE-015: documented gameplay exception. The board takes the
-             arrow keys, so it is a focusable application region with
-             instructions; the same moves are available as buttons.
-             WAI-ARIA makes `application` a focusable widget, which Sonar's
-             tabindex rule (Web:S6845) does not know: hence the NOSONAR. -->
-        <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions -->
-        <div ref="board" class="dungeon-page__board" role="application" aria-label="Dungeon" aria-describedby="dungeon-help" tabindex="0" @keydown="onKeydown"> <!-- NOSONAR -->
-          <DungeonViewport
-            :loaded="loaded"
-            :hero="hero"
-            :revealed="revealed"
-            :reveal-version="revealVersion"
-            :bump="bump"
-            :viewport="viewport"
-            :floor-boss-defeated="floorBossDefeated"
-          />
-        </div>
+      <aside class="dungeon-page__panel dungeon-page__map" aria-label="Map">
+        <DungeonMinimap
+          :rooms="loaded.floor.rooms"
+          :visited-room-ids="visitedRoomIds"
+          :current-room-id="currentRoom?.id ?? null"
+        />
+      </aside>
 
-        <aside class="dungeon-page__side">
-          <DungeonMinimap
-            :rooms="loaded.floor.rooms"
-            :visited-room-ids="visitedRoomIds"
-            :current-room-id="currentRoom?.id ?? null"
-          />
-          <DungeonControls :disabled="run.status !== 'active'" @move="explorer.move" />
-          <UiButton v-if="isOnStairsDown" @click="act(explorer.descend)">Take the stairs down</UiButton>
-          <!-- Stand-in for Combat's fight: records the victory over the boss. -->
-          <UiButton v-if="canFightBoss" @click="act(explorer.fightBoss)">Fight the boss</UiButton>
-          <!-- A live status message, not a form field: it has nothing to label. -->
-          <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -->
-          <output v-if="run.status === 'won'" class="dungeon-page__victory">
-            Victory! The final boss is defeated.
-          </output>
-          <p id="dungeon-help" class="dungeon-page__help">
-            Arrow keys, WASD or ZQSD to move, one tile per turn. Defeat the boss of the floor to
-            open the gate to the stairs, then Enter on the stairs to go down.
-          </p>
-        </aside>
+      <div class="dungeon-page__actions">
+        <UiButton v-if="isOnStairsDown" @click="act(explorer.descend)">Take the stairs down</UiButton>
+        <!-- Stand-in for Combat's fight: records the victory over the boss. -->
+        <UiButton v-if="canFightBoss" @click="act(explorer.fightBoss)">Fight the boss</UiButton>
+        <!-- A live status message, not a form field: it has nothing to label. -->
+        <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -->
+        <output v-if="run.status === 'won'" class="dungeon-page__panel dungeon-page__victory">
+          Victory! The final boss is defeated.
+        </output>
+        <p v-if="errorMessage" class="dungeon-page__panel dungeon-page__error" role="alert">
+          {{ errorMessage }}
+        </p>
       </div>
 
-      <p v-if="errorMessage" class="dungeon-page__status" role="alert">{{ errorMessage }}</p>
+      <DungeonControls
+        class="dungeon-page__pad"
+        :disabled="run.status !== 'active'"
+        @move="explorer.move"
+      />
+
+      <p id="dungeon-help" class="visually-hidden">
+        Arrow keys, WASD or ZQSD to move, one tile per turn. Defeat the boss of the floor to
+        open the gate to the stairs, then Enter on the stairs to go down.
+      </p>
       <p class="visually-hidden" aria-live="polite">{{ announcement }}</p>
     </template>
   </div>
@@ -152,25 +160,54 @@ async function copyShareLink() {
 
 <style scoped lang="scss">
 .dungeon-page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  // The void of the tileset itself: the outer faces of the walls fade into it.
+  background-color: #000f0d;
+
+  &__board {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+
+    &:focus-visible {
+      outline: 3px solid var(--color-focus-ring);
+      outline-offset: -3px;
+    }
+  }
+
+  // Overlays float over the board, which stays visible around them.
+  &__panel {
+    position: absolute;
+    z-index: var(--z-overlay);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background-color: color-mix(in srgb, var(--color-surface-raised) 82%, transparent);
+    box-shadow: var(--shadow-md);
+    backdrop-filter: blur(4px);
+  }
 
   &__hud {
+    top: var(--space-4);
+    left: var(--space-4);
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-6);
+    gap: var(--space-3) var(--space-5);
+    max-inline-size: calc(100% - 2 * var(--space-4));
   }
 
   &__title {
     margin: 0;
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-lg);
+    white-space: nowrap;
   }
 
   &__facts {
     display: flex;
-    gap: var(--space-5);
+    gap: var(--space-4);
     margin: 0;
 
     dt {
@@ -181,34 +218,53 @@ async function copyShareLink() {
 
     dd {
       margin: 0;
+      font-variant-numeric: tabular-nums;
     }
   }
 
-  &__seed {
-    font-family: var(--font-family-mono);
-  }
-
-  &__stage {
+  &__links {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-5);
-    align-items: flex-start;
+    align-items: center;
+    gap: var(--space-3);
   }
 
-  &__board {
-    border-radius: var(--radius-md);
+  &__leave {
+    font-size: var(--font-size-sm);
+  }
 
-    &:focus-visible {
-      outline: 3px solid var(--color-focus-ring);
-      outline-offset: 3px;
+  &__map {
+    top: var(--space-4);
+    right: var(--space-4);
+    display: grid;
+    place-items: center;
+    min-inline-size: 7rem;
+    min-block-size: 5rem;
+
+    // On a narrow screen the HUD takes the top: the map goes below it.
+    @media (max-width: 640px) {
+      top: auto;
+      bottom: var(--space-4);
+      left: var(--space-4);
+      right: auto;
     }
   }
 
-  &__side {
+  &__actions {
+    position: absolute;
+    z-index: var(--z-overlay);
+    bottom: var(--space-6);
+    left: 50%;
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
-    max-inline-size: 14rem;
+    align-items: center;
+    gap: var(--space-3);
+    translate: -50% 0;
+    inline-size: max-content;
+    max-inline-size: calc(100% - 2 * var(--space-4));
+
+    > .dungeon-page__panel {
+      position: static;
+    }
   }
 
   &__victory {
@@ -218,11 +274,31 @@ async function copyShareLink() {
     font-weight: 600;
   }
 
-  &__help,
-  &__status {
+  &__error {
     margin: 0;
-    color: var(--color-text-muted);
+    color: var(--color-danger);
     font-size: var(--font-size-sm);
+  }
+
+  // The directional pad is for touch screens: with a mouse, the keyboard plays.
+  &__pad {
+    position: absolute;
+    z-index: var(--z-overlay);
+    right: var(--space-4);
+    bottom: var(--space-4);
+
+    @media (hover: hover) and (pointer: fine) {
+      display: none;
+    }
+  }
+
+  &__status {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin: 0;
+    translate: -50% -50%;
+    color: var(--color-text-muted);
   }
 }
 </style>

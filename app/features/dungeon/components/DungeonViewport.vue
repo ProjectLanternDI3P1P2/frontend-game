@@ -26,7 +26,8 @@ const props = defineProps<{
   /** Bumped whenever `revealed` changes: typed arrays are not reactive. */
   revealVersion: number;
   bump: { direction: Direction; id: number } | null;
-  viewport: Viewport;
+  /** Tiles in view, and the size of a tile in CSS pixels (see `fitViewport`). */
+  viewport: Viewport & { tile: number };
   /** Opens the gate to the stairs and removes the boss. */
   floorBossDefeated: boolean;
 }>();
@@ -88,6 +89,11 @@ const gate = computed(() => {
     : null;
 });
 
+const viewportStyle = computed(() => {
+  const { columns, rows, tile } = props.viewport;
+  return `--columns:${columns};--rows:${rows};--tile:${tile}px`;
+});
+
 const worldStyle = computed(
   () => `--camera-x:${camera.value.x};--camera-y:${camera.value.y}`,
 );
@@ -96,7 +102,7 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 </script>
 
 <template>
-  <div class="dungeon-viewport" :style="`--columns:${viewport.columns};--rows:${viewport.rows}`">
+  <div class="dungeon-viewport" :style="viewportStyle">
     <div class="dungeon-viewport__world" :style="worldStyle">
       <div v-for="layer in visibleLayers" :key="layer.key" :class="layer.className" :style="layer.style" />
 
@@ -121,29 +127,20 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 
 <style scoped lang="scss">
 .dungeon-viewport {
-  // One source pixel = --px; one tile = --tile. Everything below derives from
-  // them, so resizing the view never requires recomputing a tile.
-  --tile: 24px;
+  // One source pixel = --px; one tile = --tile (set from `viewport.tile`).
+  // Everything below derives from them, so resizing the view never requires
+  // recomputing a tile.
   --px: calc(var(--tile) / 16);
 
-  position: relative;
+  // Centred on its container, which it overflows by less than a tile: the
+  // centre tile, where the hero stands, is the centre of the screen.
+  position: absolute;
+  left: 50%;
+  top: 50%;
   overflow: hidden;
   inline-size: calc(var(--columns) * var(--tile));
   block-size: calc(var(--rows) * var(--tile));
-  max-inline-size: 100%;
-  // The void of the tileset itself: the outer faces of the walls fade into it.
-  background-color: #000f0d;
-  border: 2px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-
-  @include bp.from(sm) {
-    --tile: 32px;
-  }
-
-  @include bp.from(lg) {
-    --tile: 48px;
-  }
+  translate: -50% -50%;
 
   &__world {
     position: absolute;

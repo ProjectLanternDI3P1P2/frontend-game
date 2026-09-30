@@ -105,9 +105,14 @@ a character sheet is added (`components/DungeonViewport.vue`, `.dungeon-token`).
 ### Accessibility (ADR-FE-015)
 
 The board is a documented gameplay exception: a focusable `role="application"`
-region that takes the arrow keys, described by visible instructions. Every move
-is also a button. Room changes, blocked moves and elements underfoot are
-announced through a polite live region.
+region that takes the arrow keys, described by instructions reserved for
+assistive technology. On touch screens every move is also a button (the pad is
+hidden when a fine pointer and a keyboard are available). Room changes, blocked
+moves and elements underfoot are announced through a polite live region.
+
+The exploration screen uses the full-screen `game` layout: the view is sized to
+the window by `fitViewport` (`dungeonRules.ts`, via `useBoardViewport`), and the
+HUD, the minimap and the actions float over the board.
 
 ### Test coverage
 

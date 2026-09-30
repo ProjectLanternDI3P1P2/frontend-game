@@ -90,7 +90,7 @@ const label = computed(
 
 <style scoped lang="scss">
 .dungeon-minimap {
-  --cell: 0.875rem;
+  --cell: 1rem;
   --gap: 0.375rem;
   --step: calc(var(--cell) + var(--gap));
 
