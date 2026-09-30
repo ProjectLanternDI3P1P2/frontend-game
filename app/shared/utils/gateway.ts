@@ -86,6 +86,10 @@ export interface GatewayClient {
     body?: unknown,
     req?: Omit<GatewayRequest, "path" | "method" | "body">,
   ) => Promise<TResponse>;
+  delete: <TResponse>(
+    path: string,
+    req?: Omit<GatewayRequest, "path" | "method" | "body">,
+  ) => Promise<TResponse>;
 }
 
 function defaultCorrelationId(): string {
@@ -190,6 +194,7 @@ export function createGatewayClient(options: GatewayClientOptions): GatewayClien
     get: (path, req) => request({ ...req, path, method: "GET" }),
     post: (path, body, req) => request({ ...req, path, method: "POST", body }),
     put: (path, body, req) => request({ ...req, path, method: "PUT", body }),
+    delete: (path, req) => request({ ...req, path, method: "DELETE" }),
   };
 }
 

@@ -53,6 +53,12 @@ export function createPlayerApi(client: GatewayClient) {
       );
     },
 
+    deselectHero(playerId: string, heroId: string): Promise<undefined> {
+      return client.delete<undefined>(
+        `${heroesPath(playerId)}/${encodeURIComponent(heroId)}/selection`,
+      );
+    },
+
     startSoloRun(
       playerId: string,
       heroId: string,
