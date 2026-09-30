@@ -20,6 +20,7 @@ const loading = ref(true);
 const starting = ref(false);
 const error = ref("");
 const isCreator = computed(() => session.value?.creatorPlayerId === playerId.value);
+const lobbyCode = computed(() => sessionId.value.slice(0, 8).toUpperCase());
 let hub: PlayerHubClient | null = null;
 
 async function load(): Promise<void> {
@@ -76,14 +77,22 @@ onBeforeUnmount(() => void hub?.disconnect());
     <p v-if="loading" class="lobby-page__notice">Loading lobby…</p>
     <p v-else-if="error" class="lobby-page__notice" role="alert">{{ error }}</p>
     <template v-else-if="session">
-      <header>
-        <p class="lobby-page__eyebrow">{{ session.mode }} lobby</p>
-        <h1>Your party is ready</h1>
-        <p>The roster locks when the run starts.</p>
+      <header class="lobby-page__header">
+        <div>
+          <p class="lobby-page__eyebrow">Lobby · you are the creator</p>
+          <h1>{{ session.members[0]?.name }}’s game</h1>
+        </div>
+        <div class="lobby-page__connection">
+          <span
+            >Lobby code <strong>{{ lobbyCode }}</strong></span
+          >
+          <span class="lobby-page__connected">● Real-time · connected</span>
+        </div>
       </header>
       <section class="lobby-page__layout">
         <div class="lobby-page__roster">
-          <h2>Party</h2>
+          <p class="lobby-page__eyebrow">Team</p>
+          <h2>{{ session.members.length }} / 1 player</h2>
           <article
             v-for="member in session.members"
             :key="member.id"
@@ -99,28 +108,49 @@ onBeforeUnmount(() => void hub?.disconnect());
               <span v-if="member.id === session.members[0]?.id">Lobby creator</span>
             </div>
           </article>
+          <article v-for="slot in 3" :key="slot" class="lobby-page__slot">
+            <span aria-hidden="true">○</span>
+            <div>
+              <strong>Open slot</strong>
+              <p>Waiting for a player…</p>
+            </div>
+          </article>
         </div>
-        <aside class="lobby-page__actions">
-          <p class="lobby-page__eyebrow">
-            {{ session.state === "Lobby" ? "Ready to start" : "Roster locked" }}
-          </p>
-          <h2>{{ session.state === "Lobby" ? "Launch the run" : "Run launched" }}</h2>
-          <p v-if="session.state === 'Lobby'">
-            Only the lobby creator can start the dungeon.
-          </p>
-          <p v-else>The dungeon run is being prepared.</p>
-          <UiButton
-            :size="ButtonSize.SM"
-            :variant="ButtonVariant.PRIMARY"
-            :busy="starting"
-            :disabled="!isCreator || session.state !== 'Lobby'"
-            @click="start"
-            >{{ starting ? "Starting…" : "Start run" }}</UiButton
-          >
-          <p v-if="!isCreator" class="lobby-page__hint">
-            Only the creator can launch this run.
-          </p>
-        </aside>
+        <div class="lobby-page__side">
+          <aside class="lobby-page__hero">
+            <p class="lobby-page__eyebrow">Your hero</p>
+            <HeroPortraitPlaceholder
+              :class-code="session.members[0]?.classCode ?? 'mage'"
+              :label="`${session.members[0]?.name} portrait`"
+            />
+            <h2>{{ session.members[0]?.name }}</h2>
+            <p>
+              {{ session.members[0]?.classCode }} · level
+              {{ session.members[0]?.level }}
+            </p>
+          </aside>
+          <aside class="lobby-page__actions">
+            <p class="lobby-page__eyebrow">Start</p>
+            <h2>
+              {{ session.state === "Lobby" ? "Ready for a solo run" : "Run launched" }}
+            </h2>
+            <p v-if="session.state === 'Lobby'">
+              ✓ Your hero is ready<br />✓ Solo roster is complete
+            </p>
+            <p v-else>The dungeon run is being prepared.</p>
+            <UiButton
+              :size="ButtonSize.SM"
+              :variant="ButtonVariant.PRIMARY"
+              :busy="starting"
+              :disabled="!isCreator || session.state !== 'Lobby'"
+              @click="start"
+              >{{ starting ? "Starting…" : "Start game" }}</UiButton
+            >
+            <p v-if="!isCreator" class="lobby-page__hint">
+              Only the creator can launch this run.
+            </p>
+          </aside>
+        </div>
       </section>
     </template>
   </main>
@@ -140,6 +170,32 @@ onBeforeUnmount(() => void hub?.disconnect());
 }
 .lobby-page header {
   margin-top: var(--space-5);
+}
+.lobby-page__header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.lobby-page__connection {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: 0.625rem;
+  text-transform: uppercase;
+}
+.lobby-page__connection > span:first-child {
+  border: 1px solid var(--color-border-subtle);
+  padding: var(--space-2);
+}
+.lobby-page__connection strong {
+  color: var(--color-text-highlight);
+}
+.lobby-page__connected {
+  border: 1px solid var(--color-success);
+  padding: var(--space-2);
+  color: var(--color-success);
 }
 h1,
 h2 {
@@ -171,7 +227,8 @@ h1 {
   margin-top: var(--space-5);
 }
 .lobby-page__roster,
-.lobby-page__actions {
+.lobby-page__actions,
+.lobby-page__hero {
   border: 1px solid var(--color-border-subtle);
   padding: var(--space-4);
   background: var(--color-surface-raised);
@@ -183,6 +240,40 @@ h1 {
   margin-top: var(--space-4);
   border: 1px solid var(--color-border-subtle);
   padding: var(--space-3);
+}
+.lobby-page__slot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  border: 1px dashed var(--color-border-strong);
+  padding: var(--space-3);
+  color: var(--color-text-muted);
+}
+.lobby-page__slot > span {
+  font-size: 1.75rem;
+}
+.lobby-page__slot p {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-xs);
+}
+.lobby-page__side {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+}
+.lobby-page__hero {
+  display: grid;
+  gap: var(--space-2);
+}
+.lobby-page__hero :deep(.hero-portrait) {
+  width: 4rem;
+  height: 4rem;
+}
+.lobby-page__hero p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
 }
 .lobby-page__member p {
   margin: var(--space-1) 0;
@@ -206,6 +297,10 @@ h1 {
 @media (max-width: 44rem) {
   .lobby-page__layout {
     grid-template-columns: 1fr;
+  }
+  .lobby-page__header {
+    align-items: start;
+    flex-direction: column;
   }
 }
 </style>
