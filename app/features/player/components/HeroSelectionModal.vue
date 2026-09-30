@@ -29,6 +29,8 @@ function choose(hero: HeroSummary): void {
     :model-value="modelValue"
     title="Change hero"
     :size="ModalSize.MD"
+    dialog-class="hero-selection-modal__dialog"
+    body-class="hero-selection-modal__body"
     @update:model-value="$emit('update:modelValue', $event)"
   >
     <p class="hero-selection-modal__intro">
@@ -58,8 +60,10 @@ function choose(hero: HeroSummary): void {
 </template>
 
 <style scoped lang="scss">
-.hero-selection-modal__intro { margin: 0 0 var(--space-4); color: var(--color-text-muted); font-size: var(--font-size-sm); }
-.hero-selection-modal__list { display: grid; gap: var(--space-2); }
+:deep(.hero-selection-modal__dialog) { display: flex; height: min(42rem, calc(100dvh - var(--space-8))); flex-direction: column; overflow: hidden; }
+:deep(.hero-selection-modal__body) { display: flex; min-height: 0; flex: 1; flex-direction: column; overflow: hidden; }
+.hero-selection-modal__intro { flex: none; margin: 0 0 var(--space-4); color: var(--color-text-muted); font-size: var(--font-size-sm); }
+.hero-selection-modal__list { display: grid; min-height: 0; gap: var(--space-2); overflow-y: auto; padding-right: var(--space-2); }
 .hero-selection-modal__hero { display: flex; align-items: center; width: 100%; gap: var(--space-3); border: 1px solid var(--color-border-subtle); padding: var(--space-3); background: var(--color-surface-overlay); color: var(--color-text-primary); text-align: left; cursor: pointer; }
 .hero-selection-modal__hero:hover:not(:disabled), .hero-selection-modal__hero--selected { border-color: var(--color-accent); box-shadow: var(--shadow-gold); }
 .hero-selection-modal__hero:disabled { opacity: .55; cursor: not-allowed; }

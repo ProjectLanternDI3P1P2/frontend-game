@@ -103,7 +103,8 @@ onBeforeUnmount(() => void hub?.disconnect());
 </script>
 
 <template>
-  <main id="main" class="lobby-page">
+  <div>
+    <main id="main" class="lobby-page">
     <NuxtLink
       :to="`/players/${encodeURIComponent(playerId)}/play`"
       class="lobby-page__back"
@@ -195,14 +196,15 @@ onBeforeUnmount(() => void hub?.disconnect());
         </div>
       </section>
     </template>
-  </main>
-  <HeroSelectionModal
-    v-model="heroPickerOpen"
-    :heroes="heroes"
-    :selected-hero-id="session?.members[0]?.id ?? null"
-    :busy="selectingHero"
-    @select="changeHero"
-  />
+    </main>
+    <HeroSelectionModal
+      v-model="heroPickerOpen"
+      :heroes="heroes"
+      :selected-hero-id="session?.members[0]?.id ?? null"
+      :busy="selectingHero"
+      @select="changeHero"
+    />
+  </div>
 </template>
 
 <style scoped lang="scss">

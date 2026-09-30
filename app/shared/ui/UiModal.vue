@@ -17,6 +17,8 @@ const props = withDefaults(
     closeOnBackdrop?: boolean;
     closeOnEscape?: boolean;
     showCloseButton?: boolean;
+    dialogClass?: string;
+    bodyClass?: string;
   }>(),
   {
     title: "",
@@ -24,6 +26,8 @@ const props = withDefaults(
     closeOnBackdrop: true,
     closeOnEscape: true,
     showCloseButton: true,
+    dialogClass: "",
+    bodyClass: "",
   },
 );
 
@@ -55,7 +59,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
       />
       <dialog
         class="ui-modal__dialog"
-        :class="'ui-modal__dialog--' + size"
+        :class="['ui-modal__dialog--' + size, dialogClass]"
         :aria-label="title"
         :open="modelValue"
         tabindex="-1"
@@ -70,7 +74,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
             >×</UiIconButton
           >
         </header>
-        <div class="ui-modal__body"><slot /></div>
+        <div class="ui-modal__body" :class="bodyClass"><slot /></div>
         <footer v-if="$slots.footer" class="ui-modal__footer">
           <slot name="footer" />
         </footer>

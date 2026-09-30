@@ -10,6 +10,33 @@ body {
   min-height: 100vh;
 }
 
+// A shared, unobtrusive scrollbar treatment for every scrollable surface.
+// Firefox uses the standard properties; WebKit browsers use the pseudo-elements.
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-accent) var(--color-surface-overlay);
+}
+
+*::-webkit-scrollbar {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+*::-webkit-scrollbar-track {
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-overlay);
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid var(--color-surface-overlay);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent-strong);
+}
+
 h1,
 h2,
 h3 {

@@ -90,8 +90,9 @@ onBeforeUnmount(() => void hub?.disconnect());
 </script>
 
 <template>
-  <NuxtPage v-if="!isJoinScreen" />
-  <main v-else id="main" class="join-game">
+  <div>
+    <NuxtPage v-if="!isJoinScreen" />
+    <main v-else id="main" class="join-game">
     <header>
       <p class="join-game__eyebrow">Play a game</p>
       <h1>Join a game</h1>
@@ -137,14 +138,15 @@ onBeforeUnmount(() => void hub?.disconnect());
         </article>
       </section>
     </div>
-  </main>
-  <HeroSelectionModal
-    v-model="heroPickerOpen"
-    :heroes="heroes"
-    :selected-hero-id="selectedId"
-    :busy="selectingHero"
-    @select="selectHero"
-  />
+    </main>
+    <HeroSelectionModal
+      v-model="heroPickerOpen"
+      :heroes="heroes"
+      :selected-hero-id="selectedId"
+      :busy="selectingHero"
+      @select="selectHero"
+    />
+  </div>
 </template>
 
 <style scoped lang="scss">
