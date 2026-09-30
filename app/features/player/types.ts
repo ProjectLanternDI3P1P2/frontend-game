@@ -68,10 +68,6 @@ export interface HeroSheet {
   abilities: HeroAbility[];
 }
 
-export interface StartSoloRunRequest {
-  idempotencyKey: string;
-}
-
 export type GameSessionState = "Active" | "Failed" | "Pending";
 
 export interface SessionHero {
@@ -81,7 +77,8 @@ export interface SessionHero {
   level: number;
 }
 
-export interface StartSoloRunResponse {
+/** Authoritative snapshot sent by PlayerHub after a gameplay command. */
+export interface GameSessionSnapshot {
   sessionId: string;
   hero: SessionHero;
   state: GameSessionState;
