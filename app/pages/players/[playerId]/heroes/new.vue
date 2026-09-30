@@ -110,7 +110,7 @@ async function submit() {
       idempotencyKey,
     });
     await router.push(
-      `/players/${encodeURIComponent(playerId.value)}/heroes/${hero.id}`,
+      `/players/${encodeURIComponent(playerId.value)}/heroes/${hero.id}/created`,
     );
   } catch (cause) {
     if (cause instanceof GatewayError) {

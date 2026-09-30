@@ -35,7 +35,8 @@ async function load() {
   error.value = "";
   try {
     heroes.value = await usePlayerApi().listHeroes(playerId.value);
-    selectedId.value ??= heroes.value[0]?.id ?? null;
+    selectedId.value ??=
+      heroes.value.find((hero) => hero.isSelected)?.id ?? heroes.value[0]?.id ?? null;
   } catch (cause) {
     error.value =
       cause instanceof GatewayError ? cause.message : "Unable to load heroes.";

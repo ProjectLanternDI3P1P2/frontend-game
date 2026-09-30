@@ -21,6 +21,7 @@ export interface HeroSummary {
   level: number;
   maximumHealth: number;
   isEngagedInActiveSession: boolean;
+  isSelected: boolean;
   createdAt: string;
 }
 
@@ -36,6 +37,7 @@ export interface CreateHeroResponse {
   classCode: HeroClassCode;
   level: number;
   maximumHealth: number;
+  createdAt: string;
   unlockedSkillCodes: string[];
   alreadyExists: boolean;
 }
@@ -58,6 +60,7 @@ export interface HeroSheet {
   name: string;
   classCode: HeroClassCode;
   level: number;
+  createdAt: string;
   attributes: HeroAttributes;
   maximumHealth: number;
   abilities: HeroAbility[];

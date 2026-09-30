@@ -47,6 +47,12 @@ export function createPlayerApi(client: GatewayClient) {
       return client.post<CreateHeroResponse>(heroesPath(playerId), request);
     },
 
+    selectHero(playerId: string, heroId: string): Promise<undefined> {
+      return client.put<undefined>(
+        `${heroesPath(playerId)}/${encodeURIComponent(heroId)}/selection`,
+      );
+    },
+
     startSoloRun(
       playerId: string,
       heroId: string,

@@ -7,6 +7,7 @@ function gatewayStub(): GatewayClient {
     request: vi.fn(),
     get: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
   } as unknown as GatewayClient;
 }
 
@@ -25,6 +26,7 @@ describe("Player API", () => {
       classCode: "mage",
       idempotencyKey: "create-key",
     });
+    await api.selectHero(playerId, heroId);
     await api.startSoloRun(playerId, heroId, { idempotencyKey: "run-key" });
 
     expect(gateway.get).toHaveBeenNthCalledWith(1, "players/player%20id/heroes", {
@@ -47,6 +49,9 @@ describe("Player API", () => {
       2,
       "players/player%20id/heroes/hero%2Fid/sessions",
       { idempotencyKey: "run-key" },
+    );
+    expect(gateway.put).toHaveBeenCalledWith(
+      "players/player%20id/heroes/hero%2Fid/selection",
     );
   });
 });
