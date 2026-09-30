@@ -106,7 +106,7 @@ export function useDungeonExplorer(runId: string) {
   function move(direction: Direction): void {
     const current = floor.value;
     const state = run.value;
-    if (!current || !state || state.status !== "active") return;
+    if (!current || state?.status !== "active") return;
     if (pendingMoves.value >= MAX_PENDING_MOVES) return;
 
     const target = step(hero.value, direction);
@@ -237,16 +237,17 @@ function describeRoom(floor: DecodedFloor, roomId: number): string {
   const details = [
     room.type === "combat" ? `${count("enemy")} enemies` : null,
     traps > 0 ? `beware of ${traps} spike traps` : null,
-    room.type === "boss"
-      ? floor.isFinalFloor
-        ? "the final boss awaits"
-        : "its boss guards the gate to the stairs"
-      : null,
+    room.type === "boss" ? describeBoss(floor) : null,
     room.type === "stairs" ? "stairs lead down" : null,
     room.type === "treasure" ? "a treasure lies here" : null,
   ].filter(Boolean);
 
-  return `Room ${room.id + 1} of ${floor.rooms.length}${details.length ? `: ${details.join(", ")}` : ""}.`;
+  const title = `Room ${room.id + 1} of ${floor.rooms.length}`;
+  return details.length ? `${title}: ${details.join(", ")}.` : `${title}.`;
+}
+
+function describeBoss(floor: DecodedFloor): string {
+  return floor.isFinalFloor ? "the final boss awaits" : "its boss guards the gate to the stairs";
 }
 
 function describe(error: unknown): string {

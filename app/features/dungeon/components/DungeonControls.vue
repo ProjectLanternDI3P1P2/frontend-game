@@ -17,7 +17,8 @@ const buttons: { direction: Direction; label: string; symbol: string }[] = [
 </script>
 
 <template>
-  <div class="dungeon-controls" role="group" aria-label="Movement">
+  <fieldset class="dungeon-controls">
+    <legend class="visually-hidden">Movement</legend>
     <button
       v-for="button in buttons"
       :key="button.direction"
@@ -29,7 +30,7 @@ const buttons: { direction: Direction; label: string; symbol: string }[] = [
     >
       <span aria-hidden="true">{{ button.symbol }}</span>
     </button>
-  </div>
+  </fieldset>
 </template>
 
 <style scoped lang="scss">
@@ -42,6 +43,10 @@ const buttons: { direction: Direction; label: string; symbol: string }[] = [
   grid-template-columns: repeat(3, 2.75rem);
   grid-template-rows: repeat(3, 2.75rem);
   gap: var(--space-1);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 
   &__button {
     border: 1px solid var(--color-border-strong);

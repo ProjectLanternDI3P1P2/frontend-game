@@ -28,7 +28,7 @@ const floors = new Map<string, Promise<LoadedFloor>>();
 export function loadFloor(seed: string, floor: number): Promise<LoadedFloor> {
   const key = `${seed}#${floor}`;
   const cached = floors.get(key);
-  if (cached) return cached;
+  if (cached !== undefined) return cached;
 
   const pending = fetchDungeonMap(seed, floor).then((map) => {
     const decoded = decodeFloor(map);

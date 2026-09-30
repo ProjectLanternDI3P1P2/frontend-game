@@ -27,16 +27,13 @@ const knownRooms = computed(() => {
   }
   return props.rooms
     .filter((room) => known.has(room.id))
-    .map((room) => ({
-      room,
-      state:
-        room.id === props.currentRoomId
-          ? "current"
-          : visited.value.has(room.id)
-            ? "visited"
-            : "unexplored",
-    }));
+    .map((room) => ({ room, state: roomState(room.id) }));
 });
+
+function roomState(id: number): "current" | "visited" | "unexplored" {
+  if (id === props.currentRoomId) return "current";
+  return visited.value.has(id) ? "visited" : "unexplored";
+}
 
 /** One bar per known door, drawn between the two room cells. */
 const corridors = computed(() => {
@@ -63,12 +60,8 @@ const label = computed(
 </script>
 
 <template>
-  <div
-    class="dungeon-minimap"
-    role="img"
-    :aria-label="label"
-    :style="`--columns:${columns};--rows:${rows}`"
-  >
+  <div class="dungeon-minimap" :style="`--columns:${columns};--rows:${rows}`">
+    <span class="visually-hidden">{{ label }}</span>
     <span
       v-for="bar in corridors"
       :key="bar.key"
@@ -79,6 +72,7 @@ const label = computed(
           : 'dungeon-minimap__corridor--vertical',
       ]"
       :style="`--column:${bar.column};--row:${bar.row}`"
+      aria-hidden="true"
     />
     <span
       v-for="{ room, state } in knownRooms"
@@ -89,6 +83,7 @@ const label = computed(
         state !== 'unexplored' ? `dungeon-minimap__room--${room.type}` : null,
       ]"
       :style="`--column:${room.gridX - minX};--row:${room.gridY - minY}`"
+      aria-hidden="true"
     />
   </div>
 </template>

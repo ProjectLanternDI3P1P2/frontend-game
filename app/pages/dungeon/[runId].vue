@@ -105,10 +105,11 @@ async function copyShareLink() {
       <div class="dungeon-page__stage">
         <!-- ADR-FE-015: documented gameplay exception. The board takes the
              arrow keys, so it is a focusable application region with
-             instructions; the same moves are available as buttons. -->
+             instructions; the same moves are available as buttons.
+             WAI-ARIA makes `application` a focusable widget, which Sonar's
+             tabindex rule (Web:S6845) does not know: hence the NOSONAR. -->
         <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions -->
-        <div ref="board" class="dungeon-page__board" role="application" aria-label="Dungeon"
-          aria-describedby="dungeon-help" tabindex="0" @keydown="onKeydown">
+        <div ref="board" class="dungeon-page__board" role="application" aria-label="Dungeon" aria-describedby="dungeon-help" tabindex="0" @keydown="onKeydown"> <!-- NOSONAR -->
           <DungeonViewport :loaded="loaded" :hero="hero" :revealed="revealed" :reveal-version="revealVersion"
             :bump="bump" :viewport="viewport" :floor-boss-defeated="floorBossDefeated" />
         </div>
@@ -120,9 +121,11 @@ async function copyShareLink() {
           <UiButton v-if="isOnStairsDown" @click="act(explorer.descend)">Take the stairs down</UiButton>
           <!-- Stand-in for Combat's fight: records the victory over the boss. -->
           <UiButton v-if="canFightBoss" @click="act(explorer.fightBoss)">Fight the boss</UiButton>
-          <p v-if="run.status === 'won'" class="dungeon-page__victory" role="status">
+          <!-- A live status message, not a form field: it has nothing to label. -->
+          <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -->
+          <output v-if="run.status === 'won'" class="dungeon-page__victory">
             Victory! The final boss is defeated.
-          </p>
+          </output>
           <p id="dungeon-help" class="dungeon-page__help">
             Arrow keys, WASD or ZQSD to move, one tile per turn. Defeat the boss of the floor to
             open the gate to the stairs, then Enter on the stairs to go down.
@@ -198,6 +201,7 @@ async function copyShareLink() {
   }
 
   &__victory {
+    display: block;
     margin: 0;
     color: var(--color-accent);
     font-weight: 600;

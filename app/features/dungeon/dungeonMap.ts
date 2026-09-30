@@ -81,44 +81,8 @@ export function decodeFloor(map: DungeonMapResponse): DecodedFloor {
     );
   }
 
-  const codeBySymbol = new Map<string, CellCode>();
-  for (const [symbol, name] of Object.entries(map.legend)) {
-    const code = CODE_BY_NAME[name];
-    if (code === undefined) {
-      throw new DungeonContractError(`Unknown cell type "${name}".`);
-    }
-    codeBySymbol.set(symbol, code);
-  }
-
-  const cells = new Uint8Array(width * height);
-  map.rows.forEach((row, y) => {
-    if (row.length !== width) {
-      throw new DungeonContractError(
-        `Row ${y} has ${row.length} tiles instead of ${width}.`,
-      );
-    }
-    for (let x = 0; x < width; x++) {
-      const code = codeBySymbol.get(row[x]!);
-      if (code === undefined) {
-        throw new DungeonContractError(`Unknown cell symbol "${row[x]}".`);
-      }
-      cells[y * width + x] = code;
-    }
-  });
-
-  // Same rule as the backend: pits and partition walls inside a room's bounds
-  // do not belong to it.
-  const roomIdByCell = new Int16Array(width * height).fill(NO_ROOM);
-  for (const room of map.rooms) {
-    for (let y = room.y; y < room.y + room.height; y++) {
-      for (let x = room.x; x < room.x + room.width; x++) {
-        const index = y * width + x;
-        if (cells[index] !== Cell.Void && cells[index] !== Cell.Wall) {
-          roomIdByCell[index] = room.id;
-        }
-      }
-    }
-  }
+  const cells = decodeCells(map, decodeLegend(map.legend));
+  const roomIdByCell = assignRooms(map, cells);
 
   const elementsByCell = new Map<number, DungeonElement[]>();
   for (const element of map.elements) {
@@ -140,6 +104,59 @@ export function decodeFloor(map: DungeonMapResponse): DecodedFloor {
     elements: map.elements,
     entrance: map.entrance,
   };
+}
+
+function decodeLegend(legend: DungeonMapResponse["legend"]): Map<string, CellCode> {
+  const codeBySymbol = new Map<string, CellCode>();
+  for (const [symbol, name] of Object.entries(legend)) {
+    const code = CODE_BY_NAME[name];
+    if (code === undefined) {
+      throw new DungeonContractError(`Unknown cell type "${name}".`);
+    }
+    codeBySymbol.set(symbol, code);
+  }
+  return codeBySymbol;
+}
+
+function decodeCells(
+  { width, height, rows }: DungeonMapResponse,
+  codeBySymbol: ReadonlyMap<string, CellCode>,
+): Uint8Array {
+  const cells = new Uint8Array(width * height);
+  rows.forEach((row, y) => {
+    if (row.length !== width) {
+      throw new DungeonContractError(
+        `Row ${y} has ${row.length} tiles instead of ${width}.`,
+      );
+    }
+    for (let x = 0; x < width; x++) {
+      const code = codeBySymbol.get(row[x]!);
+      if (code === undefined) {
+        throw new DungeonContractError(`Unknown cell symbol "${row[x]}".`);
+      }
+      cells[y * width + x] = code;
+    }
+  });
+  return cells;
+}
+
+/**
+ * Same rule as the backend: pits and partition walls inside a room's bounds
+ * do not belong to it.
+ */
+function assignRooms({ width, height, rooms }: DungeonMapResponse, cells: Uint8Array): Int16Array {
+  const roomIdByCell = new Int16Array(width * height).fill(NO_ROOM);
+  for (const room of rooms) {
+    for (let y = room.y; y < room.y + room.height; y++) {
+      for (let x = room.x; x < room.x + room.width; x++) {
+        const index = y * width + x;
+        if (cells[index] !== Cell.Void && cells[index] !== Cell.Wall) {
+          roomIdByCell[index] = room.id;
+        }
+      }
+    }
+  }
+  return roomIdByCell;
 }
 
 export function contains(floor: DecodedFloor, { x, y }: Position): boolean {

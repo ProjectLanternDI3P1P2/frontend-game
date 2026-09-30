@@ -35,6 +35,12 @@ const camera = computed(() =>
   cameraOrigin(props.loaded.floor, props.hero, props.viewport),
 );
 
+/**
+ * `revealed` is mutated in place, so reading it is not tracked: the computed
+ * values below read it through this wrapper, which changes with `revealVersion`.
+ */
+const revealedMask = computed(() => ({ version: props.revealVersion, cells: props.revealed }));
+
 interface VisibleLayer {
   key: number;
   className: string;
@@ -42,7 +48,7 @@ interface VisibleLayer {
 }
 
 const visibleLayers = computed<VisibleLayer[]>(() => {
-  void props.revealVersion;
+  const { cells: revealed } = revealedMask.value;
   const { floor, tiles } = props.loaded;
   const { x: left, y: top } = camera.value;
   const layers: VisibleLayer[] = [];
@@ -51,7 +57,7 @@ const visibleLayers = computed<VisibleLayer[]>(() => {
   for (let y = Math.max(0, top - 1); y <= Math.min(floor.height - 1, top + props.viewport.rows); y++) {
     for (let x = Math.max(0, left - 1); x <= Math.min(floor.width - 1, left + props.viewport.columns); x++) {
       const index = y * floor.width + x;
-      if (props.revealed[index] === 0) continue;
+      if (revealed[index] === 0) continue;
       tiles[index]!.forEach((layer, layerIndex) =>
         layers.push({ key: index * 4 + layerIndex, ...layer }),
       );
@@ -62,22 +68,22 @@ const visibleLayers = computed<VisibleLayer[]>(() => {
 });
 
 const visibleElements = computed<DungeonElement[]>(() => {
-  void props.revealVersion;
+  const { cells: revealed } = revealedMask.value;
   const { floor } = props.loaded;
   return floor.elements.filter(
     (element) =>
-      props.revealed[element.y * floor.width + element.x] === 1 &&
+      revealed[element.y * floor.width + element.x] === 1 &&
       !(element.type === "boss" && props.floorBossDefeated),
   );
 });
 
 /** The gate of the boss room, drawn closed until the boss falls. */
 const gate = computed(() => {
-  void props.revealVersion;
+  const { cells: revealed } = revealedMask.value;
   const { floor } = props.loaded;
   const position = gateOf(floor);
   if (!position || props.floorBossDefeated) return null;
-  return props.revealed[position.y * floor.width + position.x] === 1
+  return revealed[position.y * floor.width + position.x] === 1
     ? closedGate(position)
     : null;
 });
