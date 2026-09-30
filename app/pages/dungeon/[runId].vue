@@ -8,6 +8,7 @@ import DungeonMinimap from "~/features/dungeon/components/DungeonMinimap.vue";
 import DungeonViewport from "~/features/dungeon/components/DungeonViewport.vue";
 import { useDungeonExplorer } from "~/features/dungeon/composables/useDungeonExplorer";
 import { directionForKey } from "~/features/dungeon/dungeonRules";
+import { ButtonVariant } from "~/shared/ui/ui.types";
 
 useHead({ title: "Exploration" });
 
@@ -97,7 +98,7 @@ async function copyShareLink() {
             <dd>{{ visitedRoomIds.length }} / {{ loaded.floor.rooms.length }}</dd>
           </div>
         </dl>
-        <UiButton variant="ghost" @click="copyShareLink">
+        <UiButton :variant="ButtonVariant.GHOST" @click="copyShareLink">
           {{ copied ? "Link copied" : "Share this dungeon" }}
         </UiButton>
       </header>

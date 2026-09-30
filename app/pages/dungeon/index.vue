@@ -5,6 +5,7 @@
  * justified in docs/rendering-modes.md.
  */
 import { useDungeonLauncher } from "~/features/dungeon/composables/useDungeonLauncher";
+import { ButtonType, ButtonVariant } from "~/shared/ui/ui.types";
 
 useHead({ title: "Dungeon" });
 
@@ -39,7 +40,7 @@ async function explore(replayedSeed?: string) {
           spellcheck="false"
           placeholder="0KX4-M2T9-QZ7PA"
         />
-        <UiButton type="submit" variant="ghost" :disabled="!seed.trim()" :busy="isStarting">
+        <UiButton :type="ButtonType.SUBMIT" :variant="ButtonVariant.GHOST" :disabled="!seed.trim()" :busy="isStarting">
           Replay
         </UiButton>
       </div>
