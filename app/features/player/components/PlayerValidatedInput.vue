@@ -16,6 +16,7 @@ const props = withDefaults(
     serverError?: string;
     placeholder?: string;
     autocomplete?: string;
+    maxLength?: number;
     required?: boolean;
   }>(),
   {
@@ -23,6 +24,7 @@ const props = withDefaults(
     serverError: "",
     placeholder: "",
     autocomplete: "off",
+    maxLength: undefined,
     required: false,
   },
 );
@@ -71,6 +73,7 @@ defineExpose({ validate });
     :type="InputType.TEXT"
     :placeholder="placeholder"
     :autocomplete="autocomplete"
+    :max-length="maxLength"
     :required="required"
     @update:model-value="update(String($event))"
     @blur="

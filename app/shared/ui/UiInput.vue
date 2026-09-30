@@ -20,6 +20,7 @@ withDefaults(
     placeholder?: string;
     name?: string;
     autocomplete?: string;
+    maxLength?: number;
     disabled?: boolean;
     required?: boolean;
   }>(),
@@ -32,6 +33,7 @@ withDefaults(
     placeholder: "",
     name: "",
     autocomplete: "",
+    maxLength: undefined,
     disabled: false,
     required: false,
   },
@@ -63,6 +65,7 @@ defineEmits<{
         :placeholder="placeholder"
         :name="name"
         :autocomplete="autocomplete"
+        :maxlength="maxLength"
         :disabled="disabled"
         :required="required"
         :aria-invalid="Boolean(error)"

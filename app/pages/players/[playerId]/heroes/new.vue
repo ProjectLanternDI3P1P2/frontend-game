@@ -167,6 +167,7 @@ onMounted(load);
             hint="3 to 24 letters, spaces and hyphens allowed."
             :server-error="nameServerError"
             placeholder="Maëlle"
+            :max-length="24"
             required
             @update:model-value="updateName"
             @validity-change="nameValid = $event"
