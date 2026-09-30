@@ -25,7 +25,6 @@ const formattedCreatedAt = computed(() =>
 const heroClassLabel = computed(
   () => props.hero.classCode.charAt(0).toUpperCase() + props.hero.classCode.slice(1),
 );
-const notificationId = computed(() => props.hero.id.slice(0, 8));
 </script>
 
 <template>
@@ -65,14 +64,6 @@ const notificationId = computed(() => props.hero.id.slice(0, 8));
         >Create another hero</NuxtLink
       >
     </section>
-
-    <aside class="hero-created-confirmation__toast" role="status" aria-live="polite">
-      <span aria-hidden="true">●</span>
-      <div>
-        <strong>Hero created</strong>
-        <p>{{ hero.name }} · {{ heroClassLabel }} — hero_{{ notificationId }}</p>
-      </div>
-    </aside>
   </main>
 </template>
 
@@ -164,37 +155,6 @@ const notificationId = computed(() => props.hero.id.slice(0, 8));
     color: var(--color-danger);
     font-size: var(--font-size-sm);
   }
-
-  &__toast {
-    position: fixed;
-    right: var(--space-5);
-    bottom: var(--space-5);
-    display: flex;
-    width: min(calc(100% - (var(--space-5) * 2)), 25rem);
-    gap: var(--space-3);
-    border: 1px solid var(--color-border-strong);
-    border-left: var(--space-1) solid var(--color-success);
-    padding: var(--space-3) var(--space-4);
-    background: var(--color-surface-raised);
-    color: var(--color-text-primary);
-    text-align: left;
-  }
-
-  &__toast > span {
-    color: var(--color-success);
-  }
-
-  &__toast strong,
-  &__toast p {
-    margin: 0;
-  }
-
-  &__toast p {
-    margin-top: var(--space-1);
-    color: var(--color-text-muted);
-    font-size: var(--font-size-xs);
-    overflow-wrap: anywhere;
-  }
 }
 
 @media (max-width: 36rem) {
@@ -207,12 +167,6 @@ const notificationId = computed(() => props.hero.id.slice(0, 8));
     &__portrait :deep(.hero-portrait) {
       width: 8rem;
       height: 8rem;
-    }
-
-    &__toast {
-      right: var(--space-3);
-      bottom: var(--space-3);
-      width: calc(100% - (var(--space-3) * 2));
     }
   }
 }

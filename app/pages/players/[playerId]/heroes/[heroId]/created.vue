@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { GatewayError } from "~/shared/utils/gateway";
+import { useToast } from "~/shared/composables/useToast";
 import HeroCreatedConfirmation from "~/features/player/components/HeroCreatedConfirmation.vue";
 import { usePlayerApi } from "~/features/player/api/playerApi";
 import type { HeroSheet } from "~/features/player/types";
@@ -16,6 +17,7 @@ const loading = ref(true);
 const selecting = ref(false);
 const error = ref("");
 const selectionError = ref("");
+const { success } = useToast();
 const heroesPath = computed(
   () => `/players/${encodeURIComponent(playerId.value)}/heroes`,
 );
@@ -31,6 +33,12 @@ async function load() {
     ]);
     hero.value = loadedHero;
     heroCount.value = heroes.length;
+    success(
+      `${loadedHero.name} · ${
+        loadedHero.classCode.charAt(0).toUpperCase() + loadedHero.classCode.slice(1)
+      } — hero_${loadedHero.id.slice(0, 8)}`,
+      { title: "Hero created" },
+    );
   } catch (cause) {
     error.value =
       cause instanceof GatewayError
