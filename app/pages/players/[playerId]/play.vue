@@ -188,12 +188,6 @@ onMounted(load);
             <p v-if="!selectedHero" class="play-page__action-hint">
               A selected hero is required to create a game.
             </p>
-            <p
-              v-else-if="selectedHero.isEngagedInActiveSession"
-              class="play-page__action-hint"
-            >
-              This hero is already in a session.
-            </p>
           </article>
 
           <article class="play-page__action-card">
@@ -419,7 +413,7 @@ onMounted(load);
 
   &__action-hint {
     min-height: auto !important;
-    color: var(--color-danger) !important;
+    color: var(--color-text-muted) !important;
   }
 
   &__created {
