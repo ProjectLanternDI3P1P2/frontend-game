@@ -28,6 +28,9 @@ const selectedHero = computed(
 const heroesPath = computed(
   () => `/players/${encodeURIComponent(playerId.value)}/heroes`,
 );
+const isJoinScreen = computed(
+  () => route.path === `/players/${encodeURIComponent(playerId.value)}/play`,
+);
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -72,7 +75,8 @@ onBeforeUnmount(() => void hub?.disconnect());
 </script>
 
 <template>
-  <main id="main" class="join-game">
+  <NuxtPage v-if="!isJoinScreen" />
+  <main v-else id="main" class="join-game">
     <header>
       <p class="join-game__eyebrow">Play a game</p>
       <h1>Join a game</h1>
