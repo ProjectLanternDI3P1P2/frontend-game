@@ -93,9 +93,13 @@ export interface GatewayClient {
 }
 
 function defaultCorrelationId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto)
-    return crypto.randomUUID();
-  return `cid-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const browserCrypto = globalThis.crypto;
+  if (browserCrypto?.randomUUID) return browserCrypto.randomUUID();
+  if (browserCrypto) {
+    const bytes = browserCrypto.getRandomValues(new Uint32Array(4));
+    return `cid-${Array.from(bytes, (byte) => byte.toString(16)).join("")}`;
+  }
+  return `cid-${Date.now()}`;
 }
 
 /** Builds `/api/v1/<path>?<query>` without ever leaking undefined parameters. */
