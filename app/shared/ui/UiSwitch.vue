@@ -26,6 +26,7 @@ defineEmits<{ "update:modelValue": [value: boolean] }>();
       :name="name"
       role="switch"
       :checked="modelValue"
+      :aria-checked="modelValue"
       :disabled="disabled"
       @change="$emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
     />

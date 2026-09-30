@@ -20,7 +20,7 @@ defineProps<{
       This content could not be loaded.
     </p>
 
-    <ul v-else class="example-list__items" role="list">
+    <ul v-else class="example-list__items">
       <li v-for="item in items" :key="item.id" class="example-list__item">
         {{ item.label }}
       </li>

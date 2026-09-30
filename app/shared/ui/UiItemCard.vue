@@ -1,5 +1,4 @@
 <script lang="ts">
-import { BadgeSize, BadgeTone } from "./UiBadge.vue";
 
 export enum ItemRarity {
   COMMON = "common",
@@ -8,9 +7,14 @@ export enum ItemRarity {
   LEGENDARY = "legendary",
   MYTHIC = "mythic",
 }
+
 </script>
 
 <script setup lang="ts">
+// The public enum must stay in the normal script block above.
+// eslint-disable-next-line import/first
+import { BadgeSize, BadgeTone } from "./UiBadge.vue";
+
 withDefaults(
   defineProps<{
     name: string;

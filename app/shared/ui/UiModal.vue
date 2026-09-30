@@ -53,12 +53,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
         aria-label="Close dialog"
         @click="close"
       />
-      <section
+      <dialog
         class="ui-modal__dialog"
         :class="'ui-modal__dialog--' + size"
-        role="dialog"
-        aria-modal="true"
         :aria-label="title"
+        :open="modelValue"
         tabindex="-1"
       >
         <header
@@ -75,7 +74,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
         <footer v-if="$slots.footer" class="ui-modal__footer">
           <slot name="footer" />
         </footer>
-      </section>
+      </dialog>
     </div>
   </Teleport>
 </template>

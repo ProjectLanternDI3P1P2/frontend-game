@@ -1,5 +1,4 @@
 <script lang="ts">
-import { IconButtonSize } from "./UiIconButton.vue";
 
 export enum NoticeTone {
   INFO = "info",
@@ -7,9 +6,14 @@ export enum NoticeTone {
   WARNING = "warning",
   DANGER = "danger",
 }
+
 </script>
 
 <script setup lang="ts">
+// The public enum must stay in the normal script block above.
+// eslint-disable-next-line import/first
+import { IconButtonSize } from "./UiIconButton.vue";
+
 withDefaults(
   defineProps<{
     title?: string;
