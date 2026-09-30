@@ -102,14 +102,18 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 
       <div v-if="gate" :class="gate.className" :style="gate.style" />
 
-      <div v-for="element in visibleElements" :key="`element-${element.id}`"
-        :class="['dungeon-token', `dungeon-token--${element.type}`]" :style="tokenStyle(element)" />
+      <div
+        v-for="element in visibleElements"
+        :key="`element-${element.id}`"
+        :class="['dungeon-token', `dungeon-token--${element.type}`]"
+        :style="tokenStyle(element)"
+      />
 
       <div class="dungeon-token dungeon-token--hero" :style="tokenStyle(hero)">
-        <span :key="bump?.id ?? 0" :class="[
-          'dungeon-token__body',
-          bump ? `dungeon-token__body--bump-${bump.direction}` : null,
-        ]" />
+        <span
+          :key="bump?.id ?? 0"
+          :class="['dungeon-token__body', bump ? `dungeon-token__body--bump-${bump.direction}` : null]"
+        />
       </div>
     </div>
   </div>

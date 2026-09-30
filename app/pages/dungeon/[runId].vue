@@ -110,13 +110,23 @@ async function copyShareLink() {
              tabindex rule (Web:S6845) does not know: hence the NOSONAR. -->
         <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions -->
         <div ref="board" class="dungeon-page__board" role="application" aria-label="Dungeon" aria-describedby="dungeon-help" tabindex="0" @keydown="onKeydown"> <!-- NOSONAR -->
-          <DungeonViewport :loaded="loaded" :hero="hero" :revealed="revealed" :reveal-version="revealVersion"
-            :bump="bump" :viewport="viewport" :floor-boss-defeated="floorBossDefeated" />
+          <DungeonViewport
+            :loaded="loaded"
+            :hero="hero"
+            :revealed="revealed"
+            :reveal-version="revealVersion"
+            :bump="bump"
+            :viewport="viewport"
+            :floor-boss-defeated="floorBossDefeated"
+          />
         </div>
 
         <aside class="dungeon-page__side">
-          <DungeonMinimap :rooms="loaded.floor.rooms" :visited-room-ids="visitedRoomIds"
-            :current-room-id="currentRoom?.id ?? null" />
+          <DungeonMinimap
+            :rooms="loaded.floor.rooms"
+            :visited-room-ids="visitedRoomIds"
+            :current-room-id="currentRoom?.id ?? null"
+          />
           <DungeonControls :disabled="run.status !== 'active'" @move="explorer.move" />
           <UiButton v-if="isOnStairsDown" @click="act(explorer.descend)">Take the stairs down</UiButton>
           <!-- Stand-in for Combat's fight: records the victory over the boss. -->

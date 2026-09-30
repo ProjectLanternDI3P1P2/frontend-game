@@ -38,7 +38,7 @@ async function explore(replayedSeed?: string) {
           autocomplete="off"
           spellcheck="false"
           placeholder="0KX4-M2T9-QZ7PA"
-        >
+        />
         <UiButton type="submit" variant="ghost" :disabled="!seed.trim()" :busy="isStarting">
           Replay
         </UiButton>
