@@ -9,7 +9,9 @@ const props = defineProps<{
 }>();
 
 const createdAt = computed(() => {
+  if (!props.hero.createdAt) return null;
   const date = new Date(props.hero.createdAt);
+  if (Number.isNaN(date.getTime())) return null;
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "2-digit",
@@ -43,7 +45,9 @@ const createdAt = computed(() => {
     <span class="hero-collection-card__details">
       Level {{ hero.level }} · {{ hero.maximumHealth }} HP
     </span>
-    <span class="hero-collection-card__created">Created {{ createdAt }}</span>
+    <span class="hero-collection-card__created">{{
+      createdAt ? `Created ${createdAt}` : "Created —"
+    }}</span>
   </NuxtLink>
 </template>
 

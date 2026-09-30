@@ -22,7 +22,7 @@ export interface HeroSummary {
   maximumHealth: number;
   isEngagedInActiveSession: boolean;
   isSelected: boolean;
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface CreateHeroRequest {
