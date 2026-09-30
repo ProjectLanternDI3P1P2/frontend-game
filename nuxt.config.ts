@@ -90,6 +90,11 @@ export default defineNuxtConfig({
       appVersion: process.env.NUXT_PUBLIC_APP_VERSION || "dev",
       commitSha: process.env.NUXT_PUBLIC_COMMIT_SHA || "local",
       builtAt: process.env.NUXT_PUBLIC_BUILT_AT || "local",
+      // Keycloak
+      keycloakUrl: process.env.NUXT_PUBLIC_KEYCLOAK_URL || "http://localhost:8080",
+      keycloakRealm: process.env.NUXT_PUBLIC_KEYCLOAK_REALM || "lantern",
+      keycloakClientId:
+        process.env.NUXT_PUBLIC_KEYCLOAK_CLIENT_ID || "lantern-public",
     },
   },
 

@@ -1,0 +1,27 @@
+:root {
+    --lantern-bg: #cb9919;
+    --lantern-surface: #ffffff;
+    --lantern-text: #1f2933;
+    --lantern-primary: #1eff00;
+}
+
+body {
+    background: var(--lantern-bg);
+    color: var(--lantern-text);
+}
+
+.login-pf-page {
+    background: var(--lantern-bg);
+}
+
+.card-pf {
+    background: var(--lantern-surface);
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 12px 40px rgb(0 0 0 / 8%);
+}
+
+.pf-c-button.pf-m-primary {
+    background: var(--lantern-primary);
+    border-radius: 8px;
+}

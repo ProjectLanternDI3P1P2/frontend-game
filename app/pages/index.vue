@@ -9,12 +9,40 @@
  * Every route added here must also declare its rendering mode in
  * `nuxt.config.ts` → `routeRules` and justify it in `docs/rendering-modes.md`.
  */
+import { useAuth } from "~/features/auth/composables/useAuth";
+
 useHead({ title: "Public site" });
+
+const { isAuthenticated, user, login, logout } = useAuth();
 </script>
 
 <template>
   <div class="home">
     <h1>Project Lantern — public site</h1>
+
+    <template v-if="!isAuthenticated">
+      <p>You are not logged</p>
+
+      <button type="button" @click="login">
+        Login
+      </button>
+    </template>
+  
+    <template v-else>
+      <p>
+        You are logged in as
+        <strong>{{ user?.username }}</strong>
+      </p>
+
+      <p v-if="user?.email">
+        {{ user.email }}
+      </p>
+
+      <button type="button" @click="logout">
+        Sign out
+      </button>
+    </template>
+
     <p>
       Architecture skeleton. Routes are added by the squad that owns the
       corresponding feature, with their rendering mode declared and justified.
