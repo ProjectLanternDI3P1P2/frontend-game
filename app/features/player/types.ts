@@ -68,7 +68,7 @@ export interface HeroSheet {
   abilities: HeroAbility[];
 }
 
-export type GameSessionState = "Active" | "Failed" | "Pending";
+export type GameSessionState = "Lobby" | "Active" | "Failed" | "Pending";
 
 export interface SessionHero {
   id: string;
@@ -80,8 +80,10 @@ export interface SessionHero {
 /** Authoritative snapshot sent by PlayerHub after a gameplay command. */
 export interface GameSessionSnapshot {
   sessionId: string;
-  hero: SessionHero;
+  creatorPlayerId: string;
   state: GameSessionState;
+  mode: string;
+  members: SessionHero[];
   dungeonRunId: string | null;
   dungeonSeed: string | null;
   failureReason: string | null;

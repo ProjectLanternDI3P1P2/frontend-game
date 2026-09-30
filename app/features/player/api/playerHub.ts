@@ -3,22 +3,14 @@ import {
   SignalRHubError,
   signalRHubUrl,
 } from "~/shared/api/signalRHubClient";
-
 import type { GameSessionSnapshot } from "../types";
 
-interface CreateSessionCommand {
-  commandId: string;
-  playerId: string;
-  heroId: string;
-}
-
-interface SessionCommandAcknowledgement {
+type SessionAcknowledgement = {
   accepted: boolean;
-  session: GameSessionSnapshot | null;
-  error: { code: string; message: string } | null;
-}
+  session?: GameSessionSnapshot;
+  error?: { message?: string };
+};
 
-/** Player-specific commands and events on top of the shared SignalR transport. */
 export class PlayerHubClient {
   private readonly hub: SignalRHubClient;
 
@@ -32,23 +24,49 @@ export class PlayerHubClient {
     });
   }
 
-  async createSession(command: CreateSessionCommand): Promise<GameSessionSnapshot> {
-    const acknowledgement = await this.hub.invoke<SessionCommandAcknowledgement>(
-      "CreateSession",
-      command,
+  async createSoloLobby(command: {
+    commandId: string;
+    playerId: string;
+    heroId: string;
+  }): Promise<GameSessionSnapshot> {
+    return this.accept(
+      await this.hub.invoke<SessionAcknowledgement>("CreateSoloLobby", command),
     );
+  }
 
-    if (!acknowledgement.accepted || !acknowledgement.session) {
-      throw new SignalRHubError(
-        acknowledgement.error?.message ?? "The game creation command was rejected.",
-      );
-    }
+  async getSessionSnapshot(
+    playerId: string,
+    sessionId: string,
+  ): Promise<GameSessionSnapshot> {
+    return this.accept(
+      await this.hub.invoke<SessionAcknowledgement>("GetSessionSnapshot", {
+        playerId,
+        sessionId,
+      }),
+    );
+  }
 
-    return acknowledgement.session;
+  async startSession(command: {
+    commandId: string;
+    playerId: string;
+    sessionId: string;
+  }): Promise<GameSessionSnapshot> {
+    return this.accept(
+      await this.hub.invoke<SessionAcknowledgement>("StartSession", command),
+    );
   }
 
   disconnect(): Promise<void> {
     return this.hub.disconnect();
+  }
+
+  private accept(acknowledgement: SessionAcknowledgement): GameSessionSnapshot {
+    if (!acknowledgement.accepted || !acknowledgement.session) {
+      throw new SignalRHubError(
+        acknowledgement.error?.message ?? "The session command was rejected.",
+      );
+    }
+    return acknowledgement.session;
   }
 }
 
