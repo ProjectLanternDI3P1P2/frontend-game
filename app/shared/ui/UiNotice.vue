@@ -1,15 +1,6 @@
-<script lang="ts">
+<script setup lang="ts">
 import { IconButtonSize } from "./UiIconButton.vue";
 
-export enum NoticeTone {
-  INFO = "info",
-  SUCCESS = "success",
-  WARNING = "warning",
-  DANGER = "danger",
-}
-</script>
-
-<script setup lang="ts">
 withDefaults(
   defineProps<{
     title?: string;
@@ -20,6 +11,15 @@ withDefaults(
 );
 
 defineEmits<{ dismiss: [] }>();
+</script>
+
+<script lang="ts">
+export enum NoticeTone {
+  INFO = "info",
+  SUCCESS = "success",
+  WARNING = "warning",
+  DANGER = "danger",
+}
 </script>
 
 <template>

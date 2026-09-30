@@ -8,8 +8,7 @@
  * or unnecessary personal data. Only the fields below are allowed.
  */
 
-export type TelemetryEventType =
-  "web-vital" | "browser-error" | "custom-timing";
+export type TelemetryEventType = "web-vital" | "browser-error" | "custom-timing";
 
 export interface TelemetryContext {
   /** Application name, e.g. `game-client`. */
@@ -55,13 +54,19 @@ const ALLOWED_FIELDS = new Set<keyof TelemetryEvent>([
   "timestamp",
 ]);
 
-const SECRET_PATTERN =
-  /(bearer\s+[\w-.]+|eyJ[\w-]+\.[\w-]+\.[\w-]+|(api[_-]?key|token|password|secret)\s*[=:]\s*\S+)/gi;
+const SECRET_PATTERNS = [
+  /\bbearer\s+[a-z0-9._-]+/gi,
+  /\beyJ[a-z0-9_-]+\.[a-z0-9_-]+\.[a-z0-9_-]+/g,
+  /\b(?:api[_-]?key|token|password|secret)\s*[=:]\s*\S+/gi,
+];
 
 /** Removes anything that looks like a credential from free-text fields. */
 export function redact(text: string | undefined): string | undefined {
   if (!text) return text;
-  return text.replace(SECRET_PATTERN, "[redacted]").slice(0, 2000);
+  return SECRET_PATTERNS.reduce(
+    (redacted, pattern) => redacted.replace(pattern, "[redacted]"),
+    text,
+  ).slice(0, 2000);
 }
 
 export function sanitiseEvent(event: TelemetryEvent): TelemetryEvent {
@@ -75,9 +80,7 @@ export function sanitiseEvent(event: TelemetryEvent): TelemetryEvent {
 }
 
 export interface TelemetryReporter {
-  report: (
-    event: Omit<TelemetryEvent, "app" | "version" | "timestamp">,
-  ) => void;
+  report: (event: Omit<TelemetryEvent, "app" | "version" | "timestamp">) => void;
 }
 
 /**
@@ -107,10 +110,7 @@ export function createTelemetryReporter(
       typeof navigator !== "undefined" &&
       typeof navigator.sendBeacon === "function"
     ) {
-      navigator.sendBeacon(
-        endpoint,
-        new Blob([payload], { type: "application/json" }),
-      );
+      navigator.sendBeacon(endpoint, new Blob([payload], { type: "application/json" }));
       return;
     }
     void fetch(endpoint, {
@@ -134,7 +134,7 @@ export function createTelemetryReporter(
   return {
     report(event) {
       if (!endpoint) return;
-      if (event.type === "web-vital" && Math.random() > sampleRate) return;
+      if (event.type === "web-vital" && !isSampled(sampleRate)) return;
       queue.push(
         sanitiseEvent({
           ...event,
@@ -146,4 +146,13 @@ export function createTelemetryReporter(
       if (queue.length >= maxBatchSize) flush();
     },
   };
+}
+
+function isSampled(sampleRate: number): boolean {
+  if (sampleRate >= 1 || typeof crypto === "undefined") return true;
+  if (sampleRate <= 0) return false;
+
+  const bytes = new Uint32Array(1);
+  crypto.getRandomValues(bytes);
+  return (bytes[0] ?? 0) / 2 ** 32 < sampleRate;
 }

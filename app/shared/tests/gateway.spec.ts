@@ -5,11 +5,7 @@
  * tests fast and browser-free.
  */
 import { describe, expect, it, vi } from "vitest";
-import {
-  buildGatewayUrl,
-  createGatewayClient,
-  GatewayError,
-} from "../utils/gateway";
+import { buildGatewayUrl, createGatewayClient, GatewayError } from "../utils/gateway";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -19,6 +15,12 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 describe("buildGatewayUrl", () => {
+  it("builds a same-origin relative URL for the local proxy", () => {
+    expect(buildGatewayUrl("/", "v1", "players/player-id/heroes")).toBe(
+      "/api/v1/players/player-id/heroes",
+    );
+  });
+
   it("builds a versioned route", () => {
     expect(buildGatewayUrl("http://gw.test", "v1", "public/universe")).toBe(
       "http://gw.test/api/v1/public/universe",
@@ -64,9 +66,7 @@ describe("createGatewayClient", () => {
   });
 
   it("returns undefined for a 204 instead of trying to parse a body", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValue(new Response(null, { status: 204 }));
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     const client = createGatewayClient({
       baseUrl: "http://gw.test",
       apiVersion: "v1",
@@ -96,6 +96,30 @@ describe("createGatewayClient", () => {
     });
   });
 
+  it("preserves field errors from an ASP.NET validation problem", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(
+        {
+          title: "Validation error",
+          detail: "One or more validation errors occurred.",
+          errors: { name: ["Hero name is required."] },
+        },
+        422,
+      ),
+    );
+    const client = createGatewayClient({
+      baseUrl: "http://gw.test",
+      apiVersion: "v1",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    await expect(client.post("players/id/heroes")).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: { errors: { name: ["Hero name is required."] } },
+      status: 422,
+    });
+  });
+
   it("falls back to a usable error when the body is not the documented shape", async () => {
     const fetchImpl = vi
       .fn()
@@ -113,9 +137,7 @@ describe("createGatewayClient", () => {
   });
 
   it("turns a network failure into an uncertain outcome, not a plain failure", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockRejectedValue(new TypeError("failed to fetch"));
+    const fetchImpl = vi.fn().mockRejectedValue(new TypeError("failed to fetch"));
     const client = createGatewayClient({
       baseUrl: "http://gw.test",
       apiVersion: "v1",

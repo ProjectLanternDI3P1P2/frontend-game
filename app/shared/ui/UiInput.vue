@@ -20,6 +20,7 @@ withDefaults(
     placeholder?: string;
     name?: string;
     autocomplete?: string;
+    maxLength?: number;
     disabled?: boolean;
     required?: boolean;
   }>(),
@@ -32,12 +33,16 @@ withDefaults(
     placeholder: "",
     name: "",
     autocomplete: "",
+    maxLength: undefined,
     disabled: false,
     required: false,
   },
 );
 
-defineEmits<{ "update:modelValue": [value: string | number] }>();
+defineEmits<{
+  "update:modelValue": [value: string | number];
+  blur: [];
+}>();
 </script>
 
 <template>
@@ -60,15 +65,15 @@ defineEmits<{ "update:modelValue": [value: string | number] }>();
         :placeholder="placeholder"
         :name="name"
         :autocomplete="autocomplete"
+        :maxlength="maxLength"
         :disabled="disabled"
         :required="required"
         :aria-invalid="Boolean(error)"
         :aria-describedby="
           hint || error ? (id ? id + '-description' : undefined) : undefined
         "
-        @input="
-          $emit('update:modelValue', ($event.target as HTMLInputElement).value)
-        "
+        @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+        @blur="$emit('blur')"
       />
       <span v-if="$slots.suffix" class="ui-input__adornment"
         ><slot name="suffix"

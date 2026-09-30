@@ -7,18 +7,14 @@
 
 export type HeroClassCode = "warrior" | "shaman" | "mage";
 
+export const HERO_ROSTER_CAPACITY = 10;
+
 export interface HeroClassOption {
   code: HeroClassCode;
   label: string;
+  description: string;
   baseHealth: number;
 }
-
-/** The three server-supported classes (US-PLAYER-07). */
-export const HERO_CLASS_OPTIONS: readonly HeroClassOption[] = [
-  { code: "warrior", label: "Warrior", baseHealth: 60 },
-  { code: "shaman", label: "Shaman", baseHealth: 50 },
-  { code: "mage", label: "Mage", baseHealth: 45 },
-];
 
 export interface HeroSummary {
   id: string;
@@ -27,6 +23,8 @@ export interface HeroSummary {
   level: number;
   maximumHealth: number;
   isEngagedInActiveSession: boolean;
+  isSelected: boolean;
+  createdAt?: string;
 }
 
 export interface CreateHeroRequest {
@@ -41,6 +39,7 @@ export interface CreateHeroResponse {
   classCode: HeroClassCode;
   level: number;
   maximumHealth: number;
+  createdAt: string;
   unlockedSkillCodes: string[];
   alreadyExists: boolean;
 }
@@ -63,6 +62,7 @@ export interface HeroSheet {
   name: string;
   classCode: HeroClassCode;
   level: number;
+  createdAt: string;
   attributes: HeroAttributes;
   maximumHealth: number;
   abilities: HeroAbility[];

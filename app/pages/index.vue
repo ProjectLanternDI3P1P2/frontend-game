@@ -16,8 +16,8 @@ useHead({ title: "Public site" });
   <div class="home">
     <h1>Project Lantern — public site</h1>
     <p>
-      Architecture skeleton. Routes are added by the squad that owns the
-      corresponding feature, with their rendering mode declared and justified.
+      Architecture skeleton. Routes are added by the squad that owns the corresponding
+      feature, with their rendering mode declared and justified.
     </p>
   </div>
 </template>

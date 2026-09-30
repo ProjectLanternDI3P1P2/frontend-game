@@ -36,8 +36,7 @@ const close = () => {
   emit("close");
 };
 const onKeydown = (event: KeyboardEvent) => {
-  if (props.modelValue && props.closeOnEscape && event.key === "Escape")
-    close();
+  if (props.modelValue && props.closeOnEscape && event.key === "Escape") close();
 };
 
 onMounted(() => window.addEventListener("keydown", onKeydown));
@@ -54,12 +53,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
         aria-label="Close dialog"
         @click="close"
       />
-      <section
+      <dialog
         class="ui-modal__dialog"
         :class="'ui-modal__dialog--' + size"
-        role="dialog"
-        aria-modal="true"
         :aria-label="title"
+        :open="modelValue"
         tabindex="-1"
       >
         <header
@@ -68,10 +66,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
         >
           <h2 v-if="title" class="ui-modal__title">{{ title }}</h2>
           <slot name="header" />
-          <UiIconButton
-            v-if="showCloseButton"
-            label="Close dialog"
-            @click="close"
+          <UiIconButton v-if="showCloseButton" label="Close dialog" @click="close"
             >×</UiIconButton
           >
         </header>
@@ -79,7 +74,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
         <footer v-if="$slots.footer" class="ui-modal__footer">
           <slot name="footer" />
         </footer>
-      </section>
+      </dialog>
     </div>
   </Teleport>
 </template>

@@ -42,16 +42,13 @@ const simulateLoading = () => {
         ><UiButton :variant="ButtonVariant.DANGER">Abandon</UiButton
         ><UiButton :size="ButtonSize.SM">Small</UiButton
         ><UiButton :size="ButtonSize.LG">Large</UiButton
-        ><UiButton :busy="busy" @click="simulateLoading"
-          >Simulate quest</UiButton
+        ><UiButton :busy="busy" @click="simulateLoading">Simulate quest</UiButton
         ><UiButton disabled>Unavailable</UiButton>
       </div></UiPanel
     ><UiPanel title="UiIconButton" :heading-level="PanelHeadingLevel.TWO"
       ><div class="demo-page__row">
         <UiIconButton label="Add">＋</UiIconButton
-        ><UiIconButton
-          label="Open settings"
-          :variant="IconButtonVariant.OUTLINE"
+        ><UiIconButton label="Open settings" :variant="IconButtonVariant.OUTLINE"
           >⚙</UiIconButton
         ><UiIconButton label="Delete" :variant="IconButtonVariant.DANGER"
           >×</UiIconButton

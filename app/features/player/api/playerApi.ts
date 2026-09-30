@@ -2,6 +2,7 @@
 import type {
   CreateHeroRequest,
   CreateHeroResponse,
+  HeroClassOption,
   HeroSheet,
   HeroSummary,
   StartSoloRunRequest,
@@ -20,6 +21,10 @@ function heroesPath(playerId: string): string {
  */
 export function createPlayerApi(client: GatewayClient) {
   return {
+    listHeroClasses(signal?: AbortSignal): Promise<HeroClassOption[]> {
+      return client.get<HeroClassOption[]>("hero-classes", { signal });
+    },
+
     listHeroes(playerId: string, signal?: AbortSignal): Promise<HeroSummary[]> {
       return client.get<HeroSummary[]>(heroesPath(playerId), { signal });
     },
@@ -40,6 +45,18 @@ export function createPlayerApi(client: GatewayClient) {
       request: CreateHeroRequest,
     ): Promise<CreateHeroResponse> {
       return client.post<CreateHeroResponse>(heroesPath(playerId), request);
+    },
+
+    selectHero(playerId: string, heroId: string): Promise<undefined> {
+      return client.put<undefined>(
+        `${heroesPath(playerId)}/${encodeURIComponent(heroId)}/selection`,
+      );
+    },
+
+    deselectHero(playerId: string, heroId: string): Promise<undefined> {
+      return client.delete<undefined>(
+        `${heroesPath(playerId)}/${encodeURIComponent(heroId)}/selection`,
+      );
     },
 
     startSoloRun(
