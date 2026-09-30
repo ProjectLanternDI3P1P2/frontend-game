@@ -111,9 +111,11 @@ header {
   text-transform: uppercase;
 }
 h1 {
+  min-width: 0;
   margin: 0;
   color: var(--color-text-primary);
   font-family: var(--font-family-display);
+  overflow-wrap: anywhere;
 }
 .hero-sheet__grid {
   display: grid;

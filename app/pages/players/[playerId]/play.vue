@@ -92,7 +92,10 @@ onMounted(load);
         <UiPanel title="Create a game" :variant="PanelVariant.INSET"
           ><template v-if="selectedHero"
             ><p>
-              Selected hero: <strong>{{ selectedHero.name }}</strong>
+              Selected hero:
+              <strong class="play-page__selected-hero-name">{{
+                selectedHero.name
+              }}</strong>
             </p>
             <p>{{ selectedHero.classCode }} · level {{ selectedHero.level }}</p>
             <UiNotice
@@ -155,6 +158,9 @@ h1 {
 .hero-list {
   display: grid;
   gap: var(--space-3);
+}
+.play-page__selected-hero-name {
+  overflow-wrap: anywhere;
 }
 @media (max-width: 48rem) {
   .play-page__grid {

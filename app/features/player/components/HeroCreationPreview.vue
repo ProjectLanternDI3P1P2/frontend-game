@@ -54,6 +54,7 @@ defineEmits<{ confirm: [] }>();
 <style scoped lang="scss">
 .hero-creation-preview {
   display: grid;
+  min-width: 0;
   align-content: start;
   gap: var(--space-3);
   min-height: 22rem;
@@ -87,8 +88,10 @@ defineEmits<{ confirm: [] }>();
   }
 
   h2 {
+    min-width: 0;
     color: var(--color-text-primary);
     font-size: var(--font-size-lg);
+    overflow-wrap: anywhere;
     text-transform: uppercase;
   }
 

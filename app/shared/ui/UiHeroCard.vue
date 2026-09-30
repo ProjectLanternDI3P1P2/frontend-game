@@ -132,11 +132,18 @@ defineEmits<{ select: [] }>();
     gap: var(--space-1);
   }
 
+  &__identity {
+    min-width: 0;
+  }
+
   &__name {
+    overflow: hidden;
     color: var(--color-text-highlight);
     font-family: var(--font-family-display);
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-bold);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &__class,
