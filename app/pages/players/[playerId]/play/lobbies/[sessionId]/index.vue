@@ -257,6 +257,14 @@ h2 {
 h1 {
   font-size: var(--font-size-xl);
 }
+.lobby-page__member strong,
+.lobby-page__hero h2 {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 .lobby-page header > p:not(.lobby-page__eyebrow),
 .lobby-page__actions p,
 .lobby-page__member p {

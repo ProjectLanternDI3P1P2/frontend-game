@@ -68,7 +68,8 @@ function choose(hero: HeroSummary): void {
 .hero-selection-modal__hero:hover:not(:disabled), .hero-selection-modal__hero--selected { border-color: var(--color-accent); box-shadow: var(--shadow-gold); }
 .hero-selection-modal__hero:disabled { opacity: .55; cursor: not-allowed; }
 .hero-selection-modal__hero :deep(.hero-portrait) { width: 3.5rem; height: 3.5rem; }
-.hero-selection-modal__hero span { display: grid; gap: var(--space-1); }
+.hero-selection-modal__hero span { display: grid; min-width: 0; gap: var(--space-1); }
+.hero-selection-modal__hero strong { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .hero-selection-modal__hero small { color: var(--color-text-muted); font-size: var(--font-size-xs); text-transform: capitalize; }
 .hero-selection-modal__hero em { margin-left: auto; color: var(--color-text-highlight); font-size: .625rem; font-style: normal; font-weight: var(--font-weight-bold); letter-spacing: .12em; text-transform: uppercase; }
 </style>

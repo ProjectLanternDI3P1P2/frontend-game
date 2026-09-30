@@ -194,6 +194,13 @@ h1 {
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
 }
+.join-game__hero h2 {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 .join-game__hero a {
   color: var(--color-text-highlight);
   font-size: var(--font-size-xs);
