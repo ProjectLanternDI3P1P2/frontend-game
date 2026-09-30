@@ -2,11 +2,15 @@
 import { ButtonSize, ButtonVariant } from "~/shared/ui/UiButton.vue";
 import { NoticeTone } from "~/shared/ui/UiNotice.vue";
 import { useToast } from "~/shared/composables/useToast";
-import { GatewayError } from "~/shared/utils/gateway";
 import { createIdempotencyKey } from "~/shared/utils/idempotency";
 import { usePlayerApi } from "~/features/player/api/playerApi";
+import {
+  PlayerHubClient,
+  PlayerHubError,
+  playerHubUrl,
+} from "~/features/player/api/playerHub";
 import HeroPortraitPlaceholder from "~/features/player/components/HeroPortraitPlaceholder.vue";
-import type { HeroSummary, StartSoloRunResponse } from "~/features/player/types";
+import type { GameSessionSnapshot, HeroSummary } from "~/features/player/types";
 import { findSelectedHeroId } from "~/features/player/utils/selectedHero";
 
 definePageMeta({ layout: "player" });
@@ -15,12 +19,13 @@ const route = useRoute();
 const playerId = computed(() => String(route.params.playerId));
 const heroes = ref<HeroSummary[]>([]);
 const selectedId = ref<string | null>(null);
-const result = ref<StartSoloRunResponse | null>(null);
+const result = ref<GameSessionSnapshot | null>(null);
 const loading = ref(true);
 const starting = ref(false);
 const error = ref("");
 const { success } = useToast();
 let idempotencyKey: string | null = null;
+let playerHub: PlayerHubClient | null = null;
 
 const selectedHero = computed(
   () => heroes.value.find((hero) => hero.id === selectedId.value) ?? null,
@@ -50,7 +55,7 @@ async function load() {
     selectedId.value = findSelectedHeroId(heroes.value);
   } catch (cause) {
     error.value =
-      cause instanceof GatewayError ? cause.message : "Unable to load heroes.";
+      cause instanceof Error ? cause.message : "Unable to load heroes.";
   } finally {
     loading.value = false;
   }
@@ -65,20 +70,30 @@ async function start() {
   idempotencyKey ??= createIdempotencyKey();
 
   try {
-    result.value = await usePlayerApi().startSoloRun(playerId.value, hero.id, {
-      idempotencyKey,
+    const config = useRuntimeConfig();
+    playerHub ??= new PlayerHubClient(
+      playerHubUrl(config.public.apiGatewayUrl),
+      (session) => {
+        result.value = session;
+      },
+    );
+    result.value = await playerHub.createSession({
+      commandId: idempotencyKey,
+      playerId: playerId.value,
+      heroId: hero.id,
     });
     success(`${hero.name} is ready for the run.`, { title: "Game created" });
     await load();
   } catch (cause) {
     error.value =
-      cause instanceof GatewayError ? cause.message : "Unable to create a game.";
+      cause instanceof PlayerHubError ? cause.message : "Unable to create a game.";
   } finally {
     starting.value = false;
   }
 }
 
 onMounted(load);
+onBeforeUnmount(() => void playerHub?.disconnect());
 </script>
 
 <template>

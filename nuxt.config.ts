@@ -59,16 +59,6 @@ export default defineNuxtConfig({
   css: ["~/assets/styles/main.scss"],
 
   vite: {
-    // In local development the browser calls Nuxt on its own origin. Vite then
-    // proxies `/api` to the Player service, avoiding a browser-side CORS request.
-    server: {
-      proxy: {
-        "/api": {
-          target: localPlayerBackendUrl,
-          changeOrigin: true,
-        },
-      },
-    },
     css: {
       preprocessorOptions: {
         scss: {
@@ -89,9 +79,12 @@ export default defineNuxtConfig({
   // ADR-FE-011: the small number of public API calls goes through the Gateway.
   runtimeConfig: {
     public: {
-      // A relative URL uses Nitro's development proxy. Deployments can still
-      // provide their public API Gateway URL through the environment.
-      apiGatewayUrl: process.env.NUXT_PUBLIC_API_GATEWAY_URL || "/",
+      // The local Player service supports both REST and SignalR WebSocket
+      // directly. Deployments must supply Traefik's public Gateway URL here.
+      // A relative Nuxt/Vite proxy is deliberately avoided: it forwarded the
+      // SignalR negotiation but not the WebSocket upgrade.
+      apiGatewayUrl:
+        process.env.NUXT_PUBLIC_API_GATEWAY_URL || localPlayerBackendUrl,
       apiVersion: process.env.NUXT_PUBLIC_API_VERSION || "v1",
       telemetryEndpoint: process.env.NUXT_PUBLIC_TELEMETRY_ENDPOINT || "",
       appName: "public-site",

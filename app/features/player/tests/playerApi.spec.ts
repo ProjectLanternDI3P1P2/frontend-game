@@ -29,7 +29,6 @@ describe("Player API", () => {
     });
     await api.selectHero(playerId, heroId);
     await api.deselectHero(playerId, heroId);
-    await api.startSoloRun(playerId, heroId, { idempotencyKey: "run-key" });
 
     expect(gateway.get).toHaveBeenNthCalledWith(1, "players/player%20id/heroes", {
       signal: undefined,
@@ -46,11 +45,6 @@ describe("Player API", () => {
       1,
       "players/player%20id/heroes",
       expect.objectContaining({ idempotencyKey: "create-key" }),
-    );
-    expect(gateway.post).toHaveBeenNthCalledWith(
-      2,
-      "players/player%20id/heroes/hero%2Fid/sessions",
-      { idempotencyKey: "run-key" },
     );
     expect(gateway.put).toHaveBeenCalledWith(
       "players/player%20id/heroes/hero%2Fid/selection",

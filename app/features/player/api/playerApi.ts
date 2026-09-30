@@ -5,8 +5,6 @@ import type {
   HeroClassOption,
   HeroSheet,
   HeroSummary,
-  StartSoloRunRequest,
-  StartSoloRunResponse,
 } from "../types";
 import { useGateway } from "~/shared/composables/useGateway";
 import type { GatewayClient } from "~/shared/utils/gateway";
@@ -56,17 +54,6 @@ export function createPlayerApi(client: GatewayClient) {
     deselectHero(playerId: string, heroId: string): Promise<undefined> {
       return client.delete<undefined>(
         `${heroesPath(playerId)}/${encodeURIComponent(heroId)}/selection`,
-      );
-    },
-
-    startSoloRun(
-      playerId: string,
-      heroId: string,
-      request: StartSoloRunRequest,
-    ): Promise<StartSoloRunResponse> {
-      return client.post<StartSoloRunResponse>(
-        `${heroesPath(playerId)}/${encodeURIComponent(heroId)}/sessions`,
-        request,
       );
     },
   };
