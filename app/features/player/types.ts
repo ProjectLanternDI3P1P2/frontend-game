@@ -7,6 +7,8 @@
 
 export type HeroClassCode = "warrior" | "shaman" | "mage";
 
+export const HERO_ROSTER_CAPACITY = 10;
+
 export interface HeroClassOption {
   code: HeroClassCode;
   label: string;

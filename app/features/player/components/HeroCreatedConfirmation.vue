@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ButtonSize, ButtonVariant } from "~/shared/ui/UiButton.vue";
-import type { HeroSheet } from "../types";
+import { HERO_ROSTER_CAPACITY, type HeroSheet } from "../types";
 import HeroPortraitPlaceholder from "./HeroPortraitPlaceholder.vue";
 
 const props = defineProps<{
@@ -25,6 +25,7 @@ const formattedCreatedAt = computed(() =>
 const heroClassLabel = computed(
   () => props.hero.classCode.charAt(0).toUpperCase() + props.hero.classCode.slice(1),
 );
+const canCreateAnotherHero = computed(() => props.heroCount < HERO_ROSTER_CAPACITY);
 </script>
 
 <template>
@@ -39,8 +40,8 @@ const heroClassLabel = computed(
       <p class="hero-created-confirmation__status">New hero</p>
       <h1 id="created-title">{{ hero.name }} has joined your heroes</h1>
       <p class="hero-created-confirmation__metadata">
-        {{ heroClassLabel }} · created {{ formattedCreatedAt }} · {{ heroCount }} of 10
-        heroes
+        {{ heroClassLabel }} · created {{ formattedCreatedAt }} · {{ heroCount }} of
+        {{ HERO_ROSTER_CAPACITY }} heroes
       </p>
 
       <p v-if="selectionError" class="hero-created-confirmation__error" role="alert">
@@ -60,8 +61,19 @@ const heroClassLabel = computed(
           >
         </NuxtLink>
       </div>
-      <NuxtLink class="hero-created-confirmation__create-another" :to="createHeroPath"
+      <NuxtLink
+        v-if="canCreateAnotherHero"
+        class="hero-created-confirmation__create-another"
+        :to="createHeroPath"
         >Create another hero</NuxtLink
+      >
+      <UiButton
+        v-else
+        class="hero-created-confirmation__create-another"
+        :size="ButtonSize.SM"
+        :variant="ButtonVariant.GHOST"
+        disabled
+        >Create another hero</UiButton
       >
     </section>
   </main>

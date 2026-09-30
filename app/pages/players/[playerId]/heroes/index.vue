@@ -5,11 +5,11 @@ import HeroCollectionCard from "~/features/player/components/HeroCollectionCard.
 import HeroCreateTile from "~/features/player/components/HeroCreateTile.vue";
 import HeroPortraitPlaceholder from "~/features/player/components/HeroPortraitPlaceholder.vue";
 import { usePlayerApi } from "~/features/player/api/playerApi";
-import type { HeroSummary } from "~/features/player/types";
+import { HERO_ROSTER_CAPACITY, type HeroSummary } from "~/features/player/types";
 
 definePageMeta({ layout: "player" });
 
-const MAX_HEROES = 10;
+const MAX_HEROES = HERO_ROSTER_CAPACITY;
 const EMPTY_STATE_PORTRAITS = [
   { id: "warrior", classCode: "warrior" },
   { id: "mage", classCode: "mage" },

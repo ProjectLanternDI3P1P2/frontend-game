@@ -8,6 +8,7 @@ import HeroCreationPreview from "~/features/player/components/HeroCreationPrevie
 import PlayerValidatedInput, {
   type TextValidationRule,
 } from "~/features/player/components/PlayerValidatedInput.vue";
+import { HERO_ROSTER_CAPACITY } from "~/features/player/types";
 import type {
   HeroClassCode,
   HeroClassOption,
@@ -16,7 +17,7 @@ import type {
 
 definePageMeta({ layout: "player" });
 
-const MAX_HEROES = 10;
+const MAX_HEROES = HERO_ROSTER_CAPACITY;
 const HERO_NAME_RULES: readonly TextValidationRule[] = [
   {
     message: "Enter a hero name.",
@@ -51,9 +52,9 @@ const selectedClass = computed(
   () =>
     heroClasses.value.find((heroClass) => heroClass.code === classCode.value) ?? null,
 );
-const isAtHeroLimit = computed(() => heroes.value.length >= MAX_HEROES);
+const isAtHeroLimit = computed(() => heroes.value.length >= HERO_ROSTER_CAPACITY);
 const projectedHeroCount = computed(() =>
-  Math.min(heroes.value.length + 1, MAX_HEROES),
+  Math.min(heroes.value.length + 1, HERO_ROSTER_CAPACITY),
 );
 const heroesPath = computed(
   () => `/players/${encodeURIComponent(playerId.value)}/heroes`,
@@ -150,9 +151,12 @@ onMounted(load);
     <p v-else-if="loading" class="hero-creation__loading" aria-live="polite">
       Preparing your hero…
     </p>
-    <p v-else-if="isAtHeroLimit" class="hero-creation__error" role="alert">
-      Your roster already contains {{ MAX_HEROES }} heroes.
-    </p>
+    <section v-else-if="isAtHeroLimit" class="hero-creation__limit" role="status">
+      <p>Your roster already contains {{ MAX_HEROES }} heroes.</p>
+      <NuxtLink :to="heroesPath">
+        <UiButton>Back to my heroes</UiButton>
+      </NuxtLink>
+    </section>
 
     <div v-else class="hero-creation__grid">
       <form class="hero-creation__form" @submit.prevent="submit">
@@ -263,6 +267,28 @@ onMounted(load);
     color: var(--color-text-primary);
   }
 
+  &__limit {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+    border: 1px solid var(--color-border-subtle);
+    border-left: var(--space-1) solid var(--color-danger);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface-raised);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+  }
+
+  &__limit p {
+    margin: 0;
+  }
+
+  &__limit a {
+    text-decoration: none;
+  }
+
   &__grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.42fr);
@@ -312,6 +338,11 @@ onMounted(load);
 
     &__capacity {
       justify-items: start;
+    }
+
+    &__limit {
+      align-items: start;
+      flex-direction: column;
     }
 
     &__grid {
