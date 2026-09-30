@@ -30,6 +30,12 @@ export default defineNuxtConfig({
     "/demo": { prerender: true },
     "/demo/**": { prerender: true },
 
+    // The dungeon explorer is authenticated, interactive game state with no
+    // SEO value: client-rendered, as the game client is (ADR-FE-004).
+    // Justified in docs/rendering-modes.md.
+    "/dungeon": { ssr: false },
+    "/dungeon/**": { ssr: false },
+
     // A route that genuinely needs a request-time render is declared here, one
     // entry per route, and justified in docs/rendering-modes.md. Two shapes are
     // allowed:
