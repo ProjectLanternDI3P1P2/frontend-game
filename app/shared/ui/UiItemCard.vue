@@ -1,18 +1,4 @@
-<script lang="ts">
-
-export enum ItemRarity {
-  COMMON = "common",
-  MAGIC = "magic",
-  RARE = "rare",
-  LEGENDARY = "legendary",
-  MYTHIC = "mythic",
-}
-
-</script>
-
 <script setup lang="ts">
-// The public enum must stay in the normal script block above.
-// eslint-disable-next-line import/first
 import { BadgeSize, BadgeTone } from "./UiBadge.vue";
 
 withDefaults(
@@ -34,6 +20,16 @@ withDefaults(
 );
 
 defineEmits<{ select: [] }>();
+</script>
+
+<script lang="ts">
+export enum ItemRarity {
+  COMMON = "common",
+  MAGIC = "magic",
+  RARE = "rare",
+  LEGENDARY = "legendary",
+  MYTHIC = "mythic",
+}
 </script>
 
 <template>

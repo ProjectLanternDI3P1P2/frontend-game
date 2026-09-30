@@ -1,17 +1,4 @@
-<script lang="ts">
-
-export enum NoticeTone {
-  INFO = "info",
-  SUCCESS = "success",
-  WARNING = "warning",
-  DANGER = "danger",
-}
-
-</script>
-
 <script setup lang="ts">
-// The public enum must stay in the normal script block above.
-// eslint-disable-next-line import/first
 import { IconButtonSize } from "./UiIconButton.vue";
 
 withDefaults(
@@ -24,6 +11,15 @@ withDefaults(
 );
 
 defineEmits<{ dismiss: [] }>();
+</script>
+
+<script lang="ts">
+export enum NoticeTone {
+  INFO = "info",
+  SUCCESS = "success",
+  WARNING = "warning",
+  DANGER = "danger",
+}
 </script>
 
 <template>
