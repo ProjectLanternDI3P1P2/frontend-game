@@ -56,6 +56,17 @@ export class PlayerHubClient {
     );
   }
 
+  async changeSessionHero(command: {
+    commandId: string;
+    playerId: string;
+    sessionId: string;
+    heroId: string;
+  }): Promise<GameSessionSnapshot> {
+    return this.accept(
+      await this.hub.invoke<SessionAcknowledgement>("ChangeSessionHero", command),
+    );
+  }
+
   disconnect(): Promise<void> {
     return this.hub.disconnect();
   }

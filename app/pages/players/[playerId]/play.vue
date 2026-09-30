@@ -7,6 +7,7 @@ import {
   playerHubUrl,
 } from "~/features/player/api/playerHub";
 import HeroPortraitPlaceholder from "~/features/player/components/HeroPortraitPlaceholder.vue";
+import HeroSelectionModal from "~/features/player/components/HeroSelectionModal.vue";
 import type { HeroSummary } from "~/features/player/types";
 import { createIdempotencyKey } from "~/shared/utils/idempotency";
 import { findSelectedHeroId } from "~/features/player/utils/selectedHero";
@@ -20,13 +21,12 @@ const heroes = ref<HeroSummary[]>([]);
 const selectedId = ref<string | null>(null);
 const loading = ref(true);
 const creating = ref(false);
+const selectingHero = ref(false);
+const heroPickerOpen = ref(false);
 const error = ref("");
 let hub: PlayerHubClient | null = null;
 const selectedHero = computed(
   () => heroes.value.find((hero) => hero.id === selectedId.value) ?? null,
-);
-const heroesPath = computed(
-  () => `/players/${encodeURIComponent(playerId.value)}/heroes`,
 );
 const isJoinScreen = computed(
   () => route.path === `/players/${encodeURIComponent(playerId.value)}/play`,
@@ -70,6 +70,21 @@ async function createLobby(): Promise<void> {
   }
 }
 
+async function selectHero(hero: HeroSummary): Promise<void> {
+  if (hero.isEngagedInActiveSession) return;
+  selectingHero.value = true;
+  error.value = "";
+  try {
+    await usePlayerApi().selectHero(playerId.value, hero.id);
+    selectedId.value = hero.id;
+    heroPickerOpen.value = false;
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : "Unable to select this hero.";
+  } finally {
+    selectingHero.value = false;
+  }
+}
+
 onMounted(load);
 onBeforeUnmount(() => void hub?.disconnect());
 </script>
@@ -93,12 +108,12 @@ onBeforeUnmount(() => void hub?.disconnect());
           />
           <h2>{{ selectedHero.name }}</h2>
           <p>{{ selectedHero.classCode }} · level {{ selectedHero.level }}</p>
-          <NuxtLink :to="heroesPath">Change hero</NuxtLink>
+          <UiButton :size="ButtonSize.SM" :variant="ButtonVariant.GHOST" @click="heroPickerOpen = true">Change hero</UiButton>
         </template>
         <template v-else
           ><h2>No hero selected</h2>
           <p>Select a hero before creating a lobby.</p>
-          <NuxtLink :to="heroesPath">Choose a hero</NuxtLink></template
+          <UiButton :size="ButtonSize.SM" :variant="ButtonVariant.GHOST" @click="heroPickerOpen = true">Choose a hero</UiButton></template
         >
       </aside>
       <section class="join-game__content" aria-label="Lobby actions">
@@ -123,6 +138,13 @@ onBeforeUnmount(() => void hub?.disconnect());
       </section>
     </div>
   </main>
+  <HeroSelectionModal
+    v-model="heroPickerOpen"
+    :heroes="heroes"
+    :selected-hero-id="selectedId"
+    :busy="selectingHero"
+    @select="selectHero"
+  />
 </template>
 
 <style scoped lang="scss">

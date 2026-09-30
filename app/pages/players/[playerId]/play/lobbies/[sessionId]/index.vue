@@ -6,7 +6,9 @@ import {
   playerHubUrl,
 } from "~/features/player/api/playerHub";
 import HeroPortraitPlaceholder from "~/features/player/components/HeroPortraitPlaceholder.vue";
-import type { GameSessionSnapshot } from "~/features/player/types";
+import HeroSelectionModal from "~/features/player/components/HeroSelectionModal.vue";
+import { usePlayerApi } from "~/features/player/api/playerApi";
+import type { GameSessionSnapshot, HeroSummary } from "~/features/player/types";
 import { createIdempotencyKey } from "~/shared/utils/idempotency";
 
 definePageMeta({ layout: "player" });
@@ -18,7 +20,10 @@ const sessionId = computed(() => String(route.params.sessionId));
 const session = ref<GameSessionSnapshot | null>(null);
 const loading = ref(true);
 const starting = ref(false);
+const selectingHero = ref(false);
+const heroPickerOpen = ref(false);
 const error = ref("");
+const heroes = ref<HeroSummary[]>([]);
 const isCreator = computed(() => session.value?.creatorPlayerId === playerId.value);
 const lobbyCode = computed(() => sessionId.value.slice(0, 8).toUpperCase());
 let hub: PlayerHubClient | null = null;
@@ -33,12 +38,42 @@ async function load(): Promise<void> {
         session.value = snapshot;
       },
     );
-    session.value = await hub.getSessionSnapshot(playerId.value, sessionId.value);
+    const [snapshot, playerHeroes] = await Promise.all([
+      hub.getSessionSnapshot(playerId.value, sessionId.value),
+      usePlayerApi().listHeroes(playerId.value),
+    ]);
+    session.value = snapshot;
+    heroes.value = playerHeroes;
   } catch (cause) {
     error.value =
       cause instanceof PlayerHubError ? cause.message : "Unable to load the lobby.";
   } finally {
     loading.value = false;
+  }
+}
+async function changeHero(hero: HeroSummary): Promise<void> {
+  if (!session.value || !isCreator.value || session.value.state !== "Lobby") return;
+  selectingHero.value = true;
+  error.value = "";
+  try {
+    const changed = await hub!.changeSessionHero({
+      commandId: createIdempotencyKey(),
+      playerId: playerId.value,
+      sessionId: session.value.sessionId,
+      heroId: hero.id,
+    });
+    await usePlayerApi().selectHero(playerId.value, hero.id);
+    session.value = changed;
+    heroes.value = heroes.value.map((candidate) => ({
+      ...candidate,
+      isSelected: candidate.id === hero.id,
+    }));
+    heroPickerOpen.value = false;
+  } catch (cause) {
+    error.value = cause instanceof PlayerHubError ? cause.message : "Unable to change the lobby hero.";
+    await load();
+  } finally {
+    selectingHero.value = false;
   }
 }
 async function start(): Promise<void> {
@@ -128,6 +163,13 @@ onBeforeUnmount(() => void hub?.disconnect());
               {{ session.members[0]?.classCode }} · level
               {{ session.members[0]?.level }}
             </p>
+            <UiButton
+              :size="ButtonSize.SM"
+              :variant="ButtonVariant.GHOST"
+              :disabled="!isCreator || session.state !== 'Lobby'"
+              @click="heroPickerOpen = true"
+              >Change hero</UiButton
+            >
           </aside>
           <aside class="lobby-page__actions">
             <p class="lobby-page__eyebrow">Start</p>
@@ -154,6 +196,13 @@ onBeforeUnmount(() => void hub?.disconnect());
       </section>
     </template>
   </main>
+  <HeroSelectionModal
+    v-model="heroPickerOpen"
+    :heroes="heroes"
+    :selected-hero-id="session?.members[0]?.id ?? null"
+    :busy="selectingHero"
+    @select="changeHero"
+  />
 </template>
 
 <style scoped lang="scss">
