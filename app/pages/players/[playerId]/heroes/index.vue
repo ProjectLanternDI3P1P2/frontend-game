@@ -5,6 +5,7 @@ import HeroCollectionCard from "~/features/player/components/HeroCollectionCard.
 import HeroCreateTile from "~/features/player/components/HeroCreateTile.vue";
 import HeroPortraitPlaceholder from "~/features/player/components/HeroPortraitPlaceholder.vue";
 import { usePlayerApi } from "~/features/player/api/playerApi";
+import { findSelectedHeroId } from "~/features/player/utils/selectedHero";
 import { HERO_ROSTER_CAPACITY, type HeroSummary } from "~/features/player/types";
 
 definePageMeta({ layout: "player" });
@@ -35,8 +36,7 @@ async function load() {
   error.value = "";
   try {
     heroes.value = await usePlayerApi().listHeroes(playerId.value);
-    selectedId.value ??=
-      heroes.value.find((hero) => hero.isSelected)?.id ?? heroes.value[0]?.id ?? null;
+    selectedId.value = findSelectedHeroId(heroes.value);
   } catch (cause) {
     error.value =
       cause instanceof GatewayError ? cause.message : "Unable to load heroes.";
