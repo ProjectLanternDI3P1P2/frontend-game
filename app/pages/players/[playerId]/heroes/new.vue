@@ -93,6 +93,10 @@ function updateName(value: string) {
   nameServerError.value = "";
 }
 
+function cancel() {
+  router.back();
+}
+
 function validationMessage(cause: GatewayError): string | null {
   const errors = cause.details as { errors?: Record<string, string[]> } | undefined;
   return errors?.errors?.name?.[0] ?? null;
@@ -199,7 +203,7 @@ onMounted(load);
         :hero-class="selectedClass"
         :can-confirm="canSubmit"
         :busy="submitting"
-        :cancel-to="heroesPath"
+        @cancel="cancel"
         @confirm="submit"
       />
     </div>

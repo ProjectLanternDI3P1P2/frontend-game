@@ -8,10 +8,9 @@ defineProps<{
   heroClass: HeroClassOption | null;
   canConfirm: boolean;
   busy: boolean;
-  cancelTo: string;
 }>();
 
-defineEmits<{ confirm: [] }>();
+defineEmits<{ cancel: []; confirm: [] }>();
 </script>
 
 <template>
@@ -36,9 +35,12 @@ defineEmits<{ confirm: [] }>();
       First ability · {{ heroClass?.label ?? "—" }}
     </p>
     <div class="hero-creation-preview__actions">
-      <NuxtLink :to="cancelTo">
-        <UiButton :size="ButtonSize.SM" :variant="ButtonVariant.GHOST">Cancel</UiButton>
-      </NuxtLink>
+      <UiButton
+        :size="ButtonSize.SM"
+        :variant="ButtonVariant.GHOST"
+        @click="$emit('cancel')"
+        >Cancel</UiButton
+      >
       <UiButton
         :size="ButtonSize.SM"
         :variant="ButtonVariant.PRIMARY"
@@ -115,10 +117,6 @@ defineEmits<{ confirm: [] }>();
     justify-content: flex-end;
     gap: var(--space-2);
     margin-top: auto;
-  }
-
-  a {
-    text-decoration: none;
   }
 }
 </style>
