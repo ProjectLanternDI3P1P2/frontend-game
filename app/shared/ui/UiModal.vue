@@ -19,6 +19,8 @@ const props = withDefaults(
     showCloseButton?: boolean;
     dialogClass?: string;
     bodyClass?: string;
+    /** Keep the modal frame and header fixed; a child owns scrolling. */
+    scrollBody?: boolean;
   }>(),
   {
     title: "",
@@ -28,6 +30,7 @@ const props = withDefaults(
     showCloseButton: true,
     dialogClass: "",
     bodyClass: "",
+    scrollBody: true,
   },
 );
 
@@ -59,7 +62,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
       />
       <dialog
         class="ui-modal__dialog"
-        :class="['ui-modal__dialog--' + size, dialogClass]"
+        :class="[
+          'ui-modal__dialog--' + size,
+          dialogClass,
+          { 'ui-modal__dialog--fixed-body': !scrollBody },
+        ]"
         :aria-label="title"
         :open="modelValue"
         tabindex="-1"
@@ -74,7 +81,10 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
             >×</UiIconButton
           >
         </header>
-        <div class="ui-modal__body" :class="bodyClass"><slot /></div>
+        <div
+          class="ui-modal__body"
+          :class="[bodyClass, { 'ui-modal__body--fixed': !scrollBody }]"
+        ><slot /></div>
         <footer v-if="$slots.footer" class="ui-modal__footer">
           <slot name="footer" />
         </footer>
@@ -117,6 +127,12 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 .ui-modal__dialog--lg {
   max-width: 48rem;
 }
+.ui-modal__dialog--fixed-body {
+  display: flex;
+  height: min(42rem, calc(100dvh - var(--space-8)));
+  flex-direction: column;
+  overflow: hidden;
+}
 .ui-modal__header,
 .ui-modal__footer {
   display: flex;
@@ -140,5 +156,12 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 }
 .ui-modal__body {
   padding: var(--space-5);
+}
+.ui-modal__body--fixed {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
 }
 </style>
