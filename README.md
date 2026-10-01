@@ -52,6 +52,33 @@ npm run dev
 
 `GET /healthz` returns app name, version, commit and build time.
 
+## Runtime configuration
+
+All deployable front-end configuration is supplied through public Nuxt runtime
+variables. Pass them when starting the container; do not bake a `.env` file
+into the image. They are intentionally public because they are exposed to the
+browser, so never put a secret in one of them.
+
+| Variable | Required in production | Purpose |
+| --- | --- | --- |
+| `NUXT_PUBLIC_API_GATEWAY_URL` | Yes | Public URL of the API Gateway, including the SignalR endpoint host. |
+| `NUXT_PUBLIC_API_VERSION` | No | Gateway API version; defaults to `v1`. |
+| `NUXT_PUBLIC_SITE_URL` | Yes | Public URL of this application, used for its canonical link. |
+| `NUXT_PUBLIC_TELEMETRY_ENDPOINT` | No | Endpoint receiving browser telemetry; empty disables it. |
+| `NUXT_PUBLIC_APP_NAME` | No | Application name included in telemetry and `/healthz`. |
+| `NUXT_PUBLIC_APP_VERSION` | No | Release version included in telemetry and `/healthz`. |
+| `NUXT_PUBLIC_COMMIT_SHA` | No | Source revision exposed by `/healthz`. |
+| `NUXT_PUBLIC_BUILT_AT` | No | Build timestamp exposed by `/healthz`. |
+
+For Docker, for example:
+
+```bash
+docker run --rm -p 3000:3000 \
+  -e NUXT_PUBLIC_API_GATEWAY_URL=https://api.example.com \
+  -e NUXT_PUBLIC_SITE_URL=https://game.example.com \
+  frontend-game:local
+```
+
 ## Architecture map
 
 This repository is an **architecture skeleton**: the rendering policy, the
