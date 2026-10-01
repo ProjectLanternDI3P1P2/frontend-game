@@ -30,7 +30,10 @@ export class SignalRHubClient {
     await this.connect();
     const invocationId = String(++this.nextInvocationId);
     return new Promise<TResult>((resolve, reject) => {
-      this.completions.set(invocationId, { resolve, reject });
+      this.completions.set(invocationId, {
+        resolve: (value) => resolve(value as TResult),
+        reject,
+      });
       this.send({ type: 1, invocationId, target, arguments: arguments_ });
     });
   }
