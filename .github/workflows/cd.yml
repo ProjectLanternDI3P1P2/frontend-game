@@ -1,0 +1,96 @@
+name: CD - Publish Docker image
+
+# CD is separate from CI so its runs are visible in Actions. Branch protection
+# requires CI before code reaches dev or main; CD then publishes that merged
+# commit to Docker Hub. Release tags (vX.Y.Z, created by release-please) add an
+# immutable version tag.
+on:
+  push:
+    branches:
+      - dev
+      - main
+    tags: ["v*"]
+  workflow_dispatch:
+
+# A newer commit supersedes a queued older one, so a floating branch tag
+# (:dev, :main) cannot be overwritten by stale code. Release-tag runs are kept.
+concurrency:
+  group: cd-docker-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: diiageplayerimage/frontend-game-image
+
+permissions: {}
+
+jobs:
+  publish:
+    name: Publish Docker image
+    # Never runs from a pull request. Manual runs are limited to dev and main so
+    # the Docker Hub credentials cannot publish an arbitrary branch.
+    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Compute image tags
+        id: image
+        shell: bash
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          sha="$(git rev-parse HEAD)"
+          short_sha="$(git rev-parse --short=7 HEAD)"
+
+          if [ "$REF_TYPE" = "tag" ]; then
+            # release-please creates vX.Y.Z once the release pull request is merged.
+            tags="${IMAGE}:${REF_NAME}"
+          else
+            # :dev and :dev-<sha7>, or :main and :main-<sha7>.
+            tags="${IMAGE}:${REF_NAME}"
+            tags+=$'\n'"${IMAGE}:${REF_NAME}-${short_sha}"
+          fi
+
+          {
+            echo "sha=${sha}"
+            echo "tags<<EOF"
+            echo "$tags"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.image.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.image.outputs.sha }}
+
+      - name: Verify published image
+        shell: bash
+        env:
+          TAGS: ${{ steps.image.outputs.tags }}
+        run: |
+          while IFS= read -r tag; do
+            docker buildx imagetools inspect "$tag" > /dev/null
+            echo "Verified $tag"
+          done <<< "$TAGS"
