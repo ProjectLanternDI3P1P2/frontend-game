@@ -4,6 +4,10 @@ FROM node:20-bookworm-slim AS build
 
 WORKDIR /app
 
+# Cypress is only used by the end-to-end test command; its browser binary is
+# not needed to compile or run the Nuxt application.
+ENV CYPRESS_INSTALL_BINARY=0
+
 # Install dependencies separately to make the layer reusable while the source
 # code changes.
 COPY package.json package-lock.json ./
