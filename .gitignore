@@ -10,3 +10,4 @@ coverage
 cypress/screenshots
 cypress/videos
 .DS_Store
+scripts/
