@@ -24,13 +24,12 @@ const {
   errorMessage,
   announcement,
   bump,
+  facing,
   revealed,
   revealVersion,
   visitedRoomIds,
   currentRoom,
-  isOnStairsDown,
   floorBossDefeated,
-  canFightBoss,
 } = explorer;
 
 const board = ref<HTMLElement | null>(null);
@@ -44,23 +43,10 @@ onMounted(async () => {
 });
 
 function onKeydown(event: KeyboardEvent) {
-  if (event.code === "Enter" && isOnStairsDown.value) {
-    event.preventDefault();
-    void explorer.descend();
-    return;
-  }
-
   const direction = directionForKey(event.code);
   if (!direction) return;
   event.preventDefault();
   explorer.move(direction);
-}
-
-/** Buttons take the focus: give it back to the board, so the keys keep working. */
-async function act(action: () => Promise<void>) {
-  await action();
-  await nextTick();
-  board.value?.focus();
 }
 
 async function copyShareLink() {
@@ -91,6 +77,7 @@ async function copyShareLink() {
         <DungeonViewport
           :loaded="loaded"
           :hero="hero"
+          :facing="facing"
           :revealed="revealed"
           :reveal-version="revealVersion"
           :bump="bump"
@@ -130,9 +117,6 @@ async function copyShareLink() {
       </aside>
 
       <div class="dungeon-page__actions">
-        <UiButton v-if="isOnStairsDown" @click="act(explorer.descend)">Take the stairs down</UiButton>
-        <!-- Stand-in for Combat's fight: records the victory over the boss. -->
-        <UiButton v-if="canFightBoss" @click="act(explorer.fightBoss)">Fight the boss</UiButton>
         <!-- A live status message, not a form field: it has nothing to label. -->
         <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -->
         <output v-if="run.status === 'won'" class="dungeon-page__panel dungeon-page__victory">
@@ -150,8 +134,8 @@ async function copyShareLink() {
       />
 
       <p id="dungeon-help" class="visually-hidden">
-        Arrow keys, WASD or ZQSD to move, one tile per turn. Defeat the boss of the floor to
-        open the gate to the stairs, then Enter on the stairs to go down.
+        Arrow keys, WASD or ZQSD to move, one tile per turn. Walk into the boss of the floor to
+        fight it; once it is defeated, walk into the gate behind it to go down.
       </p>
       <p class="visually-hidden" aria-live="polite">{{ announcement }}</p>
     </template>

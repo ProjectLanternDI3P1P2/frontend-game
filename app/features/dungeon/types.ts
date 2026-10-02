@@ -10,13 +10,17 @@ export type CellTypeName =
   | "wall"
   | "door"
   | "obstacle"
-  | "stairsDown"
-  | "stairsUp"
   | "pillar"
   | "fence"
-  /** The door of a boss room to the stairs: locked until the boss is defeated. */
+  /**
+   * The way down, in the north wall of the boss room: locked until the boss is defeated,
+   * then walking into it takes the party to the next floor.
+   */
   | "gate"
-  | "grate";
+  | "grate"
+  | "water"
+  | "lava"
+  | "tomb";
 
 export type ElementTypeName = "enemy" | "boss" | "item" | "trap";
 
@@ -25,8 +29,7 @@ export type RoomTypeName =
   | "combat"
   | "treasure"
   | "empty"
-  | "boss"
-  | "stairs";
+  | "boss";
 
 export type DungeonRunStatus = "active" | "won" | "lost" | "abandoned";
 
@@ -77,6 +80,7 @@ export interface DungeonMapResponse {
   height: number;
   legend: Record<string, CellTypeName>;
   rows: string[];
+  /** Where the party arrives, down a ladder in the middle of the start room. */
   entrance: Position;
   rooms: DungeonRoom[];
   elements: DungeonElement[];
@@ -93,7 +97,7 @@ export interface DungeonRunResponse {
   currentFloor: number;
   hero: Position;
   turn: number;
-  /** The boss of the current floor is defeated: its gate to the stairs is open. */
+  /** The boss of the current floor is defeated: its gate down is open. */
   floorBossDefeated: boolean;
   currentRoomId: number | null;
   elementsHere: DungeonElement[];

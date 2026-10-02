@@ -4,16 +4,15 @@ import { GatewayError } from "~/shared/utils/gateway";
 import * as api from "../api/dungeonApi";
 import { clearFloorCache } from "../composables/useDungeonFloor";
 import { useDungeonExplorer } from "../composables/useDungeonExplorer";
-import { Cell, cellAt, decodeFloor, gateOf } from "../dungeonMap";
+import { Cell, cellAt, decodeFloor, gateOf, isWalkableAt, step } from "../dungeonMap";
 import type { Direction, DungeonMapResponse, DungeonRunResponse, Position } from "../types";
-import mapFixture from "./fixtures/map-0KX4M2T9QZ7PA-f0.json";
-import runFixture from "./fixtures/run-0KX4M2T9QZ7PA.json";
+import mapFixture from "./fixtures/map-DGPEAP9GWJKZF-f0.json";
+import runFixture from "./fixtures/run-DGPEAP9GWJKZF.json";
 
 vi.mock("../api/dungeonApi", () => ({
   fetchDungeonRun: vi.fn(),
   fetchDungeonMap: vi.fn(),
   moveHero: vi.fn(),
-  takeStairsDown: vi.fn(),
   defeatFloorBoss: vi.fn(),
   createDungeonRun: vi.fn(),
 }));
@@ -57,14 +56,15 @@ describe("useDungeonExplorer", () => {
     const explorer = useDungeonExplorer(initialRun.id);
     await explorer.start();
 
-    explorer.move("west");
-    explorer.move("west");
-    expect(explorer.hero.value).toEqual({ x: initialRun.hero.x - 2, y: initialRun.hero.y });
+    // From below the entrance door, into the start room.
+    explorer.move("south");
+    explorer.move("south");
+    expect(explorer.hero.value).toEqual({ x: initialRun.hero.x, y: initialRun.hero.y + 2 });
 
     await flushPromises();
     expect(vi.mocked(api.moveHero).mock.calls.map(([, direction]) => direction)).toEqual([
-      "west",
-      "west",
+      "south",
+      "south",
     ]);
     expect(explorer.run.value?.turn).toBe(2);
     expect(explorer.pendingMoves.value).toBe(0);
@@ -75,8 +75,8 @@ describe("useDungeonExplorer", () => {
     const explorer = useDungeonExplorer(initialRun.id);
     await explorer.start();
 
-    // One row above the centre of the start room holds no door: walk to its wall.
-    explorer.move("north");
+    // Off the centre row of the start room, where the side doors are: walk to its wall.
+    explorer.move("south");
     await flushPromises();
     while (cellAt(floor, explorer.hero.value.x - 1, explorer.hero.value.y) === Cell.Floor) {
       explorer.move("west");
@@ -100,8 +100,8 @@ describe("useDungeonExplorer", () => {
     const explorer = useDungeonExplorer(initialRun.id);
     await explorer.start();
 
-    explorer.move("west");
-    explorer.move("west");
+    explorer.move("south");
+    explorer.move("south");
     await flushPromises();
 
     expect(api.moveHero).toHaveBeenCalledTimes(1);
@@ -120,12 +120,38 @@ describe("useDungeonExplorer", () => {
     expect(floors.sort()).toEqual([0, 1]);
   });
 
-  it("keeps the gate to the stairs locked until the boss is defeated", async () => {
+  it("fights the boss when the hero walks into it", async () => {
+    const boss = floor.elements.find((element) => element.type === "boss")!;
+    const direction = (["north", "east", "south", "west"] as const).find((candidate) =>
+      isWalkableAt(floor, step(boss, opposite(candidate))),
+    )!;
+    const nextToBoss = step(boss, opposite(direction));
+    const run: DungeonRunResponse = { ...initialRun, hero: nextToBoss };
+    vi.mocked(api.fetchDungeonRun).mockResolvedValue(run);
+    vi.mocked(api.defeatFloorBoss).mockResolvedValue({ ...run, floorBossDefeated: true });
+    const explorer = useDungeonExplorer(initialRun.id);
+    await explorer.start();
+
+    explorer.move(direction);
+    await flushPromises();
+
+    expect(api.defeatFloorBoss).toHaveBeenCalledWith(initialRun.id);
+    expect(api.moveHero).not.toHaveBeenCalled();
+    expect(explorer.hero.value).toEqual(nextToBoss);
+    expect(explorer.floorBossDefeated.value).toBe(true);
+  });
+
+  it("keeps the gate locked until the boss is defeated, then goes down through it", async () => {
     const gate = gateOf(floor)!;
-    const beforeGate: DungeonRunResponse = { ...initialRun, hero: { x: gate.x, y: gate.y + 1 } };
-    vi.mocked(api.fetchDungeonRun).mockResolvedValue(beforeGate);
-    vi.mocked(api.defeatFloorBoss).mockResolvedValue({ ...beforeGate, floorBossDefeated: true });
-    vi.mocked(api.moveHero).mockResolvedValue({ ...beforeGate, hero: gate, floorBossDefeated: true });
+    const belowGate: DungeonRunResponse = { ...initialRun, hero: { x: gate.x, y: gate.y + 1 } };
+    const arrival = { x: 7, y: 9 };
+    vi.mocked(api.fetchDungeonRun).mockResolvedValue(belowGate);
+    vi.mocked(api.moveHero).mockResolvedValue({
+      ...belowGate,
+      currentFloor: 1,
+      hero: arrival,
+      turn: 1,
+    });
     const explorer = useDungeonExplorer(initialRun.id);
     await explorer.start();
 
@@ -133,16 +159,18 @@ describe("useDungeonExplorer", () => {
     await flushPromises();
     expect(api.moveHero).not.toHaveBeenCalled();
     expect(explorer.bump.value?.direction).toBe("north");
-    expect(explorer.canFightBoss.value).toBe(true);
 
-    await explorer.fightBoss();
+    explorer.run.value = { ...belowGate, floorBossDefeated: true };
     explorer.move("north");
     await flushPromises();
 
-    expect(api.defeatFloorBoss).toHaveBeenCalledWith(initialRun.id);
-    expect(explorer.floorBossDefeated.value).toBe(true);
-    expect(explorer.canFightBoss.value).toBe(false);
     expect(api.moveHero).toHaveBeenCalledWith(initialRun.id, "north");
-    expect(explorer.hero.value).toEqual(gate);
+    expect(explorer.run.value?.currentFloor).toBe(1);
+    expect(explorer.hero.value).toEqual(arrival);
+    expect(vi.mocked(api.fetchDungeonMap).mock.calls.map(([, floorIndex]) => floorIndex)).toContain(1);
   });
 });
+
+function opposite(direction: Direction): Direction {
+  return ({ north: "south", east: "west", south: "north", west: "east" } as const)[direction];
+}

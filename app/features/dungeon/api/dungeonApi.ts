@@ -28,7 +28,10 @@ export function fetchDungeonRun(
   );
 }
 
-/** POST /api/v1/dungeon-runs/{runId}/moves — one tile, one turn. 409 if blocked. */
+/**
+ * POST /api/v1/dungeon-runs/{runId}/moves — one tile, one turn. Into the open gate, it takes
+ * the party down to the next floor. 409 if blocked.
+ */
 export function moveHero(
   runId: string,
   direction: Direction,
@@ -36,13 +39,6 @@ export function moveHero(
   return useGateway().post<DungeonRunResponse>(
     `dungeon-runs/${encodeURIComponent(runId)}/moves`,
     { direction },
-  );
-}
-
-/** POST /api/v1/dungeon-runs/{runId}/descents — takes the stairs down. */
-export function takeStairsDown(runId: string): Promise<DungeonRunResponse> {
-  return useGateway().post<DungeonRunResponse>(
-    `dungeon-runs/${encodeURIComponent(runId)}/descents`,
   );
 }
 

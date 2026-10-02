@@ -22,16 +22,20 @@ export const Cell = {
   Wall: 2,
   Door: 3,
   Obstacle: 4,
-  StairsDown: 5,
-  StairsUp: 6,
   /** Blocks movement, drawn as a column. */
-  Pillar: 7,
-  /** Blocks movement, drawn as an iron fence. */
-  Fence: 8,
-  /** Walkable once the boss of the floor is defeated (see `canEnter`). */
-  Gate: 9,
+  Pillar: 5,
+  /** Blocks movement, drawn as a fence. */
+  Fence: 6,
+  /** A door in a wall: walking into it, once the boss is defeated, goes down (see `goesDown`). */
+  Gate: 7,
   /** A sewer grate in the floor: walkable. */
-  Grate: 10,
+  Grate: 8,
+  /** A pool of water, drawn animated: never walkable. */
+  Water: 9,
+  /** A pool of lava, the same water in red: never walkable. */
+  Lava: 10,
+  /** A stone tomb, two or three side by side: blocks movement. */
+  Tomb: 11,
 } as const;
 
 export type CellCode = (typeof Cell)[keyof typeof Cell];
@@ -42,12 +46,13 @@ const CODE_BY_NAME: Record<CellTypeName, CellCode> = {
   wall: Cell.Wall,
   door: Cell.Door,
   obstacle: Cell.Obstacle,
-  stairsDown: Cell.StairsDown,
-  stairsUp: Cell.StairsUp,
   pillar: Cell.Pillar,
   fence: Cell.Fence,
   gate: Cell.Gate,
   grate: Cell.Grate,
+  water: Cell.Water,
+  lava: Cell.Lava,
+  tomb: Cell.Tomb,
 };
 
 const NO_ROOM = -1;
@@ -170,35 +175,31 @@ export function cellAt(floor: DecodedFloor, x: number, y: number): CellCode {
     : Cell.Void;
 }
 
-/**
- * Same rule as the backend's CellTypeExtensions.IsWalkable: the layout's rule, where a gate
- * counts as a door. Whether a gate is open depends on the run: see `canEnter`.
- */
+/** Same rule as the backend's CellTypeExtensions.IsWalkable: where the hero can stand. */
 export function isWalkable(code: CellCode): boolean {
-  return (
-    code === Cell.Floor ||
-    code === Cell.Door ||
-    code === Cell.StairsDown ||
-    code === Cell.StairsUp ||
-    code === Cell.Grate ||
-    code === Cell.Gate
-  );
+  return code === Cell.Floor || code === Cell.Door || code === Cell.Grate;
 }
 
-/** Same rule as the backend's DungeonRun.MoveHero: a gate opens once the boss is defeated. */
-export function canEnter(
+/**
+ * Same rule as the backend's DungeonRun.MoveHero: walking into the gate, once the boss of the
+ * floor is defeated, takes the party down to the next floor instead of moving it.
+ */
+export function goesDown(
   floor: DecodedFloor,
   position: Position,
   floorBossDefeated: boolean,
 ): boolean {
-  const code = cellAt(floor, position.x, position.y);
-  return isWalkable(code) && (code !== Cell.Gate || floorBossDefeated);
+  return floorBossDefeated && cellAt(floor, position.x, position.y) === Cell.Gate;
 }
 
-/** Where the gate of the floor stands, if the floor has stairs down. */
-export function gateOf(floor: DecodedFloor): Position | undefined {
-  const index = floor.cells.indexOf(Cell.Gate);
+function positionOf(floor: DecodedFloor, code: CellCode): Position | undefined {
+  const index = floor.cells.indexOf(code);
   return index < 0 ? undefined : { x: index % floor.width, y: Math.floor(index / floor.width) };
+}
+
+/** Where the gate down stands; the last floor has none. */
+export function gateOf(floor: DecodedFloor): Position | undefined {
+  return positionOf(floor, Cell.Gate);
 }
 
 export function isWalkableAt(floor: DecodedFloor, position: Position): boolean {

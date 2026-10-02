@@ -2,7 +2,7 @@
  * Presentation rules of the explorer: input mapping, camera and fog of war.
  * ADR-FE-012 — Pure and deterministic, tested in isolation.
  */
-import type { DecodedFloor } from "./dungeonMap";
+import type { CellCode, DecodedFloor } from "./dungeonMap";
 import { Cell, cellAt, contains, roomAt } from "./dungeonMap";
 import type { Direction, Position } from "./types";
 
@@ -31,7 +31,9 @@ export interface Viewport {
 }
 
 /** Whole or half multiples of the 16 px source tile: the pixel art stays crisp. */
-const TILE_SIZES = [64, 48, 32, 24, 16] as const;
+// Whole multiples of the 16-pixel art: at 24, half pixels would blur the sprites and let a
+// row of the next frame show at their edges.
+const TILE_SIZES = [64, 48, 32, 16] as const;
 /** The hero always sees at least this many tiles across and down. */
 const MIN_VISIBLE_TILES = 13;
 
@@ -71,11 +73,13 @@ export function cameraOrigin(
 }
 
 /**
- * Fog of war. Entering a room reveals it whole, walls included, plus the row
- * above its top wall (where the top of the wall face is drawn) and the void
- * just below its bottom wall (where the outer face and foot of that wall hang).
- * In a corridor, only the tiles next to the hero are revealed. Returns true
- * when something changed.
+ * Fog of war. Entering a room reveals it whole, walls included, plus the two
+ * rows above its top wall, where its face rises and where the top of that face
+ * is drawn, and the void just below its bottom wall, where the outer face and
+ * foot of that wall hang. In a corridor, only the tiles around the hero are
+ * revealed, with the same margins. The top row only reveals walls and void:
+ * never the floor of a room or corridor beyond. Returns true when something
+ * changed.
  */
 export function reveal(
   floor: DecodedFloor,
@@ -83,21 +87,24 @@ export function reveal(
   hero: Position,
 ): boolean {
   let changed = false;
-  const mark = (x: number, y: number, voidOnly = false) => {
+  const mark = (x: number, y: number, only?: (code: CellCode) => boolean) => {
     if (!contains(floor, { x, y })) return;
-    if (voidOnly && cellAt(floor, x, y) !== Cell.Void) return;
+    if (only && !only(cellAt(floor, x, y))) return;
     const index = y * floor.width + x;
     if (revealed[index] === 0) {
       revealed[index] = 1;
       changed = true;
     }
   };
+  const isVoid = (code: CellCode) => code === Cell.Void;
+  const isNotFloor = (code: CellCode) => code !== Cell.Floor;
   const markArea = (left: number, right: number, top: number, bottom: number) => {
+    for (let x = left; x <= right; x++) mark(x, top - 1, isNotFloor);
     for (let y = top; y <= bottom; y++) {
       for (let x = left; x <= right; x++) mark(x, y);
     }
     for (let y = bottom + 1; y <= bottom + 2; y++) {
-      for (let x = left; x <= right; x++) mark(x, y, true);
+      for (let x = left; x <= right; x++) mark(x, y, isVoid);
     }
   };
 

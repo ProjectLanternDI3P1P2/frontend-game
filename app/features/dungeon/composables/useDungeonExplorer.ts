@@ -9,9 +9,9 @@
  * backend did not accept.
  */
 import { computed, ref, shallowRef } from "vue";
-import { defeatFloorBoss, fetchDungeonRun, moveHero, takeStairsDown } from "../api/dungeonApi";
+import { defeatFloorBoss, fetchDungeonRun, moveHero } from "../api/dungeonApi";
 import type { DecodedFloor } from "../dungeonMap";
-import { canEnter, Cell, cellAt, elementsAt, roomAt, step } from "../dungeonMap";
+import { Cell, cellAt, elementsAt, goesDown, isWalkableAt, roomAt, step } from "../dungeonMap";
 import { reveal } from "../dungeonRules";
 import type { Direction, DungeonElement, DungeonRunResponse, Position } from "../types";
 import type { LoadedFloor } from "./useDungeonFloor";
@@ -31,6 +31,8 @@ export function useDungeonExplorer(runId: string) {
   const announcement = ref("");
   /** Changes identity on every refused key, so the view can replay its bump. */
   const bump = shallowRef<{ direction: Direction; id: number } | null>(null);
+  /** Where the hero last tried to go: the view turns it that way. */
+  const facing = ref<Direction>("south");
   const pendingMoves = ref(0);
 
   // The fog lives in a typed array; the version counter is what Vue tracks.
@@ -41,15 +43,11 @@ export function useDungeonExplorer(runId: string) {
   let queue: Promise<void> = Promise.resolve();
   let generation = 0;
   let bumpCount = 0;
+  let isFighting = false;
 
   const floor = computed<DecodedFloor | null>(() => loaded.value?.floor ?? null);
   const currentRoom = computed(() =>
     floor.value ? roomAt(floor.value, hero.value) : undefined,
-  );
-  const isOnStairsDown = computed(
-    () =>
-      !!floor.value &&
-      cellAt(floor.value, hero.value.x, hero.value.y) === Cell.StairsDown,
   );
   const floorBossDefeated = computed(() => run.value?.floorBossDefeated ?? false);
   /** In the boss room, boss still standing: the fight can start. */
@@ -109,8 +107,20 @@ export function useDungeonExplorer(runId: string) {
     if (!current || state?.status !== "active") return;
     if (pendingMoves.value >= MAX_PENDING_MOVES) return;
 
+    facing.value = direction;
     const target = step(hero.value, direction);
-    if (!canEnter(current, target, state.floorBossDefeated)) {
+
+    // Walking into the boss starts the fight; into the open gate, the way down.
+    if (bossAt(current, target)) {
+      void fightBoss();
+      return;
+    }
+    if (goesDown(current, target, state.floorBossDefeated)) {
+      void goDown(direction);
+      return;
+    }
+
+    if (!isWalkableAt(current, target)) {
       // Same rule as the backend: no request for a move it would refuse.
       bump.value = { direction, id: ++bumpCount };
       const isGate = cellAt(current, target.x, target.y) === Cell.Gate;
@@ -141,39 +151,56 @@ export function useDungeonExplorer(runId: string) {
     });
   }
 
-  async function descend(): Promise<void> {
-    if (!isOnStairsDown.value) return;
+  /** The boss still standing on a tile, if any. */
+  function bossAt(current: DecodedFloor, position: Position): boolean {
+    return (
+      !floorBossDefeated.value &&
+      elementsAt(current, position).some((element) => element.type === "boss")
+    );
+  }
+
+  /** Through the open gate: the next floor, down the ladder in the middle of its start room. */
+  async function goDown(direction: Direction): Promise<void> {
     const moveGeneration = generation;
-    await queue;
-    if (moveGeneration !== generation) return;
+    pendingMoves.value++;
     try {
-      const updated = await takeStairsDown(runId);
+      await queue;
+      if (moveGeneration !== generation) return;
+      const updated = await moveHero(runId, direction);
       await enterFloor(updated);
       announce(`Floor ${updated.currentFloor + 1} of ${updated.floorCount}.`);
     } catch (error) {
       await resynchronise(error);
+    } finally {
+      pendingMoves.value--;
     }
   }
 
   /**
-   * Stands in for the fight until Combat exists: records the boss's defeat,
-   * which opens the gate to the stairs, or wins the run on the last floor.
+   * Stands in for the fight until Combat exists: walking into the boss records its
+   * defeat, which opens the gate down, or wins the run on the last floor.
    */
   async function fightBoss(): Promise<void> {
-    if (!canFightBoss.value) return;
+    if (!canFightBoss.value || isFighting) return;
+    isFighting = true;
     const moveGeneration = generation;
     await queue;
-    if (moveGeneration !== generation) return;
+    if (moveGeneration !== generation) {
+      isFighting = false;
+      return;
+    }
     try {
       const updated = await defeatFloorBoss(runId);
       run.value = updated;
       announce(
         updated.status === "won"
           ? "Victory! The final boss is defeated."
-          : "The boss is defeated: the gate to the stairs is open.",
+          : "The boss is defeated: the gate down is open.",
       );
     } catch (error) {
       await resynchronise(error);
+    } finally {
+      isFighting = false;
     }
   }
 
@@ -209,17 +236,16 @@ export function useDungeonExplorer(runId: string) {
     errorMessage,
     announcement,
     bump,
+    facing,
     pendingMoves,
     revealed,
     revealVersion,
     visitedRoomIds,
     currentRoom,
-    isOnStairsDown,
     floorBossDefeated,
     canFightBoss,
     start,
     move,
-    descend,
     fightBoss,
   };
 }
@@ -238,7 +264,6 @@ function describeRoom(floor: DecodedFloor, roomId: number): string {
     room.type === "combat" ? `${count("enemy")} enemies` : null,
     traps > 0 ? `beware of ${traps} spike traps` : null,
     room.type === "boss" ? describeBoss(floor) : null,
-    room.type === "stairs" ? "stairs lead down" : null,
     room.type === "treasure" ? "a treasure lies here" : null,
   ].filter(Boolean);
 
@@ -247,7 +272,7 @@ function describeRoom(floor: DecodedFloor, roomId: number): string {
 }
 
 function describeBoss(floor: DecodedFloor): string {
-  return floor.isFinalFloor ? "the final boss awaits" : "its boss guards the gate to the stairs";
+  return floor.isFinalFloor ? "the final boss awaits" : "its boss guards the gate down";
 }
 
 function describe(error: unknown): string {

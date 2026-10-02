@@ -128,8 +128,7 @@ const label = computed(
       border-color: var(--color-accent);
     }
 
-    &--visited.dungeon-minimap__room--boss,
-    &--visited.dungeon-minimap__room--stairs {
+    &--visited.dungeon-minimap__room--boss {
       border-color: var(--color-danger);
       background-color: var(--color-danger-strong);
     }

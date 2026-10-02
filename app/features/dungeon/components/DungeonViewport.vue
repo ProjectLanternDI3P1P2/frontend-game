@@ -3,7 +3,7 @@
  * The dungeon, rendered with plain DOM elements (ADR-FE-006).
  *
  * What keeps it fast without a canvas or an engine:
- * - only the tiles inside the camera window exist in the DOM (~400 elements,
+ * - only the tiles inside the camera window exist in the DOM (a few hundred elements,
  *   whatever the size of the floor), and only revealed ones;
  * - every tile is positioned in world coordinates and keyed by its index, so a
  *   step only creates the row or column entering the view and removes the one
@@ -12,25 +12,42 @@
  * - sprites, sizes and animations are resolved in CSS from precomputed custom
  *   properties: no JavaScript runs per frame.
  */
-import { computed } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import type { LoadedFloor } from "../composables/useDungeonFloor";
 import { gateOf } from "../dungeonMap";
 import { cameraOrigin, type Viewport } from "../dungeonRules";
-import { closedGate } from "../tiles/autotile";
+import { MAX_LAYERS } from "../tiles/autotile";
+import {
+  BOSS,
+  ENEMY,
+  HERO_SHEET,
+  TRAP,
+  gateSprite,
+  heroFacesWest,
+  heroSprite,
+  itemSprite,
+  spriteStyle,
+  type AnimatedSprite,
+} from "../tiles/sprites";
+import { SHEETS, themeOf } from "../tiles/tileset";
 import type { Direction, DungeonElement, Position } from "../types";
 
 const props = defineProps<{
   loaded: LoadedFloor;
   hero: Position;
+  /** Where the hero last tried to go: it faces that way. */
+  facing: Direction;
   revealed: Uint8Array;
   /** Bumped whenever `revealed` changes: typed arrays are not reactive. */
   revealVersion: number;
   bump: { direction: Direction; id: number } | null;
   /** Tiles in view, and the size of a tile in CSS pixels (see `fitViewport`). */
   viewport: Viewport & { tile: number };
-  /** Opens the gate to the stairs and removes the boss. */
+  /** Opens the gate down and removes the boss. */
   floorBossDefeated: boolean;
 }>();
+
+const theme = computed(() => themeOf(props.loaded.floor.floor));
 
 const camera = computed(() =>
   cameraOrigin(props.loaded.floor, props.hero, props.viewport),
@@ -54,44 +71,127 @@ const visibleLayers = computed<VisibleLayer[]>(() => {
   const { x: left, y: top } = camera.value;
   const layers: VisibleLayer[] = [];
 
-  // One extra row below: its wall faces overflow onto the last visible row.
-  for (let y = Math.max(0, top - 1); y <= Math.min(floor.height - 1, top + props.viewport.rows); y++) {
-    for (let x = Math.max(0, left - 1); x <= Math.min(floor.width - 1, left + props.viewport.columns); x++) {
-      const index = y * floor.width + x;
-      if (revealed[index] === 0) continue;
-      tiles[index]!.forEach((layer, layerIndex) =>
-        layers.push({ key: index * 4 + layerIndex, ...layer }),
-      );
+  // Extra rows around the view: wall faces, columns and banners overflow their tile.
+  const firstRow = Math.max(0, top - 1);
+  const lastRow = Math.min(floor.height - 1, top + props.viewport.rows + 3);
+  const firstColumn = Math.max(0, left - 2);
+  const lastColumn = Math.min(floor.width - 1, left + props.viewport.columns + 1);
+
+  // Two passes: the ground of every tile first, then what stands on it or hangs over it,
+  // so that a banner or a cobweb wider than its tile is never covered by the next tile.
+  for (const isGround of [true, false]) {
+    for (let y = firstRow; y <= lastRow; y++) {
+      for (let x = firstColumn; x <= lastColumn; x++) {
+        const index = y * floor.width + x;
+        if (revealed[index] === 0) continue;
+        tiles[index]!.forEach((layer, layerIndex) => {
+          if ((layerIndex === 0) === isGround) {
+            layers.push({ key: index * MAX_LAYERS + layerIndex, ...layer });
+          }
+        });
+      }
     }
   }
 
   return layers;
 });
 
-const visibleElements = computed<DungeonElement[]>(() => {
+interface VisibleSprite {
+  key: string;
+  className: string;
+  style: string;
+}
+
+function spriteOf(element: DungeonElement): AnimatedSprite {
+  switch (element.type) {
+    case "enemy":
+      return ENEMY;
+    case "boss":
+      return BOSS;
+    case "item":
+      return itemSprite(element.id);
+    case "trap":
+      return TRAP;
+  }
+}
+
+const visibleElements = computed<VisibleSprite[]>(() => {
   const { cells: revealed } = revealedMask.value;
   const { floor } = props.loaded;
-  return floor.elements.filter(
-    (element) =>
-      revealed[element.y * floor.width + element.x] === 1 &&
-      !(element.type === "boss" && props.floorBossDefeated),
-  );
+  return floor.elements
+    .filter(
+      (element) =>
+        revealed[element.y * floor.width + element.x] === 1 &&
+        !(element.type === "boss" && props.floorBossDefeated),
+    )
+    .map((element) => {
+      const sprite = spriteOf(element);
+      return {
+        key: `element-${element.id}`,
+        className: `dungeon-sprite dungeon-sprite--${sprite.sheet} dungeon-element dungeon-element--${element.type}`,
+        // Mobs float out of step with one another.
+        style: `${spriteStyle(sprite, element)};--delay:-${((element.id * 0.37) % 1.6).toFixed(2)}s`,
+      };
+    });
 });
 
-/** The gate of the boss room, drawn closed until the boss falls. */
-const gate = computed(() => {
+/**
+ * The portcullis of the gate down, drawn over its wall: closed until the boss falls, then
+ * rising.
+ */
+const doors = computed(() => {
   const { cells: revealed } = revealedMask.value;
   const { floor } = props.loaded;
-  const position = gateOf(floor);
-  if (!position || props.floorBossDefeated) return null;
-  return revealed[position.y * floor.width + position.x] === 1
-    ? closedGate(position)
-    : null;
+  const sprite = gateSprite(theme.value);
+  const isRevealed = ({ x, y }: Position) => revealed[y * floor.width + x] === 1;
+
+  const arches: { key: string; className: unknown[]; style: string }[] = [];
+  const gate = gateOf(floor);
+  if (gate && isRevealed(gate)) {
+    arches.push({
+      key: "gate",
+      className: [
+        "dungeon-sprite",
+        "dungeon-sprite--objects",
+        "dungeon-door",
+        { "dungeon-door--opening": props.floorBossDefeated },
+      ],
+      style: spriteStyle(sprite, gate),
+    });
+  }
+  return arches;
 });
+
+/** Running while the hero moves, standing idle otherwise. */
+const isWalking = ref(false);
+let walkTimer: ReturnType<typeof setTimeout> | undefined;
+watch(
+  () => [props.hero.x, props.hero.y],
+  () => {
+    isWalking.value = true;
+    clearTimeout(walkTimer);
+    walkTimer = setTimeout(() => (isWalking.value = false), 280);
+  },
+);
+onBeforeUnmount(() => clearTimeout(walkTimer));
+
+const facesWest = ref(heroFacesWest(props.facing, false));
+watch(
+  () => props.facing,
+  (facing) => (facesWest.value = heroFacesWest(facing, facesWest.value)),
+);
+
+const heroStyle = computed(() =>
+  spriteStyle(heroSprite(isWalking.value ? "run" : "idle"), { x: 0, y: 0 }),
+);
 
 const viewportStyle = computed(() => {
   const { columns, rows, tile } = props.viewport;
-  return `--columns:${columns};--rows:${rows};--tile:${tile}px`;
+  return (
+    `--columns:${columns};--rows:${rows};--tile:${tile}px;` +
+    `--atlas-width:${SHEETS.atlas.width};--atlas-height:${SHEETS.atlas.height};` +
+    `--hero-width:${HERO_SHEET.width};--hero-height:${HERO_SHEET.height}`
+  );
 });
 
 const worldStyle = computed(
@@ -102,24 +202,31 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 </script>
 
 <template>
-  <div class="dungeon-viewport" :style="viewportStyle">
+  <div :class="['dungeon-viewport', `dungeon-viewport--${theme}`]" :style="viewportStyle">
     <div class="dungeon-viewport__world" :style="worldStyle">
       <div v-for="layer in visibleLayers" :key="layer.key" :class="layer.className" :style="layer.style" />
 
-      <div v-if="gate" :class="gate.className" :style="gate.style" />
+      <div v-for="door in doors" :key="door.key" :class="door.className" :style="door.style" />
 
       <div
         v-for="element in visibleElements"
-        :key="`element-${element.id}`"
-        :class="['dungeon-token', `dungeon-token--${element.type}`]"
-        :style="tokenStyle(element)"
+        :key="element.key"
+        :class="element.className"
+        :style="element.style"
       />
 
       <div class="dungeon-token dungeon-token--hero" :style="tokenStyle(hero)">
         <span
           :key="bump?.id ?? 0"
           :class="['dungeon-token__body', bump ? `dungeon-token__body--bump-${bump.direction}` : null]"
-        />
+        >
+          <!-- Keyed by pose: a new pose starts on its first frame. -->
+          <span
+            :key="isWalking ? 'run' : 'idle'"
+            :class="['dungeon-sprite', 'dungeon-sprite--hero', 'dungeon-hero', { 'dungeon-hero--west': facesWest }]"
+            :style="heroStyle"
+          />
+        </span>
       </div>
     </div>
   </div>
@@ -131,6 +238,7 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   // Everything below derives from them, so resizing the view never requires
   // recomputing a tile.
   --px: calc(var(--tile) / 16);
+  --atlas: url("@/assets/dongeon/atlas-violet.png");
 
   // Centred on its container, which it overflows by less than a tile: the
   // centre tile, where the hero stands, is the centre of the screen.
@@ -141,6 +249,11 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   inline-size: calc(var(--columns) * var(--tile));
   block-size: calc(var(--rows) * var(--tile));
   translate: -50% -50%;
+
+  // One look per floor (see `themeOf`): the atlases share one layout.
+  &--stone {
+    --atlas: url("@/assets/dongeon/atlas-stone.png");
+  }
 
   &__world {
     position: absolute;
@@ -167,42 +280,218 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   image-rendering: pixelated;
 }
 
-:deep(.dungeon-tile--tileset) {
-  background-image: url("@/assets/dongeon/dungeon-tileset.png");
-  background-size: calc(384 * var(--px)) calc(192 * var(--px));
+:deep(.dungeon-tile--atlas) {
+  background-image: var(--atlas);
+  background-size: calc(var(--atlas-width) * var(--px)) calc(var(--atlas-height) * var(--px));
+}
+
+:deep(.dungeon-tile--props) {
+  background-image: url("@/assets/dongeon/props.png");
+  background-size: calc(384 * var(--px)) calc(256 * var(--px));
+}
+
+:deep(.dungeon-tile--objects) {
+  background-image: url("@/assets/dongeon/objects.png");
+  background-size: calc(320 * var(--px)) calc(480 * var(--px));
+}
+
+// Water and lava ripple: three frames, 32 source pixels apart (see `LIQUID`). Lava, thicker,
+// moves slower.
+:deep(.dungeon-tile--water),
+:deep(.dungeon-tile--lava) {
+  background-image: url("@/assets/dongeon/liquids.png");
+  background-size: calc(96 * var(--px)) calc(64 * var(--px));
+
+  @include bp.motion-safe {
+    animation: dungeon-liquid 1.2s steps(3) infinite;
+  }
+}
+
+:deep(.dungeon-tile--lava) {
+  @include bp.motion-safe {
+    animation-duration: 2.1s;
+  }
+}
+
+@keyframes dungeon-liquid {
+  from {
+    background-position-x: calc(var(--sx) * var(--px) * -1);
+  }
+
+  to {
+    background-position-x: calc((var(--sx) + 96) * var(--px) * -1);
+  }
+}
+
+// Depth: what stands on a tile is drawn in front of what stands on the rows behind it,
+// so that the hero passing behind a column is hidden by it. Rows count twice: on one
+// row, the hero and the mobs stand in front of the furniture.
+:deep(.dungeon-tile--upright) {
+  z-index: calc(2 * var(--y) + 2);
 }
 
 :deep(.dungeon-tile--torch) {
-  background-image: url("@/assets/dongeon/torch-strip.png");
-  background-size: calc(64 * var(--px)) calc(32 * var(--px));
+  background-image: url("@/assets/dongeon/objects.png");
+  background-size: calc(320 * var(--px)) calc(480 * var(--px));
+
+  // Five frames, 32 source pixels apart.
+  @include bp.motion-safe {
+    animation: dungeon-torch 0.7s steps(5) infinite;
+  }
+}
+
+:deep(.dungeon-tile--flip-x) {
+  transform: scaleX(-1);
+}
+
+@keyframes dungeon-torch {
+  to {
+    background-position-x: calc((var(--sx) + 160) * var(--px) * -1);
+  }
+}
+
+// Animated sprites (see `tiles/sprites.ts`): a window on the first frame, moved along
+// the row of frames.
+.dungeon-sprite {
+  position: absolute;
+  left: 0;
+  top: 0;
+  inline-size: calc(var(--sw) * var(--px) * var(--scale));
+  block-size: calc(var(--sh) * var(--px) * var(--scale));
+  background-repeat: no-repeat;
+  background-position:
+    calc(var(--sx) * var(--px) * var(--scale) * -1) calc(var(--sy) * var(--px) * var(--scale) * -1);
+  image-rendering: pixelated;
+  pointer-events: none;
+
+  &--objects {
+    background-image: url("@/assets/dongeon/objects.png");
+    background-size: calc(320 * var(--px) * var(--scale)) calc(480 * var(--px) * var(--scale));
+  }
+
+  &--mob {
+    background-image: url("@/assets/dongeon/placeholder_mob.png");
+    background-size: calc(32 * var(--px) * var(--scale)) calc(32 * var(--px) * var(--scale));
+  }
+
+  &--hero {
+    background-image: url("@/assets/heroes/swordsman/hero_swordsman_spritesheet.png");
+    background-size:
+      calc(var(--hero-width) * var(--px) * var(--scale)) calc(var(--hero-height) * var(--px) * var(--scale));
+  }
 
   @include bp.motion-safe {
-    animation: dungeon-strip-4 0.6s steps(4) infinite;
+    animation: dungeon-frames var(--duration) steps(var(--frames)) infinite;
   }
 }
 
-:deep(.dungeon-tile--fireWall) {
-  background-image: url("@/assets/dongeon/fire-wall-strip.png");
-  background-size: calc(80 * var(--px)) calc(32 * var(--px));
+// The first frame is explicit: without it, a sprite whose background position is set
+// elsewhere would animate from there, and steps() would land between two frames.
+@keyframes dungeon-frames {
+  from {
+    background-position-x: calc(var(--sx) * var(--px) * var(--scale) * -1);
+  }
+
+  to {
+    background-position-x: calc((var(--sx) + var(--pitch) * var(--frames)) * var(--px) * var(--scale) * -1);
+  }
+}
+
+// Elements and the gate stand on their tile, offset by (--dx, --dy).
+.dungeon-element,
+.dungeon-door {
+  transform: translate3d(calc(var(--x) * var(--tile) + var(--dx) * var(--px)),
+      calc(var(--y) * var(--tile) + var(--dy) * var(--px)),
+      0);
+}
+
+// In depth order with the furniture (see `.dungeon-tile--upright`).
+.dungeon-element {
+  z-index: calc(2 * var(--y) + 3);
+}
+
+// Mobs float: a single still image, bobbing over a shadow that stays on the floor and
+// shrinks as they rise. A pale outline keeps the dark placeholder visible on the stones.
+.dungeon-element--enemy,
+.dungeon-element--boss {
+  filter: drop-shadow(0 0 calc(var(--px) * 1) rgb(214 206 255 / 55%));
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 25%;
+    top: calc(35 * var(--px) * var(--scale));
+    inline-size: 50%;
+    block-size: calc(4 * var(--px) * var(--scale));
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgb(0 0 0 / 45%), transparent);
+  }
 
   @include bp.motion-safe {
-    animation: dungeon-strip-5 0.75s steps(5) infinite;
+    animation: dungeon-hover 1.6s ease-in-out var(--delay, 0s) infinite;
+
+    &::after {
+      animation: dungeon-hover-shadow 1.6s ease-in-out var(--delay, 0s) infinite;
+    }
   }
 }
 
-:deep(.dungeon-tile--flip-y) {
-  transform: scaleY(-1);
+.dungeon-element--boss {
+  filter: drop-shadow(0 0 calc(var(--px) * 3) var(--color-danger));
 }
 
-@keyframes dungeon-strip-4 {
-  to {
-    background-position-x: calc(64 * var(--px) * -1);
+@keyframes dungeon-hover {
+  50% {
+    translate: 0 calc(var(--px) * var(--scale) * -3);
   }
 }
 
-@keyframes dungeon-strip-5 {
+// The shadow undoes the rise of its mob, so that it stays on the floor.
+@keyframes dungeon-hover-shadow {
+  50% {
+    translate: 0 calc(var(--px) * var(--scale) * 3);
+    scale: 0.7;
+  }
+}
+
+.dungeon-element--item {
+  filter: drop-shadow(0 0 calc(var(--px) * 2) color-mix(in srgb, var(--color-accent) 60%, transparent));
+}
+
+// The gate down stays on its first frame, closed, until its boss is defeated; then it
+// rises to its last one, open.
+.dungeon-door {
+  animation: none;
+
+  &--opening {
+    background-position-x: calc((var(--sx) + var(--pitch) * 4) * var(--px) * -1);
+  }
+
+  &--opening {
+    @include bp.motion-safe {
+      animation: dungeon-door-open var(--duration) steps(4) backwards;
+    }
+  }
+}
+
+@keyframes dungeon-door-open {
+  from {
+    background-position-x: calc(var(--sx) * var(--px) * -1);
+  }
+
   to {
-    background-position-x: calc(80 * var(--px) * -1);
+    background-position-x: calc((var(--sx) + var(--pitch) * 4) * var(--px) * -1);
+  }
+}
+
+// The hero idles on the spot and runs between tiles (see `heroSprite`). Its sheet faces
+// east: it is mirrored, in place, to face west.
+.dungeon-hero {
+  translate: calc(var(--dx) * var(--px)) calc(var(--dy) * var(--px));
+  filter: drop-shadow(0 calc(var(--px) * 1) 0 rgb(0 0 0 / 35%));
+
+  &--west {
+    scale: -1 1;
   }
 }
 
@@ -217,90 +506,18 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
       0);
   pointer-events: none;
 
-  &::before,
-  &__body {
-    content: "";
-    position: absolute;
-    inset: 22%;
-    border-radius: 50%;
-  }
-
-  &--enemy::before {
-    background: radial-gradient(circle at 35% 35%,
-        var(--color-danger),
-        var(--color-danger-strong));
-    box-shadow: var(--shadow-sm);
-  }
-
-  &--boss::before {
-    inset: 8%;
-    background: radial-gradient(circle at 35% 35%,
-        var(--color-arcane),
-        var(--color-danger-strong));
-    box-shadow:
-      0 0 0 var(--px) var(--color-accent),
-      var(--shadow-md);
-
-    @include bp.motion-safe {
-      animation: dungeon-pulse 1.6s ease-in-out infinite;
-    }
-  }
-
-  &--item::before {
-    // The jar of the tileset (163, 91), 9 x 15 source pixels.
-    inset: auto;
-    left: calc(3.5 * var(--px));
-    top: 0;
-    inline-size: calc(9 * var(--px));
-    block-size: calc(15 * var(--px));
-    border-radius: 0;
-    background: url("@/assets/dongeon/dungeon-tileset.png") no-repeat;
-    background-size: calc(384 * var(--px)) calc(192 * var(--px));
-    background-position: calc(163 * var(--px) * -1) calc(91 * var(--px) * -1);
-    image-rendering: pixelated;
-    filter: drop-shadow(0 0 calc(var(--px) * 2) var(--color-accent));
-
-    @include bp.motion-safe {
-      animation: dungeon-float 1.8s ease-in-out infinite;
-    }
-  }
-
-  &--trap::before {
-    // Spikes that rise and retract: 8 frames of 16 x 16 source pixels.
-    inset: 0;
-    border-radius: 0;
-    background: url("@/assets/dongeon/spikes-strip.png") no-repeat;
-    background-size: calc(128 * var(--px)) calc(16 * var(--px));
-    background-position: calc(48 * var(--px) * -1) 0;
-    image-rendering: pixelated;
-
-    @include bp.motion-safe {
-      animation: dungeon-spikes 3.24s step-end infinite;
-    }
-  }
-
   &--hero {
-    z-index: var(--z-content);
+    // In depth order with the furniture and the mobs (see `.dungeon-tile--upright`).
+    z-index: calc(2 * var(--y) + 3);
 
     @include bp.motion-safe {
       transition: transform var(--duration-fast) var(--easing-standard);
     }
-
-    &::before {
-      content: none;
-    }
   }
 
   &__body {
-    inset: 18%;
-    background: radial-gradient(circle at 35% 30%,
-        var(--color-text-primary),
-        var(--color-accent) 45%,
-        var(--color-accent-strong));
-    box-shadow:
-      0 0 0 var(--px) var(--color-surface-base),
-      var(--shadow-sm),
-      0 0 calc(var(--px) * 10) calc(var(--px) * 2) color-mix(in srgb, var(--color-accent) 35%, transparent);
+    position: absolute;
+    inset: 0;
   }
 
   @each $direction, $x, $y in (north, 0, -1), (east, 1, 0), (south, 0, 1), (west, -1, 0) {
@@ -315,53 +532,6 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
         translate: calc(var(--px) * #{$x * 3}) calc(var(--px) * #{$y * 3});
       }
     }
-  }
-}
-
-// Frame durations of the original GIF: 60, 60, 60, 1400, 100, 100, 60, 1400 ms.
-@keyframes dungeon-spikes {
-  0% {
-    background-position-x: 0;
-  }
-
-  1.85% {
-    background-position-x: calc(16 * var(--px) * -1);
-  }
-
-  3.7% {
-    background-position-x: calc(32 * var(--px) * -1);
-  }
-
-  5.56% {
-    background-position-x: calc(48 * var(--px) * -1);
-  }
-
-  48.77% {
-    background-position-x: calc(64 * var(--px) * -1);
-  }
-
-  51.85% {
-    background-position-x: calc(80 * var(--px) * -1);
-  }
-
-  54.94% {
-    background-position-x: calc(96 * var(--px) * -1);
-  }
-
-  56.79% {
-    background-position-x: calc(112 * var(--px) * -1);
-  }
-}
-
-@keyframes dungeon-pulse {
-  50% {
-    scale: 1.08;
-  }
-}
-
-@keyframes dungeon-float {
-  50% {
-    translate: 0 calc(var(--px) * -2);
   }
 }
 </style>
