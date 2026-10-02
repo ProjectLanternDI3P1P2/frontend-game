@@ -16,7 +16,7 @@ jobs:
     permissions:
       contents: read
       packages: read
-    uses: ProjectLanternDI3P1P2/platform-gitops/.github/workflows/publish-and-promote.yaml@f12cc5bf38c322f49d5045ee2beba53584ca19e7 # fix/frontend-prebuild
+    uses: ProjectLanternDI3P1P2/platform-gitops/.github/workflows/publish-and-promote.yaml@06761f0b31acaa488e39c909bcb422a1649924d7 # main
     with:
       application: frontend-game
       image: registry.lantern.diiage/lantern/frontend-game
