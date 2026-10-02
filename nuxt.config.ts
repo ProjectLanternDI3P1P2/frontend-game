@@ -8,8 +8,6 @@ import { fileURLToPath } from "node:url";
 // is a parsing hazard on both sides, and building it needed a backslash regex
 // that broke the parser reading this very file.
 const stylesDir = fileURLToPath(new URL("./app/assets/styles", import.meta.url));
-const localPlayerBackendUrl = process.env.PLAYER_BACKEND_URL || "http://localhost:8080";
-
 export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
   devtools: { enabled: true },
@@ -28,6 +26,12 @@ export default defineNuxtConfig({
     "/": { prerender: true },
     "/demo": { prerender: true },
     "/demo/**": { prerender: true },
+
+    // The dungeon explorer is authenticated, interactive game state with no
+    // SEO value: client-rendered, as the game client is (ADR-FE-004).
+    // Justified in docs/rendering-modes.md.
+    "/dungeon": { ssr: false },
+    "/dungeon/**": { ssr: false },
 
     // A route that genuinely needs a request-time render is declared here, one
     // entry per route, and justified in docs/rendering-modes.md. Two shapes are
@@ -83,14 +87,14 @@ export default defineNuxtConfig({
       // directly. Deployments must supply Traefik's public Gateway URL here.
       // A relative Nuxt/Vite proxy is deliberately avoided: it forwarded the
       // SignalR negotiation but not the WebSocket upgrade.
-      apiGatewayUrl:
-        process.env.NUXT_PUBLIC_API_GATEWAY_URL || localPlayerBackendUrl,
+      apiGatewayUrl: process.env.NUXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080",
       apiVersion: process.env.NUXT_PUBLIC_API_VERSION || "v1",
       telemetryEndpoint: process.env.NUXT_PUBLIC_TELEMETRY_ENDPOINT || "",
-      appName: "public-site",
+      appName: process.env.NUXT_PUBLIC_APP_NAME || "game-client",
       appVersion: process.env.NUXT_PUBLIC_APP_VERSION || "dev",
       commitSha: process.env.NUXT_PUBLIC_COMMIT_SHA || "local",
       builtAt: process.env.NUXT_PUBLIC_BUILT_AT || "local",
+      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || "http://localhost:3000",
     },
   },
 
