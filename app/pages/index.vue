@@ -60,5 +60,10 @@ const { isAuthenticated, user, login, logout } = useAuth();
     max-inline-size: 60ch;
     color: var(--color-text-muted);
   }
+
+  button {
+    color: var(--palette-obsidian-900);
+    background-color: var(--palette-gold-400);
+  }
 }
 </style>
