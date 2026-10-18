@@ -11,7 +11,7 @@ ENV CYPRESS_INSTALL_BINARY=0
 # Install dependencies separately to make the layer reusable while the source
 # code changes.
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 COPY . .
 # Nuxt embeds public config in prerendered HTML during this build.

@@ -4,7 +4,7 @@ WORKDIR /app
 ENV CYPRESS_INSTALL_BINARY=0 \
     NUXT_PUBLIC_API_GATEWAY_URL=/
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 COPY . .
 RUN npm run build
 
