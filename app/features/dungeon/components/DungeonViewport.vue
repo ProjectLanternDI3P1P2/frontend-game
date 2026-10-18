@@ -443,6 +443,8 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 // Until each kind has its own sprite, the placeholder is tinted: sepia first, since a hue
 // rotation alone leaves a grey image grey. The placeholder is dark navy (luminance below
 // 65/255), so it is brightened first, or every tint stays almost black.
+// TODO(tech-debt): a tinted placeholder stands in for the mob sprites — give each kind
+// its own sprite in spriteOf and drop these filters.
 .dungeon-element--zombie,
 .dungeon-element--mage,
 .dungeon-element--goblin,
