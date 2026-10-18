@@ -34,6 +34,9 @@ The register is currently empty: only `/` exists, and it is static.
 
 ## Getting started
 
+To run both frontends, the five microservices, PostgreSQL and Traefik together,
+see [the local Docker Compose stack](docs/local-stack.md).
+
 ```bash
 npm install
 cp .env.example .env

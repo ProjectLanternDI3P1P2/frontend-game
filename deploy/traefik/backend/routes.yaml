@@ -1,0 +1,145 @@
+# Development only: no Keycloak token validation in this local stack.
+http:
+  routers:
+    player-owned-api:
+      rule: Path(`/api/player`) || PathPrefix(`/api/player/`) || Path(`/api/v1/player`) || PathPrefix(`/api/v1/player/`)
+      priority: 200
+      middlewares: [remove-external-identity, owner-api-prefix]
+      service: player
+    rewards-owned-api:
+      rule: Path(`/api/rewards`) || PathPrefix(`/api/rewards/`) || Path(`/api/v1/rewards`) || PathPrefix(`/api/v1/rewards/`)
+      priority: 200
+      middlewares: [remove-external-identity, owner-api-prefix]
+      service: reward
+    progression-owned-api:
+      rule: Path(`/api/progression`) || PathPrefix(`/api/progression/`) || Path(`/api/v1/progression`) || PathPrefix(`/api/v1/progression/`)
+      priority: 200
+      middlewares: [remove-external-identity, owner-api-prefix]
+      service: leaderboard
+    dungeon-api:
+      rule: Path(`/api/v1/dungeons`) || PathPrefix(`/api/v1/dungeons/`) || Path(`/api/v1/dungeon-runs`) || PathPrefix(`/api/v1/dungeon-runs/`) || Path(`/hubs/dungeons`) || PathPrefix(`/hubs/dungeons/`)
+      priority: 100
+      middlewares: [remove-external-identity]
+      service: dungeon
+    player-api:
+      rule: Path(`/api/v1/players`) || PathPrefix(`/api/v1/players/`) || Path(`/api/v1/hero-classes`) || PathPrefix(`/api/v1/hero-classes/`) || Path(`/hubs/player`) || PathPrefix(`/hubs/player/`)
+      priority: 100
+      middlewares: [remove-external-identity]
+      service: player
+    combat-api:
+      rule: Path(`/api/v1/monster-types`) || PathPrefix(`/api/v1/monster-types/`) || PathRegexp(`^/api/v1/heroes/[^/]+/combat-data$`) || Path(`/hubs/combats`) || PathPrefix(`/hubs/combats/`) || Path(`/hubs/combat`) || PathPrefix(`/hubs/combat/`)
+      priority: 100
+      middlewares: [remove-external-identity]
+      service: combat
+    reward-api:
+      rule: PathRegexp(`^/api/v1/heroes/[^/]+/inventory(/|$)`)
+      priority: 100
+      middlewares: [remove-external-identity]
+      service: reward
+    player-service:
+      rule: Path(`/services/player`) || PathPrefix(`/services/player/`)
+      priority: 200
+      middlewares: [remove-external-identity, strip-service-prefix]
+      service: player
+    combat-service:
+      rule: Path(`/services/combat`) || PathPrefix(`/services/combat/`)
+      priority: 200
+      middlewares: [remove-external-identity, strip-service-prefix]
+      service: combat
+    dungeon-service:
+      rule: Path(`/services/dungeon`) || PathPrefix(`/services/dungeon/`)
+      priority: 200
+      middlewares: [remove-external-identity, strip-service-prefix]
+      service: dungeon
+    reward-service:
+      rule: Path(`/services/reward`) || PathPrefix(`/services/reward/`)
+      priority: 200
+      middlewares: [remove-external-identity, strip-service-prefix]
+      service: reward
+    leaderboard-service:
+      rule: Path(`/services/leaderboard`) || PathPrefix(`/services/leaderboard/`)
+      priority: 200
+      middlewares: [remove-external-identity, strip-service-prefix]
+      service: leaderboard
+
+  middlewares:
+    # Keep service-owned controller routes versioned (/api/v1/...).
+    owner-api-prefix:
+      replacePathRegex:
+        regex: "^/api/(v1/)?(player|rewards|progression)(/|$)"
+        replacement: "/api/v1${3}"
+    remove-external-identity:
+      headers:
+        # Browser clients run on these origins in backend-only development.
+        accessControlAllowOriginList:
+          - '{{ env "GAME_ORIGIN" }}'
+          - '{{ env "PUBLIC_ORIGIN" }}'
+        accessControlAllowMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+        accessControlAllowHeaders:
+          [
+            Content-Type,
+            Authorization,
+            X-Correlation-Id,
+            X-Requested-With,
+            X-SignalR-User-Agent,
+          ]
+        accessControlExposeHeaders: [X-Correlation-Id]
+        accessControlAllowCredentials: true
+        addVaryHeader: true
+        customRequestHeaders:
+          X-User-Id: ""
+          X-Username: ""
+          X-Roles: ""
+          X-Correlation-Id: ""
+    strip-service-prefix:
+      stripPrefix:
+        prefixes:
+          [
+            /services/player,
+            /services/combat,
+            /services/dungeon,
+            /services/reward,
+            /services/leaderboard,
+          ]
+
+  services:
+    player:
+      loadBalancer:
+        servers:
+          - url: http://player:8080
+        healthCheck:
+          path: /health/ready
+          interval: 10s
+          timeout: 3s
+    combat:
+      loadBalancer:
+        servers:
+          - url: http://combat:8080
+        healthCheck:
+          path: /health/ready
+          interval: 10s
+          timeout: 3s
+    dungeon:
+      loadBalancer:
+        servers:
+          - url: http://dungeon:8080
+        healthCheck:
+          path: /health/ready
+          interval: 10s
+          timeout: 3s
+    reward:
+      loadBalancer:
+        servers:
+          - url: http://reward:8080
+        healthCheck:
+          path: /health/ready
+          interval: 10s
+          timeout: 3s
+    leaderboard:
+      loadBalancer:
+        servers:
+          - url: http://leaderboard:8080
+        healthCheck:
+          path: /health/ready
+          interval: 10s
+          timeout: 3s

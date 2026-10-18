@@ -1,0 +1,260 @@
+name: lantern-local
+
+x-api-environment: &api-environment
+  ASPNETCORE_ENVIRONMENT: Development
+  RabbitMq__Enabled: "true"
+  RabbitMq__HostName: rabbitmq
+  RabbitMq__UserName: lantern
+  RabbitMq__Password: ${RABBITMQ_PASSWORD:-lantern-local}
+  RabbitMq__Port: "5672"
+  RabbitMq__VirtualHost: /
+  Kestrel__Endpoints__Http__Url: http://+:8080
+  Kestrel__Endpoints__Http__Protocols: Http1
+  Kestrel__Endpoints__Grpc__Url: http://+:8081
+  Kestrel__Endpoints__Grpc__Protocols: Http2
+  Cors__AllowedOrigins__0: http://localhost:${GAME_PORT:-3000}
+  Cors__AllowedOrigins__1: http://localhost:${PUBLIC_PORT:-3001}
+  Serilog__MinimumLevel__Default: ${LOG_LEVEL:-Information}
+  OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-true}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4317}
+  OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
+  OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
+  OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-otlp}
+  OTEL_LOGS_EXPORTER: ${OTEL_LOGS_EXPORTER:-none}
+  OTEL_TRACES_SAMPLER: ${OTEL_TRACES_SAMPLER:-parentbased_always_on}
+  OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES:-deployment.environment.name=local,service.namespace=lantern}
+
+x-api: &api
+  restart: unless-stopped
+  networks: [backend]
+  depends_on:
+    postgres:
+      condition: service_healthy
+    rabbitmq:
+      condition: service_healthy
+  healthcheck:
+    test:
+      - CMD
+      - bash
+      - -ec
+      - 'exec 3<>/dev/tcp/127.0.0.1/8080; printf "GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3; read -r status <&3; [[ "$$status" == *" 200 "* ]]'
+    interval: 10s
+    timeout: 5s
+    retries: 12
+    start_period: 60s
+
+services:
+  traefik:
+    image: traefik:v3.6
+    restart: unless-stopped
+    command:
+      - --entrypoints.api.address=:8080
+      - --entrypoints.api.asdefault=true
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+      - --ping=true
+      - --ping.entrypoint=health
+      - --entrypoints.health.address=:8082
+      - --log.level=INFO
+    ports:
+      - "127.0.0.1:${API_PORT:-8088}:8080"
+    volumes:
+      - ./deploy/traefik/backend:/etc/traefik/dynamic:ro
+    networks: [web, backend]
+    environment:
+      GAME_ORIGIN: http://localhost:${GAME_PORT:-3000}
+      PUBLIC_ORIGIN: http://localhost:${PUBLIC_PORT:-3001}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "traefik",
+          "healthcheck",
+          "--ping",
+          "--ping.entrypoint=health",
+          "--entrypoints.health.address=:8082",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lantern-admin-local}
+      SERVICE_DB_PASSWORD: ${SERVICE_DB_PASSWORD:-lantern-local}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./deploy/postgres:/docker-entrypoint-initdb.d:ro
+    networks: [backend]
+    healthcheck:
+      # TCP stays unavailable until the entrypoint's temporary init server exits.
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    ports:
+      - "5433:5432"
+
+  rabbitmq:
+    image: rabbitmq:4-alpine
+    # RabbitMQ's persistent node directory must not depend on a container ID.
+    hostname: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: lantern
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-lantern-local}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      - ./deploy/rabbitmq:/etc/lantern-rabbitmq:ro
+    # Run after the normal entrypoint creates the broker user and virtual host.
+    post_start:
+      - user: rabbitmq
+        command: ["/bin/sh", "/etc/lantern-rabbitmq/init-topology.sh"]
+    networks: [backend]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /tmp/lantern-topology-ready && rabbitmq-diagnostics -q ping",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  player:
+    <<: *api
+    build:
+      context: ../player-backend
+    environment:
+      <<: *api-environment
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=player;Username=player;Password=${SERVICE_DB_PASSWORD:-lantern-local}"
+      OTEL_SERVICE_NAME: player
+      RabbitMq__ExchangeName: player.events
+      RabbitMq__QueueName: player.events.v1
+      RabbitMq__PrefetchCount: ${RABBITMQ_PREFETCH_COUNT:-16}
+      RabbitMq__DeadLetterExchangeName: lantern.dead-letter
+      RabbitMq__DeadLetterQueueName: player.events.v1.dead
+      RabbitMq__Subscriptions__0__ExchangeName: dungeon.events
+      RabbitMq__Subscriptions__0__RoutingKey: dungeon.dungeon-run-ended.v1
+      Grpc__Dungeon__Address: http://dungeon:8081
+      Grpc__Dungeon__TimeoutSeconds: ${PLAYER_DUNGEON_GRPC_TIMEOUT_SECONDS:-5}
+      Grpc__Resilience__Retry__MaxAttempts: "1"
+      Grpc__Resilience__CircuitBreaker__FailureThreshold: ${GRPC_CIRCUIT_BREAKER_FAILURE_THRESHOLD:-5}
+      Grpc__Resilience__CircuitBreaker__BreakDurationSeconds: ${GRPC_CIRCUIT_BREAKER_BREAK_SECONDS:-30}
+
+  dungeon:
+    <<: *api
+    build:
+      context: ../dungeon-backend
+    environment:
+      <<: *api-environment
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=dungeon;Username=dungeon;Password=${SERVICE_DB_PASSWORD:-lantern-local}"
+      OTEL_SERVICE_NAME: dungeon
+      RabbitMq__ExchangeName: dungeon.events
+      Grpc__Combat__Address: http://combat:8081
+      Grpc__Combat__TimeoutSeconds: ${DUNGEON_COMBAT_GRPC_TIMEOUT_SECONDS:-5}
+      Grpc__Rewards__Address: http://reward:8081
+      Grpc__Rewards__TimeoutSeconds: ${DUNGEON_REWARDS_GRPC_TIMEOUT_SECONDS:-5}
+      Grpc__Resilience__Retry__MaxAttempts: "1"
+      Grpc__Resilience__CircuitBreaker__FailureThreshold: ${GRPC_CIRCUIT_BREAKER_FAILURE_THRESHOLD:-5}
+      Grpc__Resilience__CircuitBreaker__BreakDurationSeconds: ${GRPC_CIRCUIT_BREAKER_BREAK_SECONDS:-30}
+
+  combat:
+    <<: *api
+    build:
+      context: ../combat-backend
+    environment:
+      <<: *api-environment
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=combat;Username=combat;Password=${SERVICE_DB_PASSWORD:-lantern-local}"
+      OTEL_SERVICE_NAME: combat
+      RabbitMq__ExchangeName: combat.events
+      Grpc__Player__Address: http://player:8081
+      Grpc__Player__TimeoutSeconds: ${COMBAT_PLAYER_GRPC_TIMEOUT_SECONDS:-5}
+      Grpc__Rewards__Address: http://reward:8081
+      Grpc__Rewards__TimeoutSeconds: ${COMBAT_REWARDS_GRPC_TIMEOUT_SECONDS:-5}
+      Grpc__Dungeon__Address: http://dungeon:8081
+      Grpc__Dungeon__TimeoutSeconds: ${COMBAT_DUNGEON_GRPC_TIMEOUT_SECONDS:-5}
+      Grpc__Resilience__Retry__MaxAttempts: "1"
+      Grpc__Resilience__CircuitBreaker__FailureThreshold: ${GRPC_CIRCUIT_BREAKER_FAILURE_THRESHOLD:-5}
+      Grpc__Resilience__CircuitBreaker__BreakDurationSeconds: ${GRPC_CIRCUIT_BREAKER_BREAK_SECONDS:-30}
+      ExternalServices__Player__IsMockFallbackEnabled: "false"
+      ExternalServices__Rewards__IsMockFallbackEnabled: "false"
+
+  reward:
+    <<: *api
+    build:
+      context: ../reward-backend
+    environment:
+      <<: *api-environment
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=reward;Username=reward;Password=${SERVICE_DB_PASSWORD:-lantern-local}"
+      OTEL_SERVICE_NAME: rewards
+      RabbitMq__ExchangeName: rewards.events
+      RabbitMq__QueueName: rewards.events.v1
+      RabbitMq__PrefetchCount: ${RABBITMQ_PREFETCH_COUNT:-16}
+      RabbitMq__DeadLetterExchangeName: lantern.dead-letter
+      RabbitMq__DeadLetterQueueName: rewards.events.v1.dead
+      RabbitMq__Subscriptions__0__ExchangeName: combat.events
+      RabbitMq__Subscriptions__0__RoutingKey: combat.consumable-used.v1
+
+  leaderboard:
+    <<: *api
+    build:
+      context: ../leaderboard-backend
+      secrets: [github_packages_credentials]
+    environment:
+      <<: *api-environment
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=leaderboard;Username=leaderboard;Password=${SERVICE_DB_PASSWORD:-lantern-local}"
+      OTEL_SERVICE_NAME: progression
+      RabbitMq__ExchangeName: progression.events
+      RabbitMq__QueueName: progression.events.v1
+      RabbitMq__PrefetchCount: ${RABBITMQ_PREFETCH_COUNT:-16}
+      RabbitMq__DeadLetterExchangeName: lantern.dead-letter
+      RabbitMq__DeadLetterQueueName: progression.events.v1.dead
+      RabbitMq__Subscriptions__0__ExchangeName: player.events
+      RabbitMq__Subscriptions__0__RoutingKey: player.game-session-started.v1
+      RabbitMq__Subscriptions__1__ExchangeName: player.events
+      RabbitMq__Subscriptions__1__RoutingKey: player.game-session-ended.v1
+      RabbitMq__Subscriptions__2__ExchangeName: player.events
+      RabbitMq__Subscriptions__2__RoutingKey: player.hero-created.v1
+      RabbitMq__Subscriptions__3__ExchangeName: player.events
+      RabbitMq__Subscriptions__3__RoutingKey: player.game-session-member-joined.v1
+      RabbitMq__Subscriptions__4__ExchangeName: dungeon.events
+      RabbitMq__Subscriptions__4__RoutingKey: dungeon.dungeon-run-started.v1
+      RabbitMq__Subscriptions__5__ExchangeName: dungeon.events
+      RabbitMq__Subscriptions__5__RoutingKey: dungeon.room-entered.v1
+      RabbitMq__Subscriptions__6__ExchangeName: dungeon.events
+      RabbitMq__Subscriptions__6__RoutingKey: dungeon.chest-opened.v1
+      RabbitMq__Subscriptions__7__ExchangeName: dungeon.events
+      RabbitMq__Subscriptions__7__RoutingKey: dungeon.dungeon-run-ended.v1
+      RabbitMq__Subscriptions__8__ExchangeName: combat.events
+      RabbitMq__Subscriptions__8__RoutingKey: combat.combat-started.v1
+      RabbitMq__Subscriptions__9__ExchangeName: combat.events
+      RabbitMq__Subscriptions__9__RoutingKey: combat.action-resolved.v1
+      RabbitMq__Subscriptions__10__ExchangeName: combat.events
+      RabbitMq__Subscriptions__10__RoutingKey: combat.combat-completed.v1
+      RabbitMq__Subscriptions__11__ExchangeName: rewards.events
+      RabbitMq__Subscriptions__11__RoutingKey: rewards.reward-granted.v1
+      RabbitMq__Subscriptions__12__ExchangeName: rewards.events
+      RabbitMq__Subscriptions__12__RoutingKey: rewards.inventory-item-consumed.v1
+      RabbitMq__Subscriptions__13__ExchangeName: rewards.events
+      RabbitMq__Subscriptions__13__RoutingKey: rewards.equipment-changed.v1
+      RabbitMq__Subscriptions__14__ExchangeName: rewards.events
+      RabbitMq__Subscriptions__14__RoutingKey: rewards.purchase-completed.v1
+
+networks:
+  web:
+  backend:
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+
+secrets:
+  github_packages_credentials:
+    environment: GITHUB_PACKAGES_CREDENTIALS

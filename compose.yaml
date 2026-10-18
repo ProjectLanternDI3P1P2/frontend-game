@@ -1,0 +1,107 @@
+name: lantern-local
+
+x-frontend: &frontend
+  restart: unless-stopped
+  networks: [web]
+  healthcheck:
+    test:
+      [
+        "CMD",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:3000/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+      ]
+    interval: 10s
+    timeout: 5s
+    retries: 6
+    start_period: 30s
+
+# Backend definitions are shared with the standalone backend Compose.
+services:
+  traefik:
+    extends:
+      file: compose.backend.yaml
+      service: traefik
+    command:
+      - --entrypoints.game.address=:3000
+      - --entrypoints.game.asdefault=true
+      - --entrypoints.public.address=:3001
+      - --entrypoints.public.asdefault=true
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+      - --ping=true
+      - --ping.entrypoint=health
+      - --entrypoints.health.address=:8082
+      - --log.level=INFO
+    ports: !override
+      - "127.0.0.1:${GAME_PORT:-3000}:3000"
+      - "127.0.0.1:${PUBLIC_PORT:-3001}:3001"
+    volumes:
+      - ./deploy/traefik:/etc/traefik/dynamic:ro
+
+  frontend-game:
+    <<: *frontend
+    build:
+      context: .
+      args:
+        NUXT_PUBLIC_API_GATEWAY_URL: /
+    environment:
+      NUXT_PUBLIC_API_GATEWAY_URL: /
+      NUXT_PUBLIC_APP_NAME: game-client
+      NUXT_PUBLIC_SITE_URL: http://localhost:${GAME_PORT:-3000}
+
+  frontend-public:
+    <<: *frontend
+    build:
+      context: ../frontend-public
+      dockerfile: ../frontend-game/deploy/frontend-public.Dockerfile
+    environment:
+      NUXT_PUBLIC_API_GATEWAY_URL: /
+      NUXT_PUBLIC_APP_NAME: public-site
+
+  postgres:
+    extends:
+      file: compose.backend.yaml
+      service: postgres
+
+  rabbitmq:
+    extends:
+      file: compose.backend.yaml
+      service: rabbitmq
+
+  player:
+    extends:
+      file: compose.backend.yaml
+      service: player
+
+  combat:
+    extends:
+      file: compose.backend.yaml
+      service: combat
+
+  dungeon:
+    extends:
+      file: compose.backend.yaml
+      service: dungeon
+
+  reward:
+    extends:
+      file: compose.backend.yaml
+      service: reward
+
+  leaderboard:
+    extends:
+      file: compose.backend.yaml
+      service: leaderboard
+
+networks:
+  web:
+  backend:
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+
+secrets:
+  github_packages_credentials:
+    environment: GITHUB_PACKAGES_CREDENTIALS
