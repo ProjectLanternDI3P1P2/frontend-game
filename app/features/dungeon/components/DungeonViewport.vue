@@ -128,7 +128,7 @@ const visibleElements = computed<VisibleSprite[]>(() => {
       const sprite = spriteOf(element);
       return {
         key: `element-${element.id}`,
-        className: `dungeon-sprite dungeon-sprite--${sprite.sheet} dungeon-element dungeon-element--${element.type}`,
+        className: `dungeon-sprite dungeon-sprite--${sprite.sheet} dungeon-element dungeon-element--${element.type}${element.kind ? ` dungeon-element--${element.kind}` : ""}`,
         // Mobs float out of step with one another.
         style: `${spriteStyle(sprite, element)};--delay:-${((element.id * 0.37) % 1.6).toFixed(2)}s`,
       };
@@ -438,6 +438,33 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 
 .dungeon-element--boss {
   filter: drop-shadow(0 0 calc(var(--px) * 3) var(--color-danger));
+}
+
+// Until each kind has its own sprite, the placeholder is tinted: sepia first, since a hue
+// rotation alone leaves a grey image grey.
+.dungeon-element--zombie,
+.dungeon-element--mage,
+.dungeon-element--goblin,
+.dungeon-element--bat {
+  filter: sepia(1) saturate(var(--mob-saturation, 4)) hue-rotate(var(--mob-hue))
+    drop-shadow(0 0 calc(var(--px) * 1) rgb(214 206 255 / 55%));
+}
+
+.dungeon-element--zombie {
+  --mob-hue: 60deg;
+}
+
+.dungeon-element--mage {
+  --mob-hue: 230deg;
+}
+
+.dungeon-element--goblin {
+  --mob-hue: 10deg;
+}
+
+.dungeon-element--bat {
+  --mob-hue: 0deg;
+  --mob-saturation: 0;
 }
 
 @keyframes dungeon-hover {
