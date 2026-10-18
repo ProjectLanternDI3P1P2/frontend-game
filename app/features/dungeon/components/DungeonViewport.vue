@@ -14,7 +14,7 @@
  */
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import type { LoadedFloor } from "../composables/useDungeonFloor";
-import { gateOf } from "../dungeonMap";
+import { gateOf, revealedTeleports } from "../dungeonMap";
 import { cameraOrigin, type Viewport } from "../dungeonRules";
 import { MAX_LAYERS } from "../tiles/autotile";
 import {
@@ -154,10 +154,8 @@ const visibleMobs = computed<VisibleSprite[]>(() => {
 
 /** Where the mages will land, announced a turn ahead. */
 const teleports = computed(() =>
-  props.mobs.flatMap(({ id, nextTeleport }) =>
-    nextTeleport
-      ? [{ key: `teleport-${id}`, style: `--x:${nextTeleport.x};--y:${nextTeleport.y}` }]
-      : [],
+  revealedTeleports(props.mobs, revealedMask.value.cells, props.loaded.floor.width).map(
+    ({ id, x, y }) => ({ key: `teleport-${id}`, style: `--x:${x};--y:${y}` }),
   ),
 );
 
