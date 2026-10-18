@@ -93,6 +93,25 @@ describe("useDungeonExplorer", () => {
     expect(explorer.bump.value?.direction).toBe("west");
   });
 
+  it("sends no request for a move onto a known mob, and bumps", async () => {
+    serverAccepts();
+    const below = { x: initialRun.hero.x, y: initialRun.hero.y + 1 };
+    vi.mocked(api.fetchDungeonRun).mockResolvedValue({
+      ...initialRun,
+      mobs: [{ id: 99, kind: "zombie", ...below, aggro: true, nextTeleport: null }],
+    });
+    const explorer = useDungeonExplorer(initialRun.id);
+    await explorer.start();
+
+    explorer.move("south");
+    await flushPromises();
+
+    expect(api.moveHero).not.toHaveBeenCalled();
+    expect(explorer.hero.value).toEqual(initialRun.hero);
+    expect(explorer.bump.value?.direction).toBe("south");
+    expect(explorer.mobs.value.map((mob) => mob.id)).toEqual([99]);
+  });
+
   it("goes back to the server's position when a move is refused", async () => {
     vi.mocked(api.moveHero).mockRejectedValue(
       new GatewayError(409, { code: "CONFLICT", message: "Refused." }),

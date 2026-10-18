@@ -91,6 +91,18 @@ export interface DungeonMapResponse {
   elements: DungeonElement[];
 }
 
+/** A living mob of the current floor, where it stands this turn. */
+export interface MobState {
+  /** The id of the enemy element it spawned from. */
+  id: number;
+  kind: EnemyKindName;
+  x: number;
+  y: number;
+  aggro: boolean;
+  /** Where a mage will land on its next action. */
+  nextTeleport: Position | null;
+}
+
 /** GET /api/v1/dungeon-runs/{runId}, also returned by every run action. */
 export interface DungeonRunResponse {
   id: string;
@@ -106,6 +118,7 @@ export interface DungeonRunResponse {
   floorBossDefeated: boolean;
   currentRoomId: number | null;
   elementsHere: DungeonElement[];
+  mobs: MobState[];
   startedAt: string;
 }
 

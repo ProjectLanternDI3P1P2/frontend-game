@@ -30,7 +30,7 @@ import {
   type AnimatedSprite,
 } from "../tiles/sprites";
 import { SHEETS, themeOf } from "../tiles/tileset";
-import type { Direction, DungeonElement, Position } from "../types";
+import type { Direction, DungeonElement, MobState, Position } from "../types";
 
 const props = defineProps<{
   loaded: LoadedFloor;
@@ -45,6 +45,8 @@ const props = defineProps<{
   viewport: Viewport & { tile: number };
   /** Opens the gate down and removes the boss. */
   floorBossDefeated: boolean;
+  /** The living mobs, where the server last saw them. */
+  mobs: MobState[];
 }>();
 
 const theme = computed(() => themeOf(props.loaded.floor.floor));
@@ -122,6 +124,8 @@ const visibleElements = computed<VisibleSprite[]>(() => {
     .filter(
       (element) =>
         revealed[element.y * floor.width + element.x] === 1 &&
+        // Enemies only give the spawn tiles: the mobs of the run are drawn below.
+        element.type !== "enemy" &&
         !(element.type === "boss" && props.floorBossDefeated),
     )
     .map((element) => {
@@ -134,6 +138,28 @@ const visibleElements = computed<VisibleSprite[]>(() => {
       };
     });
 });
+
+/** The mobs on revealed tiles, keyed by id so that a move slides the same sprite. */
+const visibleMobs = computed<VisibleSprite[]>(() => {
+  const { cells: revealed } = revealedMask.value;
+  const { floor } = props.loaded;
+  return props.mobs
+    .filter((mob) => revealed[mob.y * floor.width + mob.x] === 1)
+    .map((mob) => ({
+      key: `mob-${mob.id}`,
+      className: `dungeon-sprite dungeon-sprite--${ENEMY.sheet} dungeon-element dungeon-element--enemy dungeon-element--${mob.kind} dungeon-mob`,
+      style: `${spriteStyle(ENEMY, mob)};--delay:-${((mob.id * 0.37) % 1.6).toFixed(2)}s`,
+    }));
+});
+
+/** Where the mages will land, announced a turn ahead. */
+const teleports = computed(() =>
+  props.mobs.flatMap(({ id, nextTeleport }) =>
+    nextTeleport
+      ? [{ key: `teleport-${id}`, style: `--x:${nextTeleport.x};--y:${nextTeleport.y}` }]
+      : [],
+  ),
+);
 
 /**
  * The portcullis of the gate down, drawn over its wall: closed until the boss falls, then
@@ -214,6 +240,10 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
         :class="element.className"
         :style="element.style"
       />
+
+      <div v-for="mark in teleports" :key="mark.key" class="dungeon-teleport" :style="mark.style" />
+
+      <div v-for="mob in visibleMobs" :key="mob.key" :class="mob.className" :style="mob.style" />
 
       <div class="dungeon-token dungeon-token--hero" :style="tokenStyle(hero)">
         <span
@@ -408,6 +438,42 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 // In depth order with the furniture (see `.dungeon-tile--upright`).
 .dungeon-element {
   z-index: calc(2 * var(--y) + 3);
+}
+
+// A mob slides from one tile to the next between turns; a mage jumps.
+.dungeon-mob {
+  @include bp.motion-safe {
+    transition: transform 0.18s ease-out;
+  }
+}
+
+.dungeon-element--mage {
+  transition: none;
+}
+
+// The tile a mage announced: a pulsing violet glow on the floor.
+.dungeon-teleport {
+  position: absolute;
+  left: 0;
+  top: 0;
+  inline-size: var(--tile);
+  block-size: var(--tile);
+  transform: translate3d(calc(var(--x) * var(--tile)), calc(var(--y) * var(--tile)), 0);
+  z-index: calc(2 * var(--y) + 2);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(186 120 255 / 70%), transparent);
+  pointer-events: none;
+
+  @include bp.motion-safe {
+    animation: dungeon-teleport-pulse 0.8s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes dungeon-teleport-pulse {
+  to {
+    scale: 0.6;
+    opacity: 0.5;
+  }
 }
 
 // Mobs float: a single still image, bobbing over a shadow that stays on the floor and

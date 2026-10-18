@@ -50,6 +50,8 @@ export function useDungeonExplorer(runId: string) {
     floor.value ? roomAt(floor.value, hero.value) : undefined,
   );
   const floorBossDefeated = computed(() => run.value?.floorBossDefeated ?? false);
+  /** Where the server last saw the mobs: they move on its turn, not on the prediction. */
+  const mobs = computed(() => run.value?.mobs ?? []);
   /** In the boss room, boss still standing: the fight can start. */
   const canFightBoss = computed(
     () =>
@@ -125,6 +127,13 @@ export function useDungeonExplorer(runId: string) {
       bump.value = { direction, id: ++bumpCount };
       const isGate = cellAt(current, target.x, target.y) === Cell.Gate;
       announce(isGate ? "The gate is locked: defeat the boss of this floor first." : "Blocked.");
+      return;
+    }
+
+    // Same rule as the backend: a mob blocks the way.
+    if (mobs.value.some((mob) => samePosition(mob, target))) {
+      bump.value = { direction, id: ++bumpCount };
+      announce("A mob blocks the way.");
       return;
     }
 
@@ -243,6 +252,7 @@ export function useDungeonExplorer(runId: string) {
     visitedRoomIds,
     currentRoom,
     floorBossDefeated,
+    mobs,
     canFightBoss,
     start,
     move,
