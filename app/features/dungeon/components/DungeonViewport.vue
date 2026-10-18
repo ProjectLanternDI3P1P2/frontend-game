@@ -441,12 +441,14 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 }
 
 // Until each kind has its own sprite, the placeholder is tinted: sepia first, since a hue
-// rotation alone leaves a grey image grey.
+// rotation alone leaves a grey image grey. The placeholder is dark navy (luminance below
+// 65/255), so it is brightened first, or every tint stays almost black.
 .dungeon-element--zombie,
 .dungeon-element--mage,
 .dungeon-element--goblin,
 .dungeon-element--bat {
-  filter: sepia(1) saturate(var(--mob-saturation, 4)) hue-rotate(var(--mob-hue))
+  filter: brightness(3) sepia(1) saturate(var(--mob-saturation, 4))
+    hue-rotate(var(--mob-hue))
     drop-shadow(0 0 calc(var(--px) * 1) rgb(214 206 255 / 55%));
 }
 
