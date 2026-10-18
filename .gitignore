@@ -5,6 +5,7 @@ node_modules
 dist
 .env
 .env.local
+.env.compose
 *.log
 coverage
 cypress/screenshots

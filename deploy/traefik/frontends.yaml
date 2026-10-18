@@ -1,0 +1,30 @@
+http:
+  routers:
+    frontend-game:
+      entryPoints: [game]
+      rule: PathPrefix(`/`)
+      priority: 1
+      service: frontend-game
+    frontend-public:
+      entryPoints: [public]
+      rule: PathPrefix(`/`)
+      priority: 1
+      service: frontend-public
+
+  services:
+    frontend-game:
+      loadBalancer:
+        servers:
+          - url: http://frontend-game:3000
+        healthCheck:
+          path: /healthz
+          interval: 10s
+          timeout: 3s
+    frontend-public:
+      loadBalancer:
+        servers:
+          - url: http://frontend-public:3000
+        healthCheck:
+          path: /healthz
+          interval: 10s
+          timeout: 3s

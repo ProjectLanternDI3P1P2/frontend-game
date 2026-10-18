@@ -11,9 +11,14 @@ ENV CYPRESS_INSTALL_BINARY=0
 # Install dependencies separately to make the layer reusable while the source
 # code changes.
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 COPY . .
+# Nuxt embeds public config in prerendered HTML during this build.
+# Compose overrides this default with '/' so browser requests use Traefik
+# on the frontend's origin. Runtime ENV alone cannot rewrite static HTML.
+ARG NUXT_PUBLIC_API_GATEWAY_URL=http://localhost:8080
+ENV NUXT_PUBLIC_API_GATEWAY_URL=$NUXT_PUBLIC_API_GATEWAY_URL
 RUN npm run build
 
 FROM node:24-bookworm-slim AS runtime
