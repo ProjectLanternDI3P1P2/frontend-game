@@ -24,6 +24,9 @@ export type CellTypeName =
 
 export type ElementTypeName = "enemy" | "boss" | "item" | "trap";
 
+/** How an enemy silhouette moves; the pack it stands for is Combat's. */
+export type EnemyKindName = "zombie" | "mage" | "goblin" | "bat";
+
 export type RoomTypeName =
   | "start"
   | "combat"
@@ -47,6 +50,8 @@ export interface DungeonElement {
   x: number;
   y: number;
   roomId: number;
+  /** Movement kind of an enemy silhouette; null for any other element. */
+  kind: EnemyKindName | null;
 }
 
 export interface DungeonRoom {
