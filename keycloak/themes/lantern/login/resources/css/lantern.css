@@ -120,14 +120,28 @@ body {
 .auth-form input:not([type=hidden]):not([type=checkbox]):not([type=submit]):focus {
   outline: none;
 }
+.auth-form__password-group {
+  border: 1px solid #383343;
+  border-radius: 4px;
+}
+.auth-form__password-group input:not([type=hidden]):not([type=checkbox]):not([type=submit]) {
+  border: 0;
+  border-radius: 3px 0 0 3px;
+}
 .auth-form input[aria-invalid=true] {
   border-color: #A32B3F;
   box-shadow: 0 0 0 1px #A32B3F;
 }
+.auth-form .pf-c-input-group {
+  background-color: #14121A;
+}
 .auth-form button[data-password-toggle] {
-  border: 0;
   color: #EDE4D3;
   background: #26222F;
+  border-radius: 0 3px 3px 0;
+}
+.auth-form button[data-password-toggle]::after {
+  border-color: transparent;
 }
 .auth-form button[data-password-toggle]:hover, .auth-form button[data-password-toggle]:has(i[class*=eye-slash]) {
   color: #C9A227;

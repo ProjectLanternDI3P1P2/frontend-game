@@ -171,15 +171,33 @@ body {
         }
     }
 
+    &__password-group {
+        border: 1px solid $border-color;
+        border-radius: 4px;
+
+        input:not([type="hidden"]):not([type="checkbox"]):not([type="submit"]) {
+            border: 0;
+            border-radius: 3px 0 0 3px;
+        }
+    }
+
     input[aria-invalid="true"] {
         border-color: $error-color;
         box-shadow: 0 0 0 1px $error-color;
     }
 
+    .pf-c-input-group {
+        background-color: $background-color-page;
+    }
+
     button[data-password-toggle] {
-        border: 0;
         color: $primary-color;
         background: $background-color-input;
+        border-radius: 0 3px 3px 0;
+
+        &::after {
+            border-color: transparent;
+        }
 
         &:hover,
         &:has(i[class*="eye-slash"]) {
