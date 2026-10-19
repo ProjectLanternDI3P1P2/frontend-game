@@ -450,28 +450,59 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   transition: none;
 }
 
-// The tile a mage announced: a pulsing violet glow on the floor.
+// The tile a mage announced: a bright violet glow, larger than its tile, with a dashed
+// ring, drawn over the mobs so that it reads at a glance.
 .dungeon-teleport {
   position: absolute;
   left: 0;
   top: 0;
-  inline-size: var(--tile);
-  block-size: var(--tile);
-  transform: translate3d(calc(var(--x) * var(--tile)), calc(var(--y) * var(--tile)), 0);
-  z-index: calc(2 * var(--y) + 2);
+  inline-size: calc(var(--tile) * 1.5);
+  block-size: calc(var(--tile) * 1.5);
+  transform: translate3d(
+    calc((var(--x) - 0.25) * var(--tile)),
+    calc((var(--y) - 0.25) * var(--tile)),
+    0
+  );
+  z-index: calc(2 * var(--y) + 4);
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(186 120 255 / 70%), transparent);
+  background: radial-gradient(
+    closest-side,
+    rgb(255 255 255 / 95%),
+    rgb(214 150 255 / 90%) 30%,
+    rgb(160 70 255 / 55%) 60%,
+    transparent
+  );
+  box-shadow: 0 0 calc(var(--px) * 8) calc(var(--px) * 3) rgb(190 110 255 / 75%);
+  mix-blend-mode: screen;
   pointer-events: none;
 
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 12%;
+    border: calc(var(--px) * 1.5) dashed rgb(240 210 255 / 90%);
+    border-radius: 50%;
+  }
+
+  // It stays on its tile: a slow breath of light and a slowly turning ring, nothing more.
   @include bp.motion-safe {
-    animation: dungeon-teleport-pulse 0.8s ease-in-out infinite alternate;
+    animation: dungeon-teleport-pulse 1.2s ease-in-out infinite alternate;
+
+    &::after {
+      animation: dungeon-teleport-spin 6s linear infinite;
+    }
   }
 }
 
 @keyframes dungeon-teleport-pulse {
   to {
-    scale: 0.6;
-    opacity: 0.5;
+    opacity: 0.75;
+  }
+}
+
+@keyframes dungeon-teleport-spin {
+  to {
+    rotate: 1turn;
   }
 }
 
