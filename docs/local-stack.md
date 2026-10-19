@@ -241,7 +241,13 @@ API/SignalR ; les deux endpoints frontend `/healthz` ne sont pas disponibles.
   `frontend-public` reste dans
   `deploy/frontend-public.Dockerfile`.
 
-## Packages de contrats GitHub
+## Packages de contrats : local et GitHub
+
+Les commandes Compose locales construisent `Dungeon.Contracts` pour Player et
+`Combat.Contracts` pour Leaderboard depuis les sources des backends frÃ¨res.
+Elles ne demandent donc pas `GITHUB_PACKAGES_CREDENTIALS`. Les instructions
+d'authentification ci-dessous concernent seulement un build Docker standard,
+utilisÃ© en CI et en production.
 
 Les cinq backends ont un `NuGet.config` avec la source GitHub de l'organisation
 et une sélection explicite des packages de contrats. Les jetons sont transmis
