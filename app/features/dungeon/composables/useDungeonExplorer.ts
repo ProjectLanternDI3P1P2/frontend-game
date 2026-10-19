@@ -11,7 +11,16 @@
 import { computed, ref, shallowRef } from "vue";
 import { defeatFloorBoss, fetchDungeonRun, moveHero } from "../api/dungeonApi";
 import type { DecodedFloor } from "../dungeonMap";
-import { Cell, cellAt, elementsAt, goesDown, isWalkableAt, roomAt, step } from "../dungeonMap";
+import {
+  Cell,
+  cellAt,
+  corridorAt,
+  elementsAt,
+  goesDown,
+  isWalkableAt,
+  roomAt,
+  step,
+} from "../dungeonMap";
 import { reveal } from "../dungeonRules";
 import type { Direction, DungeonElement, DungeonRunResponse, Position } from "../types";
 import type { LoadedFloor } from "./useDungeonFloor";
@@ -48,6 +57,10 @@ export function useDungeonExplorer(runId: string) {
   const floor = computed<DecodedFloor | null>(() => loaded.value?.floor ?? null);
   const currentRoom = computed(() =>
     floor.value ? roomAt(floor.value, hero.value) : undefined,
+  );
+  /** The two rooms the corridor under the hero joins, for the minimap. */
+  const currentCorridor = computed(() =>
+    floor.value ? corridorAt(floor.value, hero.value) : undefined,
   );
   const floorBossDefeated = computed(() => run.value?.floorBossDefeated ?? false);
   /** In the boss room, boss still standing: the fight can start. */
@@ -242,6 +255,7 @@ export function useDungeonExplorer(runId: string) {
     revealVersion,
     visitedRoomIds,
     currentRoom,
+    currentCorridor,
     floorBossDefeated,
     canFightBoss,
     start,

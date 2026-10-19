@@ -11,6 +11,7 @@ import {
   Cell,
   DungeonContractError,
   cellAt,
+  corridorAt,
   decodeFloor,
   elementsAt,
   gateOf,
@@ -118,6 +119,31 @@ describe("walkability", () => {
   it("treats outside the floor as void", () => {
     expect(cellAt(floor, -1, 0)).toBe(Cell.Void);
     expect(isWalkableAt(floor, { x: floor.width, y: 0 })).toBe(false);
+  });
+});
+
+describe("corridorAt", () => {
+  const floor = decodeFloor(map);
+  const tiles = (keep: (code: number, roomId: number) => boolean) =>
+    [...floor.cells.keys()]
+      .filter((i) => keep(floor.cells[i]!, floor.roomIdByCell[i]!))
+      .map((i) => ({ x: i % floor.width, y: Math.floor(i / floor.width) }));
+
+  it("names the two connected rooms from every corridor tile and door", () => {
+    const corridorTiles = tiles(
+      (code, roomId) => roomId === -1 && (code === Cell.Floor || code === Cell.Door),
+    );
+    expect(corridorTiles.length).toBeGreaterThan(0);
+    for (const tile of corridorTiles) {
+      const [first, second] = corridorAt(floor, tile)!;
+      expect(first).toBeLessThan(second);
+      expect(floor.rooms[first]!.connectedRoomIds).toContain(second);
+    }
+  });
+
+  it("is undefined in a room and on a wall", () => {
+    expect(corridorAt(floor, floor.entrance)).toBeUndefined();
+    expect(corridorAt(floor, tiles((code) => code === Cell.Wall)[0]!)).toBeUndefined();
   });
 });
 
