@@ -101,7 +101,3 @@ networks:
 volumes:
   postgres-data:
   rabbitmq-data:
-
-secrets:
-  github_packages_credentials:
-    environment: GITHUB_PACKAGES_CREDENTIALS
