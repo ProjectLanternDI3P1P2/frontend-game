@@ -12,6 +12,7 @@ import type {
   DungeonElement,
   DungeonMapResponse,
   DungeonRoom,
+  MobState,
   Position,
 } from "./types";
 
@@ -260,6 +261,22 @@ export function corridorAt(
 
   const [first, second] = [...roomIds].sort((a, b) => a - b);
   return first === undefined || second === undefined ? undefined : [first, second];
+}
+
+/**
+ * The tiles mages announced they will jump to, only where the party has already looked:
+ * a glow in the dark would give away a mage nobody has seen.
+ */
+export function revealedTeleports(
+  mobs: readonly MobState[],
+  revealed: Uint8Array,
+  width: number,
+): { id: number; x: number; y: number }[] {
+  return mobs.flatMap(({ id, nextTeleport }) =>
+    nextTeleport && revealed[nextTeleport.y * width + nextTeleport.x] === 1
+      ? [{ id, x: nextTeleport.x, y: nextTeleport.y }]
+      : [],
+  );
 }
 
 export function step(position: Position, direction: Direction): Position {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  mobClassName,
   BOSS,
   ENEMY,
   HERO_SHEET,
@@ -72,5 +73,15 @@ describe("sprites", () => {
     const style = spriteStyle(ENEMY, { x: 4, y: 9 });
     expect(style).toContain("--x:4;--y:9;");
     expect(style).toMatch(/^(--[a-z]+:-?[\d.]+s?;?)+$/);
+  });
+});
+
+describe("mobClassName", () => {
+  it("lights up a mob once it is in aggro", () => {
+    const mob = { id: 4, kind: "bat", x: 1, y: 2, aggro: false, nextTeleport: null } as const;
+
+    expect(mobClassName(mob)).not.toContain("dungeon-mob--aggro");
+    expect(mobClassName({ ...mob, aggro: true })).toContain("dungeon-mob--aggro");
+    expect(mobClassName(mob)).toContain("dungeon-element--bat");
   });
 });

@@ -117,3 +117,26 @@ export function reveal(
 
   return changed;
 }
+
+/**
+ * How long the hero, the camera and the mobs slide from one tile to the next, and so the
+ * shortest time between two moves: a step never starts before the previous one has landed.
+ */
+export const MOVE_COOLDOWN_MS = 320;
+
+/**
+ * Lets the first call through at once, then drops the calls that come within `ms` of it:
+ * a held key or a burst of taps moves one tile per slide instead of queueing them all.
+ */
+export function createCooldown(ms: number, now: () => number = () => performance.now()) {
+  let last = Number.NEGATIVE_INFINITY;
+  return (): boolean => {
+    const at = now();
+    if (at - last < ms) return false;
+    last = at;
+    return true;
+  };
+}
+
+/** How long a killed mob fades out; the hero waits for it before the next step. */
+export const MOB_DEATH_MS = 600;

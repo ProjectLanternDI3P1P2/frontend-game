@@ -8,7 +8,7 @@
  * authoritative run is read again: the client never keeps a position the
  * backend did not accept.
  */
-import { computed, ref, shallowRef } from "vue";
+import { computed, ref, shallowRef, watch } from "vue";
 import { defeatFloorBoss, fetchDungeonRun, moveHero } from "../api/dungeonApi";
 import type { DecodedFloor } from "../dungeonMap";
 import {
@@ -21,8 +21,14 @@ import {
   roomAt,
   step,
 } from "../dungeonMap";
-import { reveal } from "../dungeonRules";
-import type { Direction, DungeonElement, DungeonRunResponse, Position } from "../types";
+import { MOB_DEATH_MS, MOVE_COOLDOWN_MS, reveal } from "../dungeonRules";
+import type {
+  Direction,
+  DungeonElement,
+  DungeonRunResponse,
+  MobState,
+  Position,
+} from "../types";
 import type { LoadedFloor } from "./useDungeonFloor";
 import { loadFloor, prefetchFloor } from "./useDungeonFloor";
 
@@ -63,6 +69,25 @@ export function useDungeonExplorer(runId: string) {
     floor.value ? corridorAt(floor.value, hero.value) : undefined,
   );
   const floorBossDefeated = computed(() => run.value?.floorBossDefeated ?? false);
+  /** Where the server last saw the mobs: they move on its turn, not on the prediction. */
+  const mobs = computed(() => run.value?.mobs ?? []);
+  /** Mobs the last turn killed: they slide to where they fell, then fade out. */
+  const dyingMobs = shallowRef<MobState[]>([]);
+
+  // The server dates each death: only a new turn brings new deaths to show.
+  watch(
+    run,
+    (next, previous) => {
+      if (!next || !previous || next.turn === previous.turn) return;
+      const killed = next.killedMobs;
+      if (killed.length === 0) return;
+      dyingMobs.value = [...dyingMobs.value, ...killed];
+      setTimeout(() => {
+        dyingMobs.value = dyingMobs.value.filter((mob) => !killed.includes(mob));
+      }, MOVE_COOLDOWN_MS + MOB_DEATH_MS);
+    },
+    { flush: "sync" },
+  );
   /** In the boss room, boss still standing: the fight can start. */
   const canFightBoss = computed(
     () =>
@@ -119,6 +144,7 @@ export function useDungeonExplorer(runId: string) {
     const state = run.value;
     if (!current || state?.status !== "active") return;
     if (pendingMoves.value >= MAX_PENDING_MOVES) return;
+    if (dyingMobs.value.length > 0) return;
 
     facing.value = direction;
     const target = step(hero.value, direction);
@@ -138,6 +164,13 @@ export function useDungeonExplorer(runId: string) {
       bump.value = { direction, id: ++bumpCount };
       const isGate = cellAt(current, target.x, target.y) === Cell.Gate;
       announce(isGate ? "The gate is locked: defeat the boss of this floor first." : "Blocked.");
+      return;
+    }
+
+    // Same rule as the backend: a mob blocks the way.
+    if (mobs.value.some((mob) => samePosition(mob, target))) {
+      bump.value = { direction, id: ++bumpCount };
+      announce("A mob blocks the way.");
       return;
     }
 
@@ -257,6 +290,8 @@ export function useDungeonExplorer(runId: string) {
     currentRoom,
     currentCorridor,
     floorBossDefeated,
+    mobs,
+    dyingMobs,
     canFightBoss,
     start,
     move,
