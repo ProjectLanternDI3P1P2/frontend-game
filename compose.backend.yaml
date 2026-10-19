@@ -131,6 +131,8 @@ services:
     <<: *api
     build:
       context: ../player-backend
+      dockerfile: Dockerfile
+      secrets: [github_packages_credentials]
     environment:
       <<: *api-environment
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=player;Username=player;Password=${SERVICE_DB_PASSWORD:-lantern-local}"
@@ -152,6 +154,8 @@ services:
     <<: *api
     build:
       context: ../dungeon-backend
+      dockerfile: Dockerfile
+      secrets: [github_packages_credentials]
     environment:
       <<: *api-environment
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=dungeon;Username=dungeon;Password=${SERVICE_DB_PASSWORD:-lantern-local}"
@@ -169,6 +173,8 @@ services:
     <<: *api
     build:
       context: ../combat-backend
+      dockerfile: Dockerfile
+      secrets: [github_packages_credentials]
     environment:
       <<: *api-environment
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=combat;Username=combat;Password=${SERVICE_DB_PASSWORD:-lantern-local}"
@@ -190,6 +196,8 @@ services:
     <<: *api
     build:
       context: ../reward-backend
+      dockerfile: Dockerfile
+      secrets: [github_packages_credentials]
     environment:
       <<: *api-environment
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=reward;Username=reward;Password=${SERVICE_DB_PASSWORD:-lantern-local}"
@@ -206,6 +214,7 @@ services:
     <<: *api
     build:
       context: ../leaderboard-backend
+      dockerfile: Dockerfile
       secrets: [github_packages_credentials]
     environment:
       <<: *api-environment

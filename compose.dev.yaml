@@ -1,0 +1,31 @@
+name: lantern-local-dev
+
+services:
+  traefik:
+    extends: { file: compose.yaml, service: traefik }
+  frontend-game:
+    extends: { file: compose.yaml, service: frontend-game }
+  frontend-public:
+    extends: { file: compose.yaml, service: frontend-public }
+  postgres:
+    extends: { file: compose.backend.dev.yaml, service: postgres }
+  rabbitmq:
+    extends: { file: compose.backend.dev.yaml, service: rabbitmq }
+  player:
+    extends: { file: compose.backend.dev.yaml, service: player }
+  combat:
+    extends: { file: compose.backend.dev.yaml, service: combat }
+  dungeon:
+    extends: { file: compose.backend.dev.yaml, service: dungeon }
+  reward:
+    extends: { file: compose.backend.dev.yaml, service: reward }
+  leaderboard:
+    extends: { file: compose.backend.dev.yaml, service: leaderboard }
+
+networks:
+  web:
+  backend:
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
