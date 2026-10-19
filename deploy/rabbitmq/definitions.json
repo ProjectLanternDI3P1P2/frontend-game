@@ -1,0 +1,328 @@
+{
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "player.events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "dungeon.events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "combat.events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "rewards.events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "progression.events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "lantern.dead-letter",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "player.events.v1",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "player.events.v1.dead",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "rewards.events.v1",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "rewards.events.v1.dead",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "progression.events.v1",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "progression.events.v1.dead",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    }
+  ],
+  "bindings": [
+    {
+      "source": "dungeon.events",
+      "vhost": "/",
+      "destination": "player.events.v1",
+      "destination_type": "queue",
+      "routing_key": "dungeon.dungeon-run-ended.v1",
+      "arguments": {}
+    },
+    {
+      "source": "lantern.dead-letter",
+      "vhost": "/",
+      "destination": "player.events.v1.dead",
+      "destination_type": "queue",
+      "routing_key": "player.events.v1",
+      "arguments": {}
+    },
+    {
+      "source": "combat.events",
+      "vhost": "/",
+      "destination": "rewards.events.v1",
+      "destination_type": "queue",
+      "routing_key": "combat.consumable-used.v1",
+      "arguments": {}
+    },
+    {
+      "source": "lantern.dead-letter",
+      "vhost": "/",
+      "destination": "rewards.events.v1.dead",
+      "destination_type": "queue",
+      "routing_key": "rewards.events.v1",
+      "arguments": {}
+    },
+    {
+      "source": "player.events",
+      "vhost": "/",
+      "destination": "progression.events.v1",
+      "destination_type": "queue",
+      "routing_key": "player.game-session-started.v1",
+      "arguments": {}
+    },
+    {
+      "source": "player.events",
+      "vhost": "/",
+      "destination": "progression.events.v1",
+      "destination_type": "queue",
+      "routing_key": "player.game-session-ended.v1",
+      "arguments": {}
+    },
+    {
+      "source": "player.events",
+      "vhost": "/",
+      "destination": "progression.events.v1",
+      "destination_type": "queue",
+      "routing_key": "player.hero-created.v1",
+      "arguments": {}
+    },
+    {
+      "source": "player.events",
+      "vhost": "/",
+      "destination": "progression.events.v1",
+      "destination_type": "queue",
+      "routing_key": "player.game-session-member-joined.v1",
+      "arguments": {}
+    },
+    {
+      "source": "dungeon.events",
+      "vhost": "/",
+      "destination": "progression.events.v1",
+      "destination_type": "queue",
+      "routing_key": "dungeon.dungeon-run-started.v1",
+      "arguments": {}
+    },
+    {
+      "source": "dungeon.events",
+      "vhost": "/",
+      "destination": "progression.events.v1",
+      "destination_type": "queue",
+      "routing_key": "dungeon.room-entered.v1",
+      "arguments": {}
+    },
+    {
+      "source": "dungeon.events",
+      "vhost": "/",
+      "destination": "progression.events.v1",
+      "destination_type": "queue",
+      "routing_key": "dungeon.chest-opened.v1",
+      "arguments": {}
+    },
+    {
+      "source": "dungeon.events",
+      "vhost": "/",
+      "destination": "progression.events.v1",
+      "destination_type": "queue",
+      "routing_key": "dungeon.dungeon-run-ended.v1",
+      "arguments": {}
+    },
+    {
+      "source": "combat.events",
+      "vhost": "/",
+      "destination": "progression.events.v1",
+      "destination_type": "queue",
+      "routing_key": "combat.combat-started.v1",
+      "arguments": {}
+    },
+    {
+      "source": "combat.events",
+      "vhost": "/",
+      "destination": "progression.events.v1",
+      "destination_type": "queue",
+      "routing_key": "combat.action-resolved.v1",
+      "arguments": {}
+    },
+    {
+      "source": "combat.events",
+      "vhost": "/",
+      "destination": "progression.events.v1",
+      "destination_type": "queue",
+      "routing_key": "combat.combat-completed.v1",
+      "arguments": {}
+    },
+    {
+      "source": "rewards.events",
+      "vhost": "/",
+      "destination": "progression.events.v1",
+      "destination_type": "queue",
+      "routing_key": "rewards.reward-granted.v1",
+      "arguments": {}
+    },
+    {
+      "source": "rewards.events",
+      "vhost": "/",
+      "destination": "progression.events.v1",
+      "destination_type": "queue",
+      "routing_key": "rewards.inventory-item-consumed.v1",
+      "arguments": {}
+    },
+    {
+      "source": "rewards.events",
+      "vhost": "/",
+      "destination": "progression.events.v1",
+      "destination_type": "queue",
+      "routing_key": "rewards.equipment-changed.v1",
+      "arguments": {}
+    },
+    {
+      "source": "rewards.events",
+      "vhost": "/",
+      "destination": "progression.events.v1",
+      "destination_type": "queue",
+      "routing_key": "rewards.purchase-completed.v1",
+      "arguments": {}
+    },
+    {
+      "source": "lantern.dead-letter",
+      "vhost": "/",
+      "destination": "progression.events.v1.dead",
+      "destination_type": "queue",
+      "routing_key": "progression.events.v1",
+      "arguments": {}
+    }
+  ],
+  "policies": [
+    {
+      "vhost": "/",
+      "name": "player.events.v1",
+      "pattern": "^player\\.events\\.v1$",
+      "apply-to": "quorum_queues",
+      "priority": 10,
+      "definition": {
+        "delivery-limit": 5,
+        "dead-letter-exchange": "lantern.dead-letter",
+        "dead-letter-routing-key": "player.events.v1",
+        "dead-letter-strategy": "at-least-once",
+        "overflow": "reject-publish",
+        "message-ttl": 604800000
+      }
+    },
+    {
+      "vhost": "/",
+      "name": "rewards.events.v1",
+      "pattern": "^rewards\\.events\\.v1$",
+      "apply-to": "quorum_queues",
+      "priority": 10,
+      "definition": {
+        "delivery-limit": 5,
+        "dead-letter-exchange": "lantern.dead-letter",
+        "dead-letter-routing-key": "rewards.events.v1",
+        "dead-letter-strategy": "at-least-once",
+        "overflow": "reject-publish",
+        "message-ttl": 604800000
+      }
+    },
+    {
+      "vhost": "/",
+      "name": "progression.events.v1",
+      "pattern": "^progression\\.events\\.v1$",
+      "apply-to": "quorum_queues",
+      "priority": 10,
+      "definition": {
+        "delivery-limit": 5,
+        "dead-letter-exchange": "lantern.dead-letter",
+        "dead-letter-routing-key": "progression.events.v1",
+        "dead-letter-strategy": "at-least-once",
+        "overflow": "reject-publish",
+        "message-ttl": 604800000
+      }
+    }
+  ]
+}

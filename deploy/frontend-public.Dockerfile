@@ -1,0 +1,17 @@
+# syntax=docker/dockerfile:1
+FROM node:24-bookworm-slim AS build
+WORKDIR /app
+ENV CYPRESS_INSTALL_BINARY=0 \
+    NUXT_PUBLIC_API_GATEWAY_URL=/
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY . .
+RUN npm run build
+
+FROM node:24-bookworm-slim AS runtime
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
+WORKDIR /app
+COPY --from=build --chown=node:node /app/.output ./.output
+USER node
+EXPOSE 3000
+CMD ["node", ".output/server/index.mjs"]

@@ -1,0 +1,2 @@
+# Linux containers execute these scripts, including on Windows.
+deploy/**/*.sh text eol=lf
