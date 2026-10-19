@@ -48,15 +48,15 @@ const description = computed(
 <template>
   <figure class="sprite-swatch" :title="description">
     <div class="sprite-swatch__stage">
-      <div
+      <img
         class="sprite-swatch__sprite"
         :class="{
           'sprite-swatch__sprite--animated': frames > 1,
           'sprite-swatch__sprite--flip': flip,
         }"
         :style="style"
-        role="img"
-        :aria-label="description"
+        src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+        :alt="description"
       />
     </div>
     <figcaption v-if="label" class="sprite-swatch__label">{{ label }}</figcaption>

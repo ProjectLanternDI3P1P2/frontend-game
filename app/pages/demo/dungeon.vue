@@ -64,8 +64,16 @@ const theme = ref<Theme>("violet");
 const themeTabs = THEMES.map((id) => ({ id, label: id === "violet" ? "Violet floors" : "Stone floors" }));
 const atlas = computed(() => ({ src: ATLASES[theme.value], sheet: SHEETS.atlas }));
 
-const sheetSrc = (sheet: SheetName) =>
-  sheet === "atlas" ? ATLASES[theme.value] : sheet === "props" ? PROPS_SRC : sheet === "objects" || sheet === "torch" ? OBJECTS_SRC : LIQUIDS_SRC;
+/** Image of every sheet but the atlas, which follows the theme. */
+const SHEET_SRCS: Record<Exclude<SheetName, "atlas">, string> = {
+  props: PROPS_SRC,
+  objects: OBJECTS_SRC,
+  torch: OBJECTS_SRC,
+  water: LIQUIDS_SRC,
+  lava: LIQUIDS_SRC,
+};
+
+const sheetSrc = (sheet: SheetName) => (sheet === "atlas" ? ATLASES[theme.value] : SHEET_SRCS[sheet]);
 
 // --- Hero and mobs ------------------------------------------------------------------------
 
@@ -193,10 +201,12 @@ const RAW_SHEETS = computed(() => [
 
     <UiPanel title="Player placeholder" :heading-level="PanelHeadingLevel.TWO">
       <div class="demo-page__grid">
-        <DungeonSpriteSwatch v-for="row in HERO_ROWS" :key="row.label" v-bind="ANIMATED_SHEETS.hero"
+        <DungeonSpriteSwatch
+v-for="row in HERO_ROWS" :key="row.label" v-bind="ANIMATED_SHEETS.hero"
           :sprite="row.sprite" :frames="row.sprite.frames" :pitch="row.sprite.pitch" :duration="row.sprite.duration"
           :label="row.label" />
-        <DungeonSpriteSwatch v-bind="ANIMATED_SHEETS.hero" :sprite="heroSprite('run')"
+        <DungeonSpriteSwatch
+v-bind="ANIMATED_SHEETS.hero" :sprite="heroSprite('run')"
           :frames="heroSprite('run').frames" :pitch="heroSprite('run').pitch" :duration="heroSprite('run').duration"
           flip label="run (west)" />
       </div>
@@ -205,7 +215,8 @@ const RAW_SHEETS = computed(() => [
     <UiPanel title="Mobs" :heading-level="PanelHeadingLevel.TWO">
       <p class="demo-page__hint">Every enemy and the boss share the art team's placeholder for now.</p>
       <div class="demo-page__grid">
-        <DungeonSpriteSwatch v-for="mob in MOBS" :key="mob.label" v-bind="ANIMATED_SHEETS[mob.sprite.sheet]"
+        <DungeonSpriteSwatch
+v-for="mob in MOBS" :key="mob.label" v-bind="ANIMATED_SHEETS[mob.sprite.sheet]"
           :sprite="mob.sprite" :zoom="3 * (mob.sprite.scale ?? 1)" :label="`${mob.label} x${mob.sprite.scale}`" />
       </div>
     </UiPanel>
@@ -214,7 +225,8 @@ const RAW_SHEETS = computed(() => [
       <section v-for="group in FACE_GROUPS" :key="group.height" class="demo-page__group">
         <h3>Faces · {{ group.height }}</h3>
         <div class="demo-page__grid">
-          <DungeonSpriteSwatch v-for="face in group.sprites" :key="face.label" v-bind="atlas" :sprite="face.sprite"
+          <DungeonSpriteSwatch
+v-for="face in group.sprites" :key="face.label" v-bind="atlas" :sprite="face.sprite"
             :label="face.label" />
         </div>
       </section>
@@ -222,7 +234,8 @@ const RAW_SHEETS = computed(() => [
         <h3>Wall tops · {{ RIMS.length }} arrangements</h3>
         <p class="demo-page__hint">Keyed by the sides N E S W, then the corners NE SE SW NW.</p>
         <div class="demo-page__grid demo-page__grid--dense">
-          <DungeonSpriteSwatch v-for="rim in RIMS" :key="rim.key" v-bind="atlas" :sprite="rim.sprite" :zoom="2"
+          <DungeonSpriteSwatch
+v-for="rim in RIMS" :key="rim.key" v-bind="atlas" :sprite="rim.sprite" :zoom="2"
             :label="rim.key" />
         </div>
       </section>
@@ -232,24 +245,28 @@ const RAW_SHEETS = computed(() => [
       <section class="demo-page__group">
         <h3>Floors</h3>
         <div class="demo-page__grid">
-          <DungeonSpriteSwatch v-for="floor in FLOOR_TILES" :key="floor.label" v-bind="atlas" :sprite="floor.sprite"
+          <DungeonSpriteSwatch
+v-for="floor in FLOOR_TILES" :key="floor.label" v-bind="atlas" :sprite="floor.sprite"
             :label="floor.label" />
         </div>
       </section>
       <section class="demo-page__group">
         <h3>Liquids</h3>
         <div class="demo-page__grid">
-          <DungeonSpriteSwatch v-for="liquid in LIQUIDS" :key="liquid.label" :src="LIQUIDS_SRC" :sheet="SHEETS.water"
+          <DungeonSpriteSwatch
+v-for="liquid in LIQUIDS" :key="liquid.label" :src="LIQUIDS_SRC" :sheet="SHEETS.water"
             :sprite="liquid.sprite" :frames="LIQUID.frames" :pitch="LIQUID.frame" :duration="liquid.duration"
             :label="liquid.label" />
-          <DungeonSpriteSwatch v-for="(bank, i) in LIQUID_BANKS" :key="`bank-${i}`" v-bind="atlas" :sprite="bank"
+          <DungeonSpriteSwatch
+v-for="(bank, i) in LIQUID_BANKS" :key="`bank-${i}`" v-bind="atlas" :sprite="bank"
             :label="`bank ${i}`" />
         </div>
       </section>
       <section class="demo-page__group">
         <h3>Columns & ladder</h3>
         <div class="demo-page__grid">
-          <DungeonSpriteSwatch v-for="structure in STRUCTURES" :key="structure.label" v-bind="atlas"
+          <DungeonSpriteSwatch
+v-for="structure in STRUCTURES" :key="structure.label" v-bind="atlas"
             :sprite="structure.sprite" :label="structure.label" />
         </div>
       </section>
@@ -259,28 +276,32 @@ const RAW_SHEETS = computed(() => [
       <section v-for="group in DECOR_GROUPS" :key="group.title" class="demo-page__group">
         <h3>{{ group.title }}</h3>
         <div class="demo-page__grid">
-          <DungeonSpriteSwatch v-for="decor in group.sprites" :key="decor.label" :src="PROPS_SRC" :sheet="SHEETS.props"
+          <DungeonSpriteSwatch
+v-for="decor in group.sprites" :key="decor.label" :src="PROPS_SRC" :sheet="SHEETS.props"
             :sprite="decor.sprite" :label="decor.label" />
         </div>
       </section>
       <section class="demo-page__group">
         <h3>Tombs</h3>
         <div class="demo-page__grid">
-          <DungeonSpriteSwatch v-for="tomb in TOMB_SPRITES" :key="tomb.label" :src="PROPS_SRC" :sheet="SHEETS.props"
+          <DungeonSpriteSwatch
+v-for="tomb in TOMB_SPRITES" :key="tomb.label" :src="PROPS_SRC" :sheet="SHEETS.props"
             :sprite="tomb.sprite" :label="tomb.label" />
         </div>
       </section>
       <section v-for="group in OBSTACLE_GROUPS" :key="group.room" class="demo-page__group">
         <h3>Obstacles · {{ group.room }} room</h3>
         <div class="demo-page__grid">
-          <DungeonSpriteSwatch v-for="(prop, i) in group.props" :key="i" :src="sheetSrc(prop.sheet)"
+          <DungeonSpriteSwatch
+v-for="(prop, i) in group.props" :key="i" :src="sheetSrc(prop.sheet)"
             :sheet="SHEETS[prop.sheet]" :sprite="prop.sprite" />
         </div>
       </section>
       <section class="demo-page__group">
         <h3>Open chests</h3>
         <div class="demo-page__grid">
-          <DungeonSpriteSwatch v-for="(chest, i) in OPEN_CHESTS" :key="i" :src="OBJECTS_SRC" :sheet="SHEETS.objects"
+          <DungeonSpriteSwatch
+v-for="(chest, i) in OPEN_CHESTS" :key="i" :src="OBJECTS_SRC" :sheet="SHEETS.objects"
             :sprite="chest.sprite" :label="`open chest ${i + 1}`" />
         </div>
       </section>
@@ -288,9 +309,11 @@ const RAW_SHEETS = computed(() => [
 
     <UiPanel title="Animated objects" :heading-level="PanelHeadingLevel.TWO">
       <div class="demo-page__grid">
-        <DungeonSpriteSwatch :src="OBJECTS_SRC" :sheet="SHEETS.objects" :sprite="TORCH" :frames="5" :pitch="32"
+        <DungeonSpriteSwatch
+:src="OBJECTS_SRC" :sheet="SHEETS.objects" :sprite="TORCH" :frames="5" :pitch="32"
           :duration="0.7" label="torch" />
-        <DungeonSpriteSwatch v-for="object in OBJECTS" :key="object.label" v-bind="ANIMATED_SHEETS[object.sprite.sheet]"
+        <DungeonSpriteSwatch
+v-for="object in OBJECTS" :key="object.label" v-bind="ANIMATED_SHEETS[object.sprite.sheet]"
           :sprite="object.sprite" :frames="object.sprite.frames" :pitch="object.sprite.pitch"
           :duration="object.sprite.frames > 1 ? object.sprite.duration : 1" :label="object.label" />
       </div>
