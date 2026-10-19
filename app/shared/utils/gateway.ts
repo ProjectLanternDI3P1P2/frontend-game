@@ -173,7 +173,9 @@ export function createGatewayClient(options: GatewayClientOptions): GatewayClien
         : isProblemDetails(payload)
           ? {
               code: response.status === 422 ? "VALIDATION_ERROR" : "REQUEST_REJECTED",
+              // A field error says what to fix; ASP.NET's detail only says something is wrong.
               message:
+                Object.values(payload.errors ?? {}).flat()[0] ??
                 payload.detail ??
                 payload.title ??
                 `Request ${method} ${req.path} failed (${response.status}).`,
