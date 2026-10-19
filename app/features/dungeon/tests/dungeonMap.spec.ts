@@ -1,6 +1,10 @@
 /**
  * The fixtures were produced by the Dungeon service's own query handlers, so
  * these tests also pin the contract between the backend and this client.
+ *
+ * TODO(tech-debt): they predate the current generator and their "kind" fields
+ * were added by hand — regenerate them from seeds whose first floor still shows
+ * every tile the autotile tests need.
  */
 import { describe, expect, it } from "vitest";
 import {
