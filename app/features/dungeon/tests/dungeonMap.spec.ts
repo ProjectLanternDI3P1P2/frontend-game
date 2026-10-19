@@ -16,10 +16,11 @@ import {
   gateOf,
   goesDown,
   isWalkableAt,
+  revealedTeleports,
   roomAt,
   step,
 } from "../dungeonMap";
-import type { DungeonMapResponse } from "../types";
+import type { DungeonMapResponse, MobState } from "../types";
 import fixture from "./fixtures/map-DGPEAP9GWJKZF-f0.json";
 import multiFloorFixture from "./fixtures/map-DDR55WKRPRVBN-f0.json";
 
@@ -127,5 +128,25 @@ describe("step", () => {
     expect(step({ x: 5, y: 5 }, "east")).toEqual({ x: 6, y: 5 });
     expect(step({ x: 5, y: 5 }, "south")).toEqual({ x: 5, y: 6 });
     expect(step({ x: 5, y: 5 }, "west")).toEqual({ x: 4, y: 5 });
+  });
+});
+
+describe("revealedTeleports", () => {
+  it("only marks the jumps announced on tiles the party has seen", () => {
+    const width = 4;
+    const revealed = new Uint8Array([1, 1, 0, 0]);
+    const mage = (id: number, x: number): MobState => ({
+      id,
+      kind: "mage",
+      x: 0,
+      y: 0,
+      aggro: true,
+      nextTeleport: { x, y: 0 },
+    });
+    const zombie: MobState = { ...mage(3, 0), kind: "zombie", nextTeleport: null };
+
+    const marks = revealedTeleports([mage(1, 1), mage(2, 3), zombie], revealed, width);
+
+    expect(marks).toEqual([{ id: 1, x: 1, y: 0 }]);
   });
 });
