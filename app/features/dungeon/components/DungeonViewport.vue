@@ -15,7 +15,7 @@
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import type { LoadedFloor } from "../composables/useDungeonFloor";
 import { gateOf, revealedTeleports } from "../dungeonMap";
-import { cameraOrigin, type Viewport } from "../dungeonRules";
+import { MOVE_COOLDOWN_MS, cameraOrigin, type Viewport } from "../dungeonRules";
 import { MAX_LAYERS } from "../tiles/autotile";
 import {
   BOSS,
@@ -214,7 +214,8 @@ const viewportStyle = computed(() => {
   return (
     `--columns:${columns};--rows:${rows};--tile:${tile}px;` +
     `--atlas-width:${SHEETS.atlas.width};--atlas-height:${SHEETS.atlas.height};` +
-    `--hero-width:${HERO_SHEET.width};--hero-height:${HERO_SHEET.height}`
+    `--hero-width:${HERO_SHEET.width};--hero-height:${HERO_SHEET.height};` +
+    `--slide:${MOVE_COOLDOWN_MS}ms`
   );
 });
 
@@ -292,7 +293,7 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
     will-change: transform;
 
     @include bp.motion-safe {
-      transition: transform var(--duration-fast) var(--easing-standard);
+      transition: transform var(--slide) ease-in-out;
     }
   }
 }
@@ -438,10 +439,10 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   z-index: calc(2 * var(--y) + 3);
 }
 
-// A mob slides from one tile to the next between turns; a mage jumps.
+// A mob slides from one tile to the next between turns, as the hero does; a mage jumps.
 .dungeon-mob {
   @include bp.motion-safe {
-    transition: transform 0.18s ease-out;
+    transition: transform var(--slide) ease-in-out;
   }
 }
 
@@ -606,7 +607,7 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
     z-index: calc(2 * var(--y) + 3);
 
     @include bp.motion-safe {
-      transition: transform var(--duration-fast) var(--easing-standard);
+      transition: transform var(--slide) ease-in-out;
     }
   }
 
