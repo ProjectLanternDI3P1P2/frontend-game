@@ -245,7 +245,10 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
         :style="element.style"
       />
 
-      <div v-for="mark in teleports" :key="mark.key" class="dungeon-teleport" :style="mark.style" />
+      <div v-for="mark in teleports" :key="mark.key" class="dungeon-teleport" :style="mark.style">
+        <!-- 1–8 spiral in, 9–12 rise (see `.dungeon-teleport__mote`). -->
+        <span v-for="i in 12" :key="i" class="dungeon-teleport__mote" :style="{ '--i': i }" />
+      </div>
 
       <div v-for="mob in visibleMobs" :key="mob.key" :class="mob.className" :style="mob.style" />
 
@@ -500,8 +503,8 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   transition: none;
 }
 
-// The tile a mage announced: a bright violet glow, larger than its tile, with a dashed
-// ring, drawn over the mobs so that it reads at a glance.
+// The tile a mage announced: a bright violet glow, larger than its tile, drawn over the
+// mobs so that it reads at a glance.
 .dungeon-teleport {
   position: absolute;
   left: 0;
@@ -522,37 +525,76 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
     rgb(160 70 255 / 55%) 60%,
     transparent
   );
-  box-shadow: 0 0 calc(var(--px) * 8) calc(var(--px) * 3) rgb(190 110 255 / 75%);
   mix-blend-mode: screen;
   pointer-events: none;
 
-  &::after {
-    content: "";
-    position: absolute;
-    inset: 12%;
-    border: calc(var(--px) * 1.5) dashed rgb(240 210 255 / 90%);
-    border-radius: 50%;
-  }
-
-  // It stays on its tile: a slow breath of light and a slowly turning ring, nothing more.
+  // A slow breath of light and motes of magic: eight spiral into the tile, gathering for
+  // the jump, four rise from it.
   @include bp.motion-safe {
     animation: dungeon-teleport-pulse 1.2s ease-in-out infinite alternate;
+  }
 
-    &::after {
-      animation: dungeon-teleport-spin 6s linear infinite;
+  // Pixel squares, centred on the tile; hidden without motion, where they would only
+  // be dots.
+  &__mote {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    inline-size: calc(var(--px) * 1.5);
+    block-size: calc(var(--px) * 1.5);
+    margin: calc(var(--px) * -0.75);
+    background: rgb(230 190 255);
+    box-shadow: 0 0 calc(var(--px) * 2) calc(var(--px) * 0.5) rgb(170 90 255 / 90%);
+    opacity: 0;
+
+    &:nth-child(odd) {
+      background: rgb(255 255 255);
     }
+
+    @include bp.motion-safe {
+      animation: dungeon-teleport-gather 1.6s ease-in calc(var(--i) * -0.2s) infinite;
+
+      &:nth-child(n + 9) {
+        animation: dungeon-teleport-rise 1.4s ease-out calc(var(--i) * -0.37s) infinite;
+      }
+    }
+  }
+}
+
+@keyframes dungeon-teleport-gather {
+  from {
+    transform: rotate(calc(var(--i) * 45deg)) translateX(calc(var(--tile) * 0.85)) scale(1.3);
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  to {
+    transform: rotate(calc(var(--i) * 45deg + 200deg)) translateX(0) scale(0.4);
+    opacity: 0;
+  }
+}
+
+// Spread across the tile: --i is 9 to 12, so the offset runs from -1.5 to 1.5 steps.
+@keyframes dungeon-teleport-rise {
+  from {
+    transform: translate(calc((var(--i) - 10.5) * var(--tile) * 0.15), calc(var(--tile) * 0.25));
+  }
+
+  30% {
+    opacity: 1;
+  }
+
+  to {
+    transform: translate(calc((var(--i) - 10.5) * var(--tile) * 0.15), calc(var(--tile) * -0.9));
+    opacity: 0;
   }
 }
 
 @keyframes dungeon-teleport-pulse {
   to {
     opacity: 0.75;
-  }
-}
-
-@keyframes dungeon-teleport-spin {
-  to {
-    rotate: 1turn;
   }
 }
 
