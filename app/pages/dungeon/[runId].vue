@@ -32,6 +32,7 @@ const {
   currentRoom,
   floorBossDefeated,
   mobs,
+  dyingMobs,
 } = explorer;
 
 const board = ref<HTMLElement | null>(null);
@@ -93,6 +94,7 @@ async function copyShareLink() {
           :viewport="viewport"
           :floor-boss-defeated="floorBossDefeated"
           :mobs="mobs"
+          :dying-mobs="dyingMobs"
         />
       </div>
 

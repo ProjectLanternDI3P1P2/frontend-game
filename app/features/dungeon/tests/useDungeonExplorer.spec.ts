@@ -4,6 +4,7 @@ import { GatewayError } from "~/shared/utils/gateway";
 import * as api from "../api/dungeonApi";
 import { clearFloorCache } from "../composables/useDungeonFloor";
 import { useDungeonExplorer } from "../composables/useDungeonExplorer";
+import { MOB_DEATH_MS, MOVE_COOLDOWN_MS } from "../dungeonRules";
 import { Cell, cellAt, decodeFloor, gateOf, isWalkableAt, step } from "../dungeonMap";
 import type { Direction, DungeonMapResponse, DungeonRunResponse, Position } from "../types";
 import mapFixture from "./fixtures/map-DGPEAP9GWJKZF-f0.json";
@@ -110,6 +111,37 @@ describe("useDungeonExplorer", () => {
     expect(explorer.hero.value).toEqual(initialRun.hero);
     expect(explorer.bump.value?.direction).toBe("south");
     expect(explorer.mobs.value.map((mob) => mob.id)).toEqual([99]);
+  });
+
+  it("lets a killed mob slide to where it fell, then fade out, holding the hero meanwhile", async () => {
+    vi.useFakeTimers();
+    const zombie = { id: 7, kind: "zombie", x: 1, y: 1, aggro: true, nextTeleport: null } as const;
+    const fallen = { ...zombie, x: 2, y: 1 };
+    vi.mocked(api.fetchDungeonRun).mockResolvedValue({ ...initialRun, mobs: [zombie] });
+    vi.mocked(api.moveHero).mockImplementation(async () => ({
+      ...initialRun,
+      hero: { x: initialRun.hero.x, y: initialRun.hero.y + 1 },
+      turn: 1,
+      mobs: [],
+      killedMobs: [fallen],
+    }));
+    const explorer = useDungeonExplorer(initialRun.id);
+    await explorer.start();
+
+    // The move that kills it: it is drawn on the tile it stepped to, not where it was.
+    explorer.move("south");
+    await flushPromises();
+    expect(explorer.dyingMobs.value).toEqual([fallen]);
+
+    // While it slides and fades, the hero stands still.
+    explorer.move("south");
+    await flushPromises();
+    expect(api.moveHero).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(MOVE_COOLDOWN_MS + MOB_DEATH_MS);
+    await flushPromises();
+    expect(explorer.dyingMobs.value).toEqual([]);
+    vi.useRealTimers();
   });
 
   it("goes back to the server's position when a move is refused", async () => {

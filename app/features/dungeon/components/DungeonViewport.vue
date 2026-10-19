@@ -15,7 +15,7 @@
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import type { LoadedFloor } from "../composables/useDungeonFloor";
 import { gateOf, revealedTeleports } from "../dungeonMap";
-import { MOVE_COOLDOWN_MS, cameraOrigin, type Viewport } from "../dungeonRules";
+import { MOB_DEATH_MS, MOVE_COOLDOWN_MS, cameraOrigin, type Viewport } from "../dungeonRules";
 import { MAX_LAYERS } from "../tiles/autotile";
 import {
   BOSS,
@@ -48,6 +48,8 @@ const props = defineProps<{
   floorBossDefeated: boolean;
   /** The living mobs, where the server last saw them. */
   mobs: MobState[];
+  /** Mobs just killed, fading out where they fell. */
+  dyingMobs: MobState[];
 }>();
 
 const theme = computed(() => themeOf(props.loaded.floor.floor));
@@ -144,11 +146,13 @@ const visibleElements = computed<VisibleSprite[]>(() => {
 const visibleMobs = computed<VisibleSprite[]>(() => {
   const { cells: revealed } = revealedMask.value;
   const { floor } = props.loaded;
-  return props.mobs
+  const dying = new Set(props.dyingMobs.map((mob) => mob.id));
+  return [...props.mobs, ...props.dyingMobs]
     .filter((mob) => revealed[mob.y * floor.width + mob.x] === 1)
     .map((mob) => ({
+      // Same key alive and dying: the sprite stays where it fell and fades out.
       key: `mob-${mob.id}`,
-      className: mobClassName(mob),
+      className: `${mobClassName(mob)}${dying.has(mob.id) ? " dungeon-mob--dying" : ""}`,
       style: `${spriteStyle(ENEMY, mob)};--delay:-${((mob.id * 0.37) % 1.6).toFixed(2)}s`,
     }));
 });
@@ -216,7 +220,7 @@ const viewportStyle = computed(() => {
     `--columns:${columns};--rows:${rows};--tile:${tile}px;` +
     `--atlas-width:${SHEETS.atlas.width};--atlas-height:${SHEETS.atlas.height};` +
     `--hero-width:${HERO_SHEET.width};--hero-height:${HERO_SHEET.height};` +
-    `--slide:${MOVE_COOLDOWN_MS}ms`
+    `--slide:${MOVE_COOLDOWN_MS}ms;--death:${MOB_DEATH_MS}ms`
   );
 });
 
@@ -462,6 +466,26 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 @keyframes dungeon-aggro-glow {
   to {
     --mob-glow-size: calc(var(--px) * 6);
+  }
+}
+
+// A killed mob first slides to the tile it fell on (the transition of `.dungeon-mob`), then
+// flashes white, rises and fades out. No `scale` here nor
+// on any sprite placed by `transform`: `scale` applies before `transform`, so it would
+// shrink the tile offset too and drag the sprite toward the top-left corner of the floor.
+.dungeon-mob.dungeon-mob--dying {
+  animation: dungeon-mob-death var(--death) ease-in var(--slide) forwards;
+}
+
+@keyframes dungeon-mob-death {
+  20% {
+    opacity: 1;
+    filter: brightness(6) drop-shadow(0 0 calc(var(--px) * 6) rgb(255 255 255 / 95%));
+  }
+
+  to {
+    opacity: 0;
+    translate: 0 calc(var(--px) * -10);
   }
 }
 

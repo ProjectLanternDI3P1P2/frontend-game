@@ -137,3 +137,6 @@ export function createCooldown(ms: number, now: () => number = () => performance
     return true;
   };
 }
+
+/** How long a killed mob fades out; the hero waits for it before the next step. */
+export const MOB_DEATH_MS = 600;

@@ -119,6 +119,8 @@ export interface DungeonRunResponse {
   currentRoomId: number | null;
   elementsHere: DungeonElement[];
   mobs: MobState[];
+  /** Mobs that died on this turn, on the tile they fell on. */
+  killedMobs: MobState[];
   startedAt: string;
 }
 
