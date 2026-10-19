@@ -5,7 +5,7 @@
  * An animation is a row of frames `pitch` pixels apart in its sheet; CSS steps through
  * them by moving the background, so no JavaScript runs per frame.
  */
-import type { Direction } from "../types";
+import type { Direction, MobState } from "../types";
 import type { Theme } from "./tileset";
 
 export type SpriteSheet = "objects" | "hero" | "mob";
@@ -45,6 +45,14 @@ const still = { frames: 1, pitch: 0, duration: 1 };
 export const ENEMY: AnimatedSprite = {
   sheet: "mob", x: 0, y: 0, w: 32, h: 32, ...still, dx: -4, dy: -11, scale: 0.75,
 };
+
+/** The classes of a mob of the run: its kind tints it, its aggro lights it up. */
+export function mobClassName(mob: MobState): string {
+  return (
+    `dungeon-sprite dungeon-sprite--${ENEMY.sheet} dungeon-element dungeon-element--enemy ` +
+    `dungeon-element--${mob.kind} dungeon-mob${mob.aggro ? " dungeon-mob--aggro" : ""}`
+  );
+}
 
 /** The boss: twice the size of the image. */
 export const BOSS: AnimatedSprite = { ...ENEMY, dx: -24, dy: -52, scale: 2 };

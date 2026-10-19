@@ -26,6 +26,7 @@ import {
   heroFacesWest,
   heroSprite,
   itemSprite,
+  mobClassName,
   spriteStyle,
   type AnimatedSprite,
 } from "../tiles/sprites";
@@ -147,7 +148,7 @@ const visibleMobs = computed<VisibleSprite[]>(() => {
     .filter((mob) => revealed[mob.y * floor.width + mob.x] === 1)
     .map((mob) => ({
       key: `mob-${mob.id}`,
-      className: `dungeon-sprite dungeon-sprite--${ENEMY.sheet} dungeon-element dungeon-element--enemy dungeon-element--${mob.kind} dungeon-mob`,
+      className: mobClassName(mob),
       style: `${spriteStyle(ENEMY, mob)};--delay:-${((mob.id * 0.37) % 1.6).toFixed(2)}s`,
     }));
 });
@@ -439,6 +440,31 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   z-index: calc(2 * var(--y) + 3);
 }
 
+// Once in aggro, a mob glows red and its glow throbs: it hunts the party. Two classes, so
+// that it wins over the hover animation of `.dungeon-element--enemy` below.
+@property --mob-glow-size {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+.dungeon-mob.dungeon-mob--aggro {
+  --mob-glow: rgb(255 70 70 / 95%);
+  --mob-glow-size: calc(var(--px) * 3);
+
+  @include bp.motion-safe {
+    animation:
+      dungeon-hover 1.6s ease-in-out var(--delay, 0s) infinite,
+      dungeon-aggro-glow 0.7s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes dungeon-aggro-glow {
+  to {
+    --mob-glow-size: calc(var(--px) * 6);
+  }
+}
+
 // A mob slides from one tile to the next between turns, as the hero does; a mage jumps.
 .dungeon-mob {
   @include bp.motion-safe {
@@ -547,7 +573,7 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 .dungeon-element--bat {
   filter: brightness(3) sepia(1) saturate(var(--mob-saturation, 4))
     hue-rotate(var(--mob-hue))
-    drop-shadow(0 0 calc(var(--px) * 1) rgb(214 206 255 / 55%));
+    drop-shadow(0 0 var(--mob-glow-size, calc(var(--px) * 1)) var(--mob-glow, rgb(214 206 255 / 55%)));
 }
 
 .dungeon-element--zombie {
