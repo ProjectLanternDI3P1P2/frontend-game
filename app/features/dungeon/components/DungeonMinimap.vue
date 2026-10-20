@@ -2,7 +2,8 @@
 /**
  * Room-level map of the floor. Visited rooms are drawn in full; the rooms they
  * open onto appear as unexplored outlines, so the player always knows where
- * the next doors lead. Unknown rooms stay hidden.
+ * the next doors lead. Unknown rooms stay hidden. The corridor the hero walks
+ * is lit like the current room.
  */
 import { computed } from "vue";
 import type { DungeonRoom } from "../types";
@@ -11,7 +12,11 @@ const props = defineProps<{
   rooms: readonly DungeonRoom[];
   visitedRoomIds: readonly number[];
   currentRoomId: number | null;
+  /** The two rooms joined by the corridor under the hero, lowest id first. */
+  currentCorridor: readonly [number, number] | null;
 }>();
+
+const currentCorridorKey = computed(() => props.currentCorridor?.join("-") ?? null);
 
 const minX = computed(() => Math.min(...props.rooms.map((room) => room.gridX)));
 const minY = computed(() => Math.min(...props.rooms.map((room) => room.gridY)));
@@ -70,6 +75,7 @@ const label = computed(
         bar.horizontal
           ? 'dungeon-minimap__corridor--horizontal'
           : 'dungeon-minimap__corridor--vertical',
+        { 'dungeon-minimap__corridor--current': bar.key === currentCorridorKey },
       ]"
       :style="`--column:${bar.column};--row:${bar.row}`"
       aria-hidden="true"
@@ -124,6 +130,11 @@ const label = computed(
       box-shadow: 0 0 0 2px var(--color-surface-base), 0 0 0 3px var(--color-accent);
     }
 
+    &--visited.dungeon-minimap__room--start {
+      border-color: var(--color-accent-strong);
+      background-color: var(--color-accent-strong);
+    }
+
     &--visited.dungeon-minimap__room--treasure {
       border-color: var(--color-accent);
     }
@@ -149,6 +160,11 @@ const label = computed(
       margin-left: calc(var(--cell) / 2 - 1px);
       inline-size: 2px;
       block-size: var(--gap);
+    }
+
+    &--current {
+      background-color: var(--color-accent);
+      box-shadow: 0 0 0 1px var(--color-accent);
     }
   }
 }

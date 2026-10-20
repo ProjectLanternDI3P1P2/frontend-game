@@ -30,6 +30,7 @@ const {
   revealVersion,
   visitedRoomIds,
   currentRoom,
+  currentCorridor,
   floorBossDefeated,
   mobs,
   dyingMobs,
@@ -125,6 +126,7 @@ async function copyShareLink() {
           :rooms="loaded.floor.rooms"
           :visited-room-ids="visitedRoomIds"
           :current-room-id="currentRoom?.id ?? null"
+          :current-corridor="currentCorridor ?? null"
         />
       </aside>
 
