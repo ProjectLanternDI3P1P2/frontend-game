@@ -60,7 +60,9 @@ the game session and requests the run (ADR-GLOB-011). Only
 | `dungeonRules.ts`                   | Key mapping (physical keys: WASD = ZQSD), camera, fog of war. Pure.    |
 | `tiles/tileset.ts`                  | Sprite sheet geometry, themes. Data only.                              |
 | `tiles/atlas.generated.ts`          | Layout of the atlas, written by `npm run assets:dungeon`. Do not edit. |
-| `tiles/sprites.ts`                  | Animated sprites of the hero, elements and boss gate. Data only.       |
+| `tiles/sprites.ts`                  | Animated sprites of the elements and boss gate. Data only.             |
+| `tiles/hero.ts`                     | The hero's paper doll: wardrobe, random look, layers by facing. Pure.  |
+| `tiles/heroSheets.ts`               | URLs of the hero's sheets, bundled by Vite.                            |
 | `tiles/autotile.ts`                 | Chooses the sprites of each tile from its neighbours. Deterministic.   |
 | `composables/useDungeonFloor.ts`    | Immutable per-seed floor cache.                                        |
 | `composables/useDungeonExplorer.ts` | Run state, predicted moves, fog, announcements.                        |
@@ -69,6 +71,7 @@ the game session and requests the run (ADR-GLOB-011). Only
 | `components/DungeonMinimap.vue`     | Room-level map, Isaac-style.                                           |
 | `components/DungeonControls.vue`    | On-screen directional pad.                                             |
 | `app/assets/dongeon/`               | Room kits (`kit/`), the atlases built from them, props and objects.    |
+| `app/assets/heroes/mana-seed/`      | The hero's layers (Mana Seed Character Base demo, sword and shield).   |
 | `scripts/dungeon-atlas/`            | Builds the atlases from the kits (`npm run assets:dungeon`).           |
 
 ### How walls are drawn
@@ -100,6 +103,13 @@ cut from the kit. Rerun it after changing a kit: it rewrites the atlases and
 - columns, furniture and the ladder stand upright: they are sorted by row with
   the hero and the mobs (`z-index` from `--y`), so the hero passing behind a
   column is hidden by it;
+- the walls hide the hero, the mobs and the furniture behind them or beside
+  them, whose sprites are wider and taller than a tile: the hero's weapon and
+  shield never stick out over the walls of a corridor, nor over the face of a
+  wall it passes through. The lower half of a face hides what stands on its
+  row, so that the hero standing in front of a wall is still drawn over it; the
+  upper half and the top of a wall hide their row and the row below. The gate
+  stands over its wall;
 - chests standing as furniture are open: only the chests that hold an item are
   closed. Big furniture (chests, skulls, coins) only stands between two bare
   floor tiles, with nothing right behind it, so that it never covers a wall, a
@@ -154,8 +164,18 @@ There are no buttons and no stairs: everything happens by walking.
   reaches the server.
 - Defeating the boss of the last floor, which has no gate, wins the run.
 
-Characters come from the objects sheet and the hero sheet: the hero turns the
-way it last tried to go and walks while it moves; items are chests, chosen by
+The hero is a Mana Seed paper doll (`tiles/hero.ts`): a body, an outfit, hair,
+maybe a hat, a weapon and a shield, each on its own sheet, stacked in one window
+that plays the same frames. It stands on guard and shuffles between tiles with
+its weapon drawn, facing the way it last tried to go in all four directions; the
+weapon and the shield pass in front of or behind the body with the facing, as
+the art's layer order guides say. Headwear hides the hair, which would stick out
+of it. Until the run receives the hero from the
+Player service, its look is drawn at random from the run id
+(`heroAppearanceOf`): a new dungeon, a new hero, the same one on every floor and
+after a reload.
+
+Other characters come from the objects sheet: items are chests, chosen by
 the element's id, and traps spikes. Every enemy, the boss included (twice the
 size), is the art team's `placeholder_mob.png` for now: a single image, so it
 floats above its tile over a shadow that stays on the floor.
@@ -178,7 +198,8 @@ HUD, the minimap and the actions float over the board.
 | ----- | ---------------------------------- | ------------------------------------------------------------------------------- |
 | Unit  | `tests/dungeonMap.spec.ts`         | Decoding of real backend payloads, contract drift detection, walkability rule.  |
 | Unit  | `tests/autotile.spec.ts`           | Deterministic visuals, a rim above every face, walls two tiles high, closed corners, nothing below south walls, hangings on tall walls only, torches by the gate, pools and their banks, tombs, rooms dressed for their kind. |
-| Unit  | `tests/sprites.spec.ts`            | Animated sprites: chests only for items, the hero's rows, the boss, the doors. |
+| Unit  | `tests/sprites.spec.ts`            | Animated sprites: chests only for items, the boss, the doors.                  |
+| Unit  | `tests/hero.spec.ts`               | One look per run, a sheet for every piece, layer order by facing, rows and feet. |
 | Unit  | `tests/dungeonRules.spec.ts`       | Key mapping, camera clamping, fog of war (void under the walls included).       |
 | Unit  | `tests/useDungeonExplorer.spec.ts` | Predicted moves in order, no request into a wall or a locked gate, boss fight opens the gate, resync on refusal, one fetch per floor. |
 

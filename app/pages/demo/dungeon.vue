@@ -13,21 +13,26 @@ import PROPS_SRC from "~/assets/dongeon/props.png";
 import OBJECTS_SRC from "~/assets/dongeon/objects.png";
 import LIQUIDS_SRC from "~/assets/dongeon/liquids.png";
 import MOB_SRC from "~/assets/dongeon/placeholder_mob.png";
-import HERO_SRC from "~/assets/heroes/swordsman/hero_swordsman_spritesheet.png";
-import heroIdleSrc from "~/assets/heroes/heros/png_spritesheet/hero_16x16_idle_spriteSheet.png";
-import heroRpgMakerSrc from "~/assets/heroes/heros/png_spritesheet/hero_16x16_rpgm23k_spritesheet.png";
 import DungeonSpriteSwatch from "~/features/dungeon/components/DungeonSpriteSwatch.vue";
 import { RIM_KEYS } from "~/features/dungeon/tiles/atlas.generated";
 import {
+  HERO_SHEET,
+  HERO_WARDROBE,
+  heroSheetPath,
+  heroSprite,
+  type HeroPose,
+  type HeroSlot,
+} from "~/features/dungeon/tiles/hero";
+import { heroSheetUrl } from "~/features/dungeon/tiles/heroSheets";
+import {
   BOSS,
   ENEMY,
-  HERO_SHEET,
   TRAP,
   gateSprite,
-  heroSprite,
   itemSprite,
   type AnimatedSprite,
 } from "~/features/dungeon/tiles/sprites";
+import type { Direction } from "~/features/dungeon/types";
 import {
   BANNERS,
   DECALS,
@@ -77,19 +82,24 @@ const sheetSrc = (sheet: SheetName) => (sheet === "atlas" ? ATLASES[theme.value]
 
 // --- Hero and mobs ------------------------------------------------------------------------
 
-/** Every row of the swordsman sheet, through the same window as `heroSprite`. */
-const HERO_ROWS = [
-  { label: "idle", frames: 6 },
-  { label: "run", frames: 8 },
-  { label: "walk", frames: 8 },
-  { label: "attack", frames: 8 },
-  { label: "attack (end)", frames: 2 },
-  { label: "hurt", frames: 4 },
-  { label: "dash attack", frames: 8 },
-].map(({ label, frames }, row) => {
-  const window = heroSprite("idle");
-  return { label, sprite: { ...window, y: row * window.h, frames, duration: frames * 0.1 } };
-});
+/** The hero's body (the bottom layer of its paper doll), in its first skin tone. */
+const HERO_BODY_SRC = heroSheetUrl(heroSheetPath("body", { style: "humn", variant: 1 }));
+
+const FACINGS: readonly Direction[] = ["south", "north", "east", "west"];
+
+/** Every pose for every facing, through the same window as the explorer (`heroSprite`). */
+const HERO_POSES = (["idle", "move"] as const satisfies readonly HeroPose[]).flatMap((pose) =>
+  FACINGS.map((facing) => ({ label: `${pose} ${facing}`, sprite: heroSprite(pose, facing) })),
+);
+
+/** Each piece of the wardrobe, in its first colour, standing on guard facing south. */
+const HERO_PIECES = (Object.keys(HERO_WARDROBE) as HeroSlot[]).flatMap((slot) =>
+  HERO_WARDROBE[slot].styles.map((style) => ({
+    label: `${slot} ${style}`,
+    src: heroSheetUrl(heroSheetPath(slot, { style, variant: 1 })),
+    sprite: heroSprite("idle", "south"),
+  })),
+);
 
 const MOBS = [
   { label: "enemy", sprite: ENEMY },
@@ -98,7 +108,7 @@ const MOBS = [
 
 /** A sheet of `sprites.ts`, by name. */
 const ANIMATED_SHEETS: Record<AnimatedSprite["sheet"], { src: string; sheet: { width: number; height: number } }> = {
-  hero: { src: HERO_SRC, sheet: HERO_SHEET },
+  hero: { src: HERO_BODY_SRC, sheet: HERO_SHEET },
   mob: { src: MOB_SRC, sheet: { width: 32, height: 32 } },
   objects: { src: OBJECTS_SRC, sheet: SHEETS.objects },
 };
@@ -178,9 +188,11 @@ const RAW_SHEETS = computed(() => [
   { title: "Objects", src: OBJECTS_SRC, file: "dongeon/objects.png" },
   { title: "Liquids", src: LIQUIDS_SRC, file: "dongeon/liquids.png" },
   { title: "Mob placeholder", src: MOB_SRC, file: "dongeon/placeholder_mob.png" },
-  { title: "Swordsman hero", src: HERO_SRC, file: "heroes/swordsman/hero_swordsman_spritesheet.png" },
-  { title: "16 x 16 hero, idle", src: heroIdleSrc, file: "heroes/heros/png_spritesheet/hero_16x16_idle_spriteSheet.png" },
-  { title: "16 x 16 hero, RPG Maker", src: heroRpgMakerSrc, file: "heroes/heros/png_spritesheet/hero_16x16_rpgm23k_spritesheet.png" },
+  {
+    title: "Hero body (Mana Seed)",
+    src: HERO_BODY_SRC,
+    file: `heroes/mana-seed/${heroSheetPath("body", { style: "humn", variant: 1 })}`,
+  },
 ]);
 </script>
 
@@ -199,16 +211,22 @@ const RAW_SHEETS = computed(() => [
       <p class="demo-page__hint">The theme changes the atlas: walls, floors and columns.</p>
     </UiTabs>
 
-    <UiPanel title="Player placeholder" :heading-level="PanelHeadingLevel.TWO">
+    <UiPanel title="Hero" :heading-level="PanelHeadingLevel.TWO">
+      <p class="demo-page__hint">
+        A Mana Seed paper doll: one sheet per layer, stacked by the explorer. Its body, in
+        every pose and facing:
+      </p>
       <div class="demo-page__grid">
         <DungeonSpriteSwatch
-v-for="row in HERO_ROWS" :key="row.label" v-bind="ANIMATED_SHEETS.hero"
-          :sprite="row.sprite" :frames="row.sprite.frames" :pitch="row.sprite.pitch" :duration="row.sprite.duration"
-          :label="row.label" />
+v-for="pose in HERO_POSES" :key="pose.label" v-bind="ANIMATED_SHEETS.hero"
+          :sprite="pose.sprite" :frames="pose.sprite.frames" :pitch="pose.sprite.pitch" :duration="pose.sprite.duration"
+          :label="pose.label" />
+      </div>
+      <h3>Wardrobe</h3>
+      <div class="demo-page__grid">
         <DungeonSpriteSwatch
-v-bind="ANIMATED_SHEETS.hero" :sprite="heroSprite('run')"
-          :frames="heroSprite('run').frames" :pitch="heroSprite('run').pitch" :duration="heroSprite('run').duration"
-          flip label="run (west)" />
+v-for="piece in HERO_PIECES" :key="piece.label" :src="piece.src" :sheet="HERO_SHEET"
+          :sprite="piece.sprite" :label="piece.label" />
       </div>
     </UiPanel>
 

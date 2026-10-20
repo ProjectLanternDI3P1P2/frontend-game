@@ -34,6 +34,12 @@ function typeSeed(event: Event) {
   input.value = seed.value = formatSeed(input.value);
 }
 
+/**
+ * Starts a run and opens it. The heroes will come from the Player service: each player's
+ * character as they made it (look, colours, hair, class, items…), to be drawn in the
+ * dungeon. Until then, the hero of a run is drawn at random from its id
+ * (`heroAppearanceOf` in `tiles/hero.ts`).
+ */
 async function explore(replayedSeed?: string) {
   const runId = await start(replayedSeed);
   if (runId) await navigateTo(`/dungeon/${runId}`);
