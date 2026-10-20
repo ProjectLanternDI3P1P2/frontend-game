@@ -27,10 +27,13 @@ import type { AnimatedSprite } from "./sprites";
 export const HERO_SHEET = { width: 512, height: 512, cell: 64 } as const;
 
 /** The art's page the hero is drawn from: on guard and moving, a weapon in one hand. */
-export const HERO_PAGE: HeroPage = "pONE2";
+export const HERO_PAGE = "pONE2" satisfies HeroPage;
 
-/** What each slot can wear in the dungeon: every piece the page has. */
-export const HERO_WARDROBE = HERO_CATALOGUE[HERO_PAGE] as Record<HeroSlot, HeroStyles>;
+/**
+ * What each slot can wear in the dungeon: every piece the page has. Typed without a cast, so
+ * that a page lacking a slot does not compile here.
+ */
+export const HERO_WARDROBE: Record<HeroSlot, HeroStyles> = HERO_CATALOGUE[HERO_PAGE];
 
 export interface HeroAppearance {
   body: HeroPiece;
@@ -79,7 +82,8 @@ function seededRandom(text: string): () => number {
     state = Math.imul(state ^ character.codePointAt(0)!, 0x01000193);
   }
   return () => {
-    state = (state + 0x6d2b79f5) | 0;
+    // Wrapped to 32 bits, unsigned: the same draws as the reference's `| 0`.
+    state = (state + 0x6d2b79f5) >>> 0;
     let mixed = Math.imul(state ^ (state >>> 15), 1 | state);
     mixed = (mixed + Math.imul(mixed ^ (mixed >>> 7), 61 | mixed)) ^ mixed;
     return ((mixed ^ (mixed >>> 14)) >>> 0) / 4294967296;

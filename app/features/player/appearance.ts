@@ -40,9 +40,10 @@ export type HeroStyles = Readonly<Record<string, number>>;
 
 /**
  * Every sheet in the repository, by page and slot. Colours start at v01: v00 is the artist's
- * palette template, never drawn.
+ * palette template, never drawn. A page may lack slots: its type keeps the slots it has, so a
+ * view that needs all of them only compiles with a complete page.
  */
-export const HERO_CATALOGUE: Partial<Record<HeroPage, Partial<Record<HeroSlot, HeroStyles>>>> = {
+export const HERO_CATALOGUE = {
   pONE2: {
     body: { humn: 10 },
     outfit: { fstr: 5, pfpn: 5 },
@@ -51,7 +52,7 @@ export const HERO_CATALOGUE: Partial<Record<HeroPage, Partial<Record<HeroSlot, H
     weapon: { sw01: 5, ax01: 5, mc01: 5 },
     shield: { sh01: 5, sh02: 5, sh03: 5 },
   },
-};
+} satisfies Partial<Record<HeroPage, Partial<Record<HeroSlot, HeroStyles>>>>;
 
 /** The sheet of a piece, relative to `app/assets/heroes/mana-seed/`. */
 export function heroSheetPath(page: HeroPage, slot: HeroSlot, { style, variant }: HeroPiece): string {

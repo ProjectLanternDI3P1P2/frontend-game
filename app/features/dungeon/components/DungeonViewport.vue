@@ -461,9 +461,19 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 }
 
 // The gate is set in its wall: over the faces and the top beside it (see
-// `.dungeon-tile--wall-face`), under what stands in front of it.
+// `.dungeon-tile--wall-face`), under what stands in front of it. It stays on its first
+// frame, closed, until its boss is defeated; then it rises to its last one, open.
 .dungeon-door {
   z-index: calc(2 * var(--y) + 5);
+  animation: none;
+
+  &--opening {
+    background-position-x: calc((var(--sx) + var(--pitch) * 4) * var(--px) * -1);
+
+    @include bp.motion-safe {
+      animation: dungeon-door-open var(--duration) steps(4) backwards;
+    }
+  }
 }
 
 // In depth order with the furniture (see `.dungeon-tile--upright`).
@@ -699,22 +709,6 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 
 .dungeon-element--item {
   filter: drop-shadow(0 0 calc(var(--px) * 2) color-mix(in srgb, var(--color-accent) 60%, transparent));
-}
-
-// The gate down stays on its first frame, closed, until its boss is defeated; then it
-// rises to its last one, open.
-.dungeon-door {
-  animation: none;
-
-  &--opening {
-    background-position-x: calc((var(--sx) + var(--pitch) * 4) * var(--px) * -1);
-  }
-
-  &--opening {
-    @include bp.motion-safe {
-      animation: dungeon-door-open var(--duration) steps(4) backwards;
-    }
-  }
 }
 
 @keyframes dungeon-door-open {
