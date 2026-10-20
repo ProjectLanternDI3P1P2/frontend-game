@@ -37,7 +37,9 @@ function badge(item: InventoryItem): string {
         >Retry</UiButton
       >
     </UiNotice>
-    <output v-else-if="loading && !inventory">Loading inventory…</output>
+    <output v-else-if="loading && !inventory" aria-label="Loading inventory"
+      >Loading inventory…</output
+    >
     <template v-else-if="inventory">
       <p v-if="!inventory.items.length && !inventory.consumables.length">
         This hero owns nothing yet.
