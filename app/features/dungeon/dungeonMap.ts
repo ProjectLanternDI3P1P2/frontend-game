@@ -207,6 +207,26 @@ export function isWalkableAt(floor: DecodedFloor, position: Position): boolean {
   return isWalkable(cellAt(floor, position.x, position.y));
 }
 
+/**
+ * The tiles a hero has stood on, from the run's `visitedTiles`: a base64
+ * bitset in row order, tile `i = y * width + x` being bit `i % 8` of byte
+ * `i / 8`. Empty for a run that has not moved since the bitset was added.
+ */
+export function decodeVisitedTiles(
+  floor: Pick<DecodedFloor, "width" | "height">,
+  encoded: string,
+): Position[] {
+  const bytes = atob(encoded);
+  const count = Math.min(bytes.length * 8, floor.width * floor.height);
+  const tiles: Position[] = [];
+  for (let index = 0; index < count; index++) {
+    if (bytes.charCodeAt(index >> 3) & (1 << (index & 7))) {
+      tiles.push({ x: index % floor.width, y: Math.floor(index / floor.width) });
+    }
+  }
+  return tiles;
+}
+
 export function roomAt(
   floor: DecodedFloor,
   position: Position,
