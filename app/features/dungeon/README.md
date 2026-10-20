@@ -33,9 +33,10 @@ copying `app/features/dungeon/`, `app/pages/dungeon/` and the route rule.
 `defeatFloorBoss` is temporary too: it stands in for Combat's fight when the
 hero walks into the boss, and Combat calls it once the fight exists.
 
-`createDungeonRun` is temporary: in the target flow the Player service creates
-the game session and requests the run (ADR-GLOB-011). Only
-`composables/useDungeonLauncher.ts` changes when Player exposes it.
+The Player lobby now owns the normal start flow: it creates the game session,
+passes an optional replay seed to Dungeon, then opens `/dungeon/:runId` after
+Player returns the created run. The standalone `/dungeon` launcher remains a
+development explorer for starting a run directly against Dungeon.
 
 ### How it stays fast without an engine or a canvas (ADR-FE-005, ADR-FE-006)
 

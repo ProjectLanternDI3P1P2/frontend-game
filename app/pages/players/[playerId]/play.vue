@@ -24,6 +24,7 @@ const creating = ref(false);
 const selectingHero = ref(false);
 const heroPickerOpen = ref(false);
 const error = ref("");
+const replaySeed = ref(typeof route.query.seed === "string" ? route.query.seed : "");
 let hub: PlayerHubClient | null = null;
 const selectedHero = computed(
   () => heroes.value.find((hero) => hero.id === selectedId.value) ?? null,
@@ -58,6 +59,7 @@ async function createLobby(): Promise<void> {
       commandId: createIdempotencyKey(),
       playerId: playerId.value,
       heroId: selectedHero.value.id,
+      dungeonSeed: replaySeed.value.trim() || undefined,
     });
     await router.push(
       `/players/${encodeURIComponent(playerId.value)}/play/lobbies/${session.sessionId}`,
@@ -122,6 +124,16 @@ onBeforeUnmount(() => void hub?.disconnect());
           <p class="join-game__eyebrow">Solo</p>
           <h2>Create a lobby</h2>
           <p>Prepare your hero, then start the run when you are ready.</p>
+          <label class="join-game__seed" for="dungeon-seed">
+            Replay seed <span>(optional)</span>
+            <input
+              id="dungeon-seed"
+              v-model="replaySeed"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="0KX4-M2T9-QZ7PA"
+            />
+          </label>
           <UiButton
             :size="ButtonSize.SM"
             :variant="ButtonVariant.PRIMARY"
@@ -193,6 +205,27 @@ h1 {
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
+}
+.join-game__seed {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xs);
+
+  span {
+    color: var(--color-text-muted);
+  }
+
+  input {
+    min-block-size: 2.5rem;
+    padding-inline: var(--space-3);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-base);
+    color: var(--color-text-primary);
+    font-family: var(--font-family-mono);
+    text-transform: uppercase;
+  }
 }
 .join-game__hero h2 {
   display: -webkit-box;
