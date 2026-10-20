@@ -1,3 +1,4 @@
+import { ref, type Ref } from "vue";
 import type { HeroInventory } from "../types";
 import { useInventoryApi } from "../api/inventoryApi";
 import { GatewayError } from "~/shared/utils/gateway";
