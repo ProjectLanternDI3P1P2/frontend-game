@@ -5,7 +5,7 @@ import {
   playerHubUrl,
 } from "~/features/player/api/playerHub";
 import type { GameSessionSnapshot } from "~/features/player/types";
-definePageMeta({ layout: "player" });
+definePageMeta({ layout: "default" });
 const route = useRoute();
 const config = useRuntimeConfig();
 const playerId = computed(() => String(route.params.playerId));

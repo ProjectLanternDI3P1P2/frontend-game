@@ -17,7 +17,7 @@ import {
 } from "~/features/player/lobbyClosure";
 import { createIdempotencyKey } from "~/shared/utils/idempotency";
 
-definePageMeta({ layout: "player" });
+definePageMeta({ layout: "default" });
 const route = useRoute();
 const router = useRouter();
 const config = useRuntimeConfig();
