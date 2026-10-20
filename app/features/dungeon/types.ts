@@ -27,12 +27,7 @@ export type ElementTypeName = "enemy" | "boss" | "item" | "trap";
 /** How an enemy silhouette moves; the pack it stands for is Combat's. */
 export type EnemyKindName = "zombie" | "mage" | "goblin" | "bat";
 
-export type RoomTypeName =
-  | "start"
-  | "combat"
-  | "treasure"
-  | "empty"
-  | "boss";
+export type RoomTypeName = "start" | "combat" | "treasure" | "empty" | "boss";
 
 export type DungeonRunStatus = "active" | "won" | "lost" | "abandoned";
 
@@ -128,6 +123,8 @@ export interface DungeonRunResponse {
    * (`decodeVisitedTiles`): the fog of war is rebuilt from it after a reload.
    */
   visitedTiles: string;
+  /** Item element IDs already opened on the current floor. */
+  openedChestElementIds: number[];
   startedAt: string;
 }
 

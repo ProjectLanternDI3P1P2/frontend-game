@@ -1,14 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { mobClassName, BOSS, ENEMY, gateSprite, itemSprite, spriteStyle } from "../tiles/sprites";
+import {
+  mobClassName,
+  BOSS,
+  ENEMY,
+  gateSprite,
+  itemSprite,
+  openedItemSprite,
+  spriteStyle,
+} from "../tiles/sprites";
 
 describe("sprites", () => {
   it("only uses chests for items", () => {
-    expect(new Set([0, 1, 2, 3, 4, 5].map((id) => itemSprite(id).x))).toEqual(new Set([0]));
-    expect(new Set([0, 1, 2].map((id) => itemSprite(id).y))).toEqual(new Set([64, 96, 128]));
+    expect(new Set([0, 1, 2, 3, 4, 5].map((id) => itemSprite(id).x))).toEqual(
+      new Set([0]),
+    );
+    expect(new Set([0, 1, 2].map((id) => itemSprite(id).y))).toEqual(
+      new Set([64, 96, 128]),
+    );
   });
 
   it("gives a chest the same look every time: it depends on its id only", () => {
     expect(itemSprite(3)).toEqual(itemSprite(3));
+  });
+
+  it("uses the lid-up chest asset after a chest is opened", () => {
+    expect(openedItemSprite(0).x).not.toBe(itemSprite(0).x);
+    expect(openedItemSprite(0).y).toBe(itemSprite(0).y);
   });
 
   it("draws every enemy, the boss included, with the placeholder mob, floating above its tile", () => {
@@ -41,7 +58,14 @@ describe("sprites", () => {
 
 describe("mobClassName", () => {
   it("lights up a mob once it is in aggro", () => {
-    const mob = { id: 4, kind: "bat", x: 1, y: 2, aggro: false, nextTeleport: null } as const;
+    const mob = {
+      id: 4,
+      kind: "bat",
+      x: 1,
+      y: 2,
+      aggro: false,
+      nextTeleport: null,
+    } as const;
 
     expect(mobClassName(mob)).not.toContain("dungeon-mob--aggro");
     expect(mobClassName({ ...mob, aggro: true })).toContain("dungeon-mob--aggro");
