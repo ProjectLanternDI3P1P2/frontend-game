@@ -25,10 +25,14 @@ copying `app/features/dungeon/`, `app/pages/dungeon/` and the route rule.
 | Call               | Gateway route                                    | Cached                                 |
 | ------------------ | ------------------------------------------------ | -------------------------------------- |
 | `createDungeonRun` | `POST /api/v1/dungeon-runs`                      | never                                  |
-| `fetchDungeonRun`  | `GET /api/v1/dungeon-runs/{runId}`               | never: the run is mutable              |
+| `joinDungeon`      | SignalR `/hubs/dungeons` → `JoinDungeon`         | never: the run is mutable              |
 | `moveHero`         | SignalR `/hubs/dungeons` → `MoveHero`            | never                                  |
 | `defeatFloorBoss`  | `POST /api/v1/dungeon-runs/{runId}/boss-defeats` | never                                  |
 | `fetchDungeonMap`  | `GET /api/v1/dungeons/{seed}/map?floor=n`        | forever: a floor is immutable per seed |
+
+The fog of war survives a reload: the run carries the tiles the hero stood on
+(`visitedTiles`), and the explorer reveals around each of them again on arrival
+at a floor.
 
 `defeatFloorBoss` is temporary too: it stands in for Combat's fight when the
 hero walks into the boss, and Combat calls it once the fight exists.
@@ -201,7 +205,7 @@ HUD, the minimap and the actions float over the board.
 | Unit  | `tests/sprites.spec.ts`            | Animated sprites: chests only for items, the boss, the doors.                  |
 | Unit  | `tests/hero.spec.ts`               | One look per run, pieces from the catalogue only, layer order by facing, rows and feet. |
 | Unit  | `tests/dungeonRules.spec.ts`       | Key mapping, camera clamping, fog of war (void under the walls included).       |
-| Unit  | `tests/useDungeonExplorer.spec.ts` | Predicted moves in order, no request into a wall or a locked gate, boss fight opens the gate, resync on refusal, one fetch per floor. |
+| Unit  | `tests/useDungeonExplorer.spec.ts` | Fog and minimap rebuilt from the visited tiles, predicted moves in order, no request into a wall or a locked gate, boss fight opens the gate, resync on refusal, one fetch per floor. |
 
 The fixtures in `tests/fixtures/` were produced by the Dungeon service's query
 handlers: regenerate them when the contract changes.
