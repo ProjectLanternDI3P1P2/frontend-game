@@ -158,6 +158,8 @@ function chooseHairColor(hairColor: number) {
   &__swatch {
     width: 1.75rem;
     height: 1.75rem;
+    appearance: none;
+    border-radius: 50%;
     border: 2px solid var(--color-border-subtle);
     padding: 0;
     background: var(--swatch-color);
@@ -166,13 +168,22 @@ function chooseHairColor(hairColor: number) {
 
     &:checked {
       border-color: var(--color-text-highlight);
-      outline: 2px solid var(--color-text-highlight);
-      outline-offset: 1px;
+      box-shadow:
+        inset 0 0 0 2px var(--color-surface-base),
+        0 0 0 2px var(--color-text-highlight);
     }
 
     &:focus-visible {
-      outline: 2px solid var(--color-text-primary);
-      outline-offset: 2px;
+      box-shadow:
+        inset 0 0 0 2px var(--color-surface-base),
+        0 0 0 2px var(--color-text-primary);
+    }
+
+    &:checked:focus-visible {
+      box-shadow:
+        inset 0 0 0 2px var(--color-surface-base),
+        0 0 0 2px var(--color-text-highlight),
+        0 0 0 4px var(--color-text-primary);
     }
   }
 
