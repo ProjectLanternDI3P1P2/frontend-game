@@ -28,6 +28,7 @@ export class PlayerHubClient {
     commandId: string;
     playerId: string;
     heroId: string;
+    dungeonSeed?: string;
   }): Promise<GameSessionSnapshot> {
     return this.accept(
       await this.hub.invoke<SessionAcknowledgement>("CreateSoloLobby", command),
