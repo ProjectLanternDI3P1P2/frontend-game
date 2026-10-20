@@ -8,8 +8,14 @@ import DungeonMinimap from "~/features/dungeon/components/DungeonMinimap.vue";
 import DungeonViewport from "~/features/dungeon/components/DungeonViewport.vue";
 import { useBoardViewport } from "~/features/dungeon/composables/useBoardViewport";
 import { useDungeonExplorer } from "~/features/dungeon/composables/useDungeonExplorer";
-import { MOVE_COOLDOWN_MS, createCooldown, directionForKey } from "~/features/dungeon/dungeonRules";
+import {
+  MOVE_COOLDOWN_MS,
+  createCooldown,
+  directionForKey,
+} from "~/features/dungeon/dungeonRules";
 import type { Direction } from "~/features/dungeon/types";
+import MarketplaceModal from "~/features/marketplace/components/MarketplaceModal.vue";
+import { useMarketplace } from "~/features/marketplace/composables/useMarketplace";
 import { ButtonSize, ButtonVariant } from "~/shared/ui/ui.types";
 
 definePageMeta({ layout: "game" });
@@ -43,6 +49,13 @@ const {
 const board = ref<HTMLElement | null>(null);
 const viewport = useBoardViewport(board);
 const copied = ref(false);
+const marketplace = useMarketplace();
+const { isOpen: marketplaceOpen, listings, status: marketplaceStatus } = marketplace;
+
+function closeMarketplace() {
+  marketplace.close();
+  void nextTick(() => board.value?.focus());
+}
 
 onMounted(async () => {
   await explorer.start();
@@ -54,10 +67,18 @@ const canMove = createCooldown(MOVE_COOLDOWN_MS);
 
 /** One move per slide, from the keyboard as from the on-screen pad. */
 function move(direction: Direction) {
-  if (canMove()) explorer.move(direction);
+  if (!marketplaceOpen.value && canMove()) explorer.move(direction);
 }
 
 function onKeydown(event: KeyboardEvent) {
+  if (event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return;
+  if (event.code === "KeyM") {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.repeat) marketplace.open();
+    return;
+  }
+  if (marketplaceOpen.value) return;
   const direction = directionForKey(event.code);
   if (!direction) return;
   event.preventDefault();
@@ -91,7 +112,16 @@ async function copyShareLink() {
            WAI-ARIA makes `application` a focusable widget, which Sonar's
            tabindex rule (Web:S6845) does not know: hence the NOSONAR. -->
       <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions -->
-      <div ref="board" class="dungeon-page__board" role="application" aria-label="Dungeon" aria-describedby="dungeon-help" tabindex="0" @keydown="onKeydown"> <!-- NOSONAR -->
+      <div
+        ref="board"
+        class="dungeon-page__board"
+        role="application"
+        aria-label="Dungeon"
+        aria-describedby="dungeon-help"
+        tabindex="0"
+        @keydown="onKeydown"
+      >
+        <!-- NOSONAR -->
         <DungeonViewport
           :loaded="loaded"
           :hero="hero"
@@ -109,7 +139,8 @@ async function copyShareLink() {
 
       <header class="dungeon-page__panel dungeon-page__hud">
         <h1 class="dungeon-page__title">
-          Floor {{ run.currentFloor + 1 }}<span v-if="run.floorCount > 1"> / {{ run.floorCount }}</span>
+          Floor {{ run.currentFloor + 1
+          }}<span v-if="run.floorCount > 1"> / {{ run.floorCount }}</span>
         </h1>
         <dl class="dungeon-page__facts">
           <div>
@@ -122,7 +153,18 @@ async function copyShareLink() {
           </div>
         </dl>
         <div class="dungeon-page__links">
-          <UiButton :variant="ButtonVariant.GHOST" :size="ButtonSize.SM" @click="copyShareLink">
+          <UiButton
+            :variant="ButtonVariant.GHOST"
+            :size="ButtonSize.SM"
+            @click="marketplace.open"
+          >
+            Marketplace
+          </UiButton>
+          <UiButton
+            :variant="ButtonVariant.GHOST"
+            :size="ButtonSize.SM"
+            @click="copyShareLink"
+          >
             {{ copied ? "Link copied" : "Share" }}
           </UiButton>
           <NuxtLink to="/dungeon" class="dungeon-page__leave">Leave</NuxtLink>
@@ -141,23 +183,38 @@ async function copyShareLink() {
       <div class="dungeon-page__actions">
         <!-- A live status message, not a form field: it has nothing to label. -->
         <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -->
-        <output v-if="run.status === 'won'" class="dungeon-page__panel dungeon-page__victory">
+        <output
+          v-if="run.status === 'won'"
+          class="dungeon-page__panel dungeon-page__victory"
+        >
           Victory! The final boss is defeated.
         </output>
-        <p v-if="errorMessage" class="dungeon-page__panel dungeon-page__error" role="alert">
+        <p
+          v-if="errorMessage"
+          class="dungeon-page__panel dungeon-page__error"
+          role="alert"
+        >
           {{ errorMessage }}
         </p>
       </div>
 
       <DungeonControls
         class="dungeon-page__pad"
-        :disabled="run.status !== 'active'"
+        :disabled="run.status !== 'active' || marketplaceOpen"
         @move="move"
       />
 
+      <MarketplaceModal
+        v-if="marketplaceOpen"
+        :listings="listings"
+        :status="marketplaceStatus"
+        @close="closeMarketplace"
+        @refresh="marketplace.refresh"
+      />
+
       <p id="dungeon-help" class="visually-hidden">
-        Arrow keys, WASD or ZQSD to move, one tile per turn. Walk into the boss of the floor to
-        fight it; once it is defeated, walk into the gate behind it to go down.
+        Arrow keys, WASD or ZQSD to move, one tile per turn. Walk into the boss of the
+        floor to fight it; once it is defeated, walk into the gate behind it to go down.
       </p>
       <p class="visually-hidden" aria-live="polite">{{ announcement }}</p>
     </template>
