@@ -87,8 +87,11 @@ async function start(): Promise<void> {
       sessionId: session.value.sessionId,
     });
     session.value = started;
+    if (!started.dungeonRunId) {
+      throw new Error("Player started the session without a dungeon run.");
+    }
     await router.push(
-      `/players/${encodeURIComponent(playerId.value)}/play/lobbies/${started.sessionId}/run`,
+      `/dungeon/${encodeURIComponent(started.dungeonRunId)}?playerId=${encodeURIComponent(playerId.value)}`,
     );
   } catch (cause) {
     error.value =
@@ -181,6 +184,9 @@ onBeforeUnmount(() => void hub?.disconnect());
               ✓ Your hero is ready<br />✓ Solo roster is complete
             </p>
             <p v-else>The dungeon run is being prepared.</p>
+            <p v-if="session.dungeonSeed">
+              Replay seed: <code>{{ session.dungeonSeed }}</code>
+            </p>
             <UiButton
               :size="ButtonSize.SM"
               :variant="ButtonVariant.PRIMARY"
@@ -188,6 +194,12 @@ onBeforeUnmount(() => void hub?.disconnect());
               :disabled="!isCreator || session.state !== 'Lobby'"
               @click="start"
               >{{ starting ? "Starting…" : "Start game" }}</UiButton
+            >
+            <NuxtLink
+              v-if="session.state === 'Active' && session.dungeonRunId"
+              :to="`/dungeon/${encodeURIComponent(session.dungeonRunId)}?playerId=${encodeURIComponent(playerId)}`"
+              class="lobby-page__continue"
+              >Continue dungeon</NuxtLink
             >
             <p v-if="!isCreator" class="lobby-page__hint">
               Only the creator can launch this run.
@@ -341,6 +353,10 @@ h1 {
 .lobby-page__hint {
   color: var(--color-text-highlight) !important;
   font-size: 0.625rem !important;
+}
+.lobby-page__continue {
+  color: var(--color-text-highlight);
+  font-size: var(--font-size-xs);
 }
 .lobby-page__actions {
   display: grid;
