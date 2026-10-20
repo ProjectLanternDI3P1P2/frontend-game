@@ -1,14 +1,20 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { HeroInventory, InventoryItem } from "../types";
 import { ButtonSize, ButtonVariant } from "~/shared/ui/UiButton.vue";
 import { NoticeTone } from "~/shared/ui/UiNotice.vue";
 
-defineProps<{
+const props = defineProps<{
   inventory: HeroInventory | null;
   loading: boolean;
   unavailable: boolean;
 }>();
 defineEmits<{ retry: [] }>();
+
+const groups = computed(() => [
+  { label: "Items", list: props.inventory?.items ?? [] },
+  { label: "Consumables", list: props.inventory?.consumables ?? [] },
+]);
 
 function badge(item: InventoryItem): string {
   if (item.isEquipped) return "Equipped";
@@ -31,15 +37,12 @@ function badge(item: InventoryItem): string {
         >Retry</UiButton
       >
     </UiNotice>
-    <p v-else-if="loading && !inventory" role="status">Loading inventory…</p>
+    <output v-else-if="loading && !inventory">Loading inventory…</output>
     <template v-else-if="inventory">
       <p v-if="!inventory.items.length && !inventory.consumables.length">
         This hero owns nothing yet.
       </p>
-      <template v-for="group in [
-        { label: 'Items', list: inventory.items },
-        { label: 'Consumables', list: inventory.consumables },
-      ]" :key="group.label">
+      <template v-for="group in groups" :key="group.label">
         <div v-if="group.list.length">
           <h3>{{ group.label }}</h3>
           <ul>
