@@ -1,16 +1,114 @@
 /**
- * Hero appearance (hero customization) built on the Mana Seed character base.
+ * The catalogue of the hero's sheets (Mana Seed Character Base), and the only file that
+ * imports them: every view asks it for a sheet by its codes (slot, style, colour), never by a
+ * path, and squads exchange those codes, never a URL or an image.
  *
- * A hero is drawn by stacking pre-colored 512×512 sheets (8×8 frames of 64 px), from back to
- * front: body (skin tone) → underwear → hair or class headwear. Every hero starts the dungeon in
- * underwear; the class is only told apart by its headwear. Variant `v00` (the asset's base
- * ramp) is never offered.
+ * The sheets live in `app/assets/heroes/mana-seed/<slot>/`, under the art's own names:
+ * `char_a_{page}_{layer}_{style}_v{NN}.webp`. To add one, drop it in the folder of its slot
+ * and list it in `HERO_CATALOGUE`.
  */
 import type { HeroClassCode } from "./types";
 
+/** The hero's layers, from back to front (body, outfit, hair, hat, then what it holds). */
+export const HERO_SLOTS = [
+  "body",
+  "outfit",
+  "hair",
+  "hat",
+  "weapon",
+  "shield",
+] as const;
+
+export type HeroSlot = (typeof HERO_SLOTS)[number];
+
+/**
+ * The pages of the art: `p1` stands, walks and runs without a weapon; `pONE1` to `pONE3`
+ * fight with a weapon in one hand.
+ */
+export type HeroPage = "p1" | "pONE1" | "pONE2" | "pONE3";
+
+/** A piece of the art: its style (`humn`, `bob1`, `sw01`…) and its colour (v01, v02…). */
+export interface HeroPiece {
+  style: string;
+  variant: number;
+}
+
+/** The art's code of each layer, in the names of its sheets. */
+export const HERO_LAYER_CODES: Record<HeroSlot, string> = {
+  body: "0bas",
+  outfit: "1out",
+  hair: "4har",
+  hat: "5hat",
+  weapon: "6tla",
+  shield: "7tlb",
+};
+
+/** Styles of a slot, and how many colours each has: v01 to vNN. */
+export type HeroStyles = Readonly<Record<string, number>>;
+
+/**
+ * Every sheet in the repository, by page and slot. Colours start at v01: v00 is the artist's
+ * palette template, never drawn. A page may lack slots: its type keeps the slots it has, so a
+ * view that needs all of them only compiles with a complete page.
+ */
+export const HERO_CATALOGUE = {
+  // Hero creation and the Player screens (portraits, preview): standing and walking, unarmed.
+  p1: {
+    body: { humn: 10 },
+    outfit: { undi: 1 },
+    hair: { bob1: 13, dap1: 13 },
+    hat: { pfht: 5, pnty: 5 },
+  },
+  pONE2: {
+    body: { humn: 10 },
+    outfit: { fstr: 5, pfpn: 5 },
+    hair: { bob1: 13, dap1: 13 },
+    hat: { pfht: 5, pnty: 5 },
+    weapon: { sw01: 5, ax01: 5, mc01: 5 },
+    shield: { sh01: 5, sh02: 5, sh03: 5 },
+  },
+} satisfies Partial<Record<HeroPage, Partial<Record<HeroSlot, HeroStyles>>>>;
+
+/** The sheet of a piece, relative to `app/assets/heroes/mana-seed/`. */
+export function heroSheetPath(
+  page: HeroPage,
+  slot: HeroSlot,
+  { style, variant }: HeroPiece,
+): string {
+  const colour = String(variant).padStart(2, "0");
+  return `${slot}/char_a_${page}_${HERO_LAYER_CODES[slot]}_${style}_v${colour}.webp`;
+}
+
+const ROOT = "../../assets/heroes/mana-seed/";
+
+// Bundled by Vite with a hash; a layer's sheet is chosen at run time, so every sheet is listed.
+const URLS = import.meta.glob<string>("../../assets/heroes/mana-seed/**/*.webp", {
+  eager: true,
+  query: "?url",
+  import: "default",
+});
+
+/** The URL of the sheet of a piece. */
+export function heroSheetUrl(page: HeroPage, slot: HeroSlot, piece: HeroPiece): string {
+  const path = heroSheetPath(page, slot, piece);
+  const url = URLS[ROOT + path];
+  if (!url) throw new Error(`Missing hero sheet: ${path}`);
+  return url;
+}
+
+// ---------------------------------------------------------------------------------------
+// Hero customization (Player): the look chosen at creation, as the Player API returns it.
+// Every hero starts in underwear; the class is told apart by its headwear only. These
+// helpers turn that look into pieces of the catalogue above (page `p1`).
+// ---------------------------------------------------------------------------------------
+
 export type HeroHairStyle = "bald" | "bob1" | "dap1";
 
-/** Mirrors the `appearance` object of the Player API. `hairColor` is null for a bald hero. */
+/**
+ * The `appearance` object of the Player API (hero creation, sheet, list). Not to be confused
+ * with the dungeon's `HeroAppearance` (`features/dungeon/tiles/hero.ts`), which lists a piece
+ * per slot. `hairColor` is null for a bald hero.
+ */
 export interface HeroAppearance {
   skinTone: number;
   hairStyle: HeroHairStyle;
@@ -70,28 +168,18 @@ export const HAIR_COLORS: readonly AppearanceSwatch[] = [
   { value: 13, color: "#63778f", label: "Slate" },
 ];
 
-/** Headwear sheet per class: the warrior goes bare-headed. */
-export const CLASS_HEADWEAR: Readonly<Record<HeroClassCode, string | null>> = {
+/** Headwear per class: the warrior goes bare-headed, the shaman wears the farmer hat. */
+export const CLASS_HEADWEAR: Readonly<Record<HeroClassCode, HeroPiece | null>> = {
   warrior: null,
-  shaman: "5hat_pfht_v04",
-  mage: "5hat_pnty_v01",
+  shaman: { style: "pfht", variant: 4 },
+  mage: { style: "pnty", variant: 1 },
 };
 
-const UNDERWEAR = "1out_undi_v01";
+/** The starting outfit of every hero. */
+const UNDERWEAR: HeroPiece = { style: "undi", variant: 1 };
 
-const sheets = import.meta.glob<string>("../../assets/heroes/mana-seed/**/*.webp", {
-  eager: true,
-  query: "?url",
-  import: "default",
-});
-
-function sheetUrl(layer: string): string | null {
-  const suffix = `char_a_p1_${layer}.webp`;
-  const key = Object.keys(sheets).find((path) => path.endsWith(suffix));
-  return key ? (sheets[key] ?? null) : null;
-}
-
-const pad = (value: number) => String(value).padStart(2, "0");
+/** The page the Player screens draw from. */
+const PLAYER_PAGE = "p1" satisfies HeroPage;
 
 export function isHairless(appearance: Pick<HeroAppearance, "hairStyle">): boolean {
   return appearance.hairStyle === "bald";
@@ -114,30 +202,38 @@ export function resolveAppearance(
   return { skinTone, hairStyle, hairColor };
 }
 
-/** Sheet layer names, back to front. */
-export function heroLayerNames(
+/**
+ * The pieces of a hero, back to front: body, underwear, then the class headwear, or the hair
+ * when bare-headed. Headwear hides the hair: the hair sheets stick out of the farmer hat and
+ * the pointy hat (the art's guide: "some hats will require the hair to be removed"). The hair
+ * stays chosen and shows whenever the hero is drawn bare-headed.
+ */
+export function heroLayerPieces(
   classCode: HeroClassCode | null | undefined,
   appearance: Partial<HeroAppearance> | null | undefined,
-): string[] {
+): { slot: HeroSlot; piece: HeroPiece }[] {
   const resolved = resolveAppearance(appearance);
-  const layers = [`0bas_humn_v${pad(resolved.skinTone)}`, UNDERWEAR];
+  const layers: { slot: HeroSlot; piece: HeroPiece }[] = [
+    { slot: "body", piece: { style: "humn", variant: resolved.skinTone } },
+    { slot: "outfit", piece: UNDERWEAR },
+  ];
   const headwear = classCode ? CLASS_HEADWEAR[classCode] : null;
-  // Headwear hides the hair: the hair sheets stick out of the farmer hat and the pointy hat
-  // (the art's guide: "some hats will require the hair to be removed"). The hair stays
-  // chosen and shows whenever the hero is drawn bare-headed.
-  if (headwear) return [...layers, headwear];
+  if (headwear) return [...layers, { slot: "hat", piece: headwear }];
   if (resolved.hairStyle !== "bald" && resolved.hairColor !== null) {
-    layers.push(`4har_${resolved.hairStyle}_v${pad(resolved.hairColor)}`);
+    layers.push({
+      slot: "hair",
+      piece: { style: resolved.hairStyle, variant: resolved.hairColor },
+    });
   }
   return layers;
 }
 
-/** Sheet URLs, back to front. Missing sheets are skipped rather than drawn broken. */
+/** Sheet URLs of a hero, back to front (page `p1`). */
 export function heroLayerUrls(
   classCode: HeroClassCode | null | undefined,
   appearance: Partial<HeroAppearance> | null | undefined,
 ): string[] {
-  return heroLayerNames(classCode, appearance)
-    .map(sheetUrl)
-    .filter((url): url is string => url !== null);
+  return heroLayerPieces(classCode, appearance).map(({ slot, piece }) =>
+    heroSheetUrl(PLAYER_PAGE, slot, piece),
+  );
 }
