@@ -65,7 +65,8 @@ async function load(): Promise<void> {
 }
 
 async function createLobby(): Promise<void> {
-  if (!canCreateLobby.value) return;
+  const hero = selectedHero.value;
+  if (!hero || !canCreateLobby.value) return;
   creating.value = true;
   error.value = "";
   try {
@@ -77,7 +78,7 @@ async function createLobby(): Promise<void> {
     const session = await hub.createSoloLobby({
       commandId: createIdempotencyKey(),
       playerId: playerId.value,
-      heroId: selectedHero.value.id,
+      heroId: hero.id,
       dungeonSeed: replaySeed.value || undefined,
     });
     await router.push(
