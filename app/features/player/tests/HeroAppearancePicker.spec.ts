@@ -19,7 +19,7 @@ describe("HeroAppearancePicker", () => {
   it("changes the skin tone", async () => {
     const wrapper = mountPicker({ skinTone: 1, hairStyle: "bob1", hairColor: 1 });
 
-    await wrapper.get('[aria-label="Skin tone Umber"]').trigger("click");
+    await wrapper.get('[aria-label="Skin tone Umber"]').trigger("change");
 
     expect(lastEmitted(wrapper)).toEqual({
       skinTone: 10,
@@ -32,7 +32,7 @@ describe("HeroAppearancePicker", () => {
     const wrapper = mountPicker({ skinTone: 3, hairStyle: "bob1", hairColor: 8 });
     const styles = wrapper.findAll(".hero-appearance-picker__style");
 
-    await styles[0]!.trigger("click");
+    await styles[0]!.get("input").trigger("change");
     expect(lastEmitted(wrapper)).toEqual({
       skinTone: 3,
       hairStyle: "bald",
@@ -44,7 +44,10 @@ describe("HeroAppearancePicker", () => {
     });
     expect(wrapper.text()).toContain("A bald hero has no hair color.");
 
-    await wrapper.findAll(".hero-appearance-picker__style")[2]!.trigger("click");
+    await wrapper
+      .findAll(".hero-appearance-picker__style")[2]!
+      .get("input")
+      .trigger("change");
     expect(lastEmitted(wrapper)).toEqual({
       skinTone: 3,
       hairStyle: "dap1",
@@ -55,11 +58,13 @@ describe("HeroAppearancePicker", () => {
   it("marks the current choices as checked", () => {
     const wrapper = mountPicker({ skinTone: 5, hairStyle: "dap1", hairColor: 9 });
 
-    expect(
-      wrapper.get('[aria-label="Skin tone Copper"]').attributes("aria-checked"),
-    ).toBe("true");
-    expect(
-      wrapper.get('[aria-label="Hair color Azure"]').attributes("aria-checked"),
-    ).toBe("true");
+    expect(wrapper.get('[aria-label="Skin tone Copper"]').element).toHaveProperty(
+      "checked",
+      true,
+    );
+    expect(wrapper.get('[aria-label="Hair color Azure"]').element).toHaveProperty(
+      "checked",
+      true,
+    );
   });
 });

@@ -29,6 +29,7 @@ describe("Player API", () => {
     });
     await api.selectHero(playerId, heroId);
     await api.deselectHero(playerId, heroId);
+    await api.deleteHero(playerId, heroId);
 
     expect(gateway.get).toHaveBeenNthCalledWith(1, "players/player%20id/heroes", {
       signal: undefined,
@@ -49,8 +50,13 @@ describe("Player API", () => {
     expect(gateway.put).toHaveBeenCalledWith(
       "players/player%20id/heroes/hero%2Fid/selection",
     );
-    expect(gateway.delete).toHaveBeenCalledWith(
+    expect(gateway.delete).toHaveBeenNthCalledWith(
+      1,
       "players/player%20id/heroes/hero%2Fid/selection",
+    );
+    expect(gateway.delete).toHaveBeenNthCalledWith(
+      2,
+      "players/player%20id/heroes/hero%2Fid",
     );
   });
 });

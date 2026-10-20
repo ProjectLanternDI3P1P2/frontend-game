@@ -46,17 +46,17 @@ function chooseHairColor(hairColor: number) {
         role="radiogroup"
         aria-labelledby="skin-tone-label"
       >
-        <button
+        <input
           v-for="tone in SKIN_TONES"
           :key="tone.value"
           class="hero-appearance-picker__swatch"
-          type="button"
-          role="radio"
-          :aria-checked="modelValue.skinTone === tone.value"
+          type="radio"
+          name="skin-tone"
+          :checked="modelValue.skinTone === tone.value"
           :aria-label="`Skin tone ${tone.label}`"
           :title="tone.label"
           :style="{ '--swatch-color': tone.color }"
-          @click="update({ skinTone: tone.value })"
+          @change="update({ skinTone: tone.value })"
         />
       </div>
     </div>
@@ -74,15 +74,18 @@ function chooseHairColor(hairColor: number) {
         role="radiogroup"
         aria-labelledby="hair-style-label"
       >
-        <button
+        <label
           v-for="style in HAIR_STYLES"
           :key="style.value"
           class="hero-appearance-picker__style"
-          type="button"
-          role="radio"
-          :aria-checked="modelValue.hairStyle === style.value"
-          @click="chooseHairStyle(style.value)"
         >
+          <input
+            type="radio"
+            name="hair-style"
+            :checked="modelValue.hairStyle === style.value"
+            :value="style.value"
+            @change="chooseHairStyle(style.value)"
+          />
           <HeroSprite
             :appearance="{
               ...modelValue,
@@ -92,7 +95,7 @@ function chooseHairColor(hairColor: number) {
             :scale="2"
           />
           <span>{{ style.label }}</span>
-        </button>
+        </label>
       </div>
     </div>
 
@@ -107,17 +110,17 @@ function chooseHairColor(hairColor: number) {
         role="radiogroup"
         aria-labelledby="hair-color-label"
       >
-        <button
+        <input
           v-for="color in HAIR_COLORS"
           :key="color.value"
           class="hero-appearance-picker__swatch"
-          type="button"
-          role="radio"
-          :aria-checked="modelValue.hairColor === color.value"
+          type="radio"
+          name="hair-color"
+          :checked="modelValue.hairColor === color.value"
           :aria-label="`Hair color ${color.label}`"
           :title="color.label"
           :style="{ '--swatch-color': color.color }"
-          @click="chooseHairColor(color.value)"
+          @change="chooseHairColor(color.value)"
         />
       </div>
     </div>
@@ -161,7 +164,7 @@ function chooseHairColor(hairColor: number) {
     box-shadow: inset 0 0 0 2px var(--color-surface-base);
     cursor: pointer;
 
-    &[aria-checked="true"] {
+    &:checked {
       border-color: var(--color-text-highlight);
       outline: 2px solid var(--color-text-highlight);
       outline-offset: 1px;
@@ -191,7 +194,7 @@ function chooseHairColor(hairColor: number) {
     font-size: var(--font-size-xs);
     cursor: pointer;
 
-    &[aria-checked="true"] {
+    &:has(input:checked) {
       border-color: var(--color-text-highlight);
       color: var(--color-text-primary);
     }
@@ -200,6 +203,13 @@ function chooseHairColor(hairColor: number) {
       outline: 2px solid var(--color-text-primary);
       outline-offset: 2px;
     }
+  }
+
+  &__style input {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    clip-path: inset(50%);
   }
 }
 </style>
