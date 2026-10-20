@@ -24,9 +24,9 @@ const navigationItems = [
       :items="navigationItems"
     />
 
-    <main id="main" class="site-shell__main layout-container">
+    <div class="site-shell__main layout-container">
       <slot />
-    </main>
+    </div>
 
     <footer class="site-shell__footer">
       <div class="layout-container">
