@@ -6,7 +6,7 @@ import { GatewayError } from "~/shared/utils/gateway";
 import { usePlayerApi } from "~/features/player/api/playerApi";
 import HeroPortraitPlaceholder from "~/features/player/components/HeroPortraitPlaceholder.vue";
 import HeroDeletionModal from "~/features/player/components/HeroDeletionModal.vue";
-import { HeroDeletionStep } from "~/features/player/types";
+import { useHeroDeletion } from "~/features/player/composables/useHeroDeletion";
 import type { HeroClassOption, HeroSheet, HeroSummary } from "~/features/player/types";
 
 definePageMeta({ layout: "player" });
@@ -24,21 +24,11 @@ const heroClass = ref<HeroClassOption | null>(null);
 const loading = ref(true);
 const updatingSelection = ref(false);
 const error = ref("");
-const deletionOpen = ref(false);
-const deletionStep = ref(HeroDeletionStep.CONFIRM);
-const deleting = ref(false);
-const deletionError = ref("");
 const { success } = useToast();
 
 const isSelected = computed(() => heroSummary.value?.isSelected ?? false);
-const isInActiveSession = computed(
-  () => heroSummary.value?.isEngagedInActiveSession ?? false,
-);
-/** A running dungeon blocks deletion; a lobby is closed first (US-PLAYER-10). */
-const isInRunningSession = computed(
-  () => heroSummary.value?.activeSessionState === "Active",
-);
-const activeSessionId = computed(() => heroSummary.value?.activeSessionId ?? null);
+const activeSession = computed(() => heroSummary.value?.activeSession ?? null);
+const isInActiveSession = computed(() => activeSession.value !== null);
 const heroClassLabel = computed(
   () =>
     heroClass.value?.label ??
@@ -120,54 +110,21 @@ async function toggleSelection() {
   }
 }
 
-function openDeletion() {
-  if (!hero.value) return;
-  deletionError.value = "";
-  deletionStep.value = isInRunningSession.value
-    ? HeroDeletionStep.BLOCKED
-    : HeroDeletionStep.CONFIRM;
-  deletionOpen.value = true;
-}
-
-async function deleteHero() {
-  if (!hero.value) return;
-
-  deleting.value = true;
-  deletionError.value = "";
-  try {
-    await usePlayerApi().deleteHero(playerId.value, hero.value.id);
-    deletionOpen.value = false;
-    success(hero.value.name + " has been deleted. A slot is free again.", {
-      title: "Hero deleted",
-    });
-    await navigateTo(heroesPath.value);
-  } catch (cause) {
-    if (cause instanceof GatewayError && cause.status === 409) {
-      // The hero entered a running dungeon meanwhile: show the blocked state.
-      await refreshHero().catch(() => undefined);
-      deletionStep.value = HeroDeletionStep.BLOCKED;
-    } else {
-      // Deletion is idempotent, so retrying after an uncertain outcome is safe.
-      deletionError.value =
-        cause instanceof GatewayError && !cause.isOutcomeUncertain
-          ? cause.message
-          : "Unable to confirm the deletion. Please try again.";
-    }
-  } finally {
-    deleting.value = false;
-  }
-}
-
-function viewSession() {
-  if (!activeSessionId.value) return;
-  deletionOpen.value = false;
-  const lobbyPath =
-    "/players/" +
-    encodeURIComponent(playerId.value) +
-    "/play/lobbies/" +
-    encodeURIComponent(activeSessionId.value);
-  void navigateTo(isInRunningSession.value ? lobbyPath + "/run" : lobbyPath);
-}
+/** US-PLAYER-10: a running dungeon blocks deletion; a lobby is closed first. */
+const deletion = useHeroDeletion(playerId, hero, activeSession, {
+  deleteHero: (player, id) => usePlayerApi().deleteHero(player, id),
+  refresh: refreshHero,
+  navigate: (path) => navigateTo(path),
+  notifySuccess: (message, title) => success(message, { title }),
+});
+const {
+  open: deletionOpen,
+  step: deletionStep,
+  deleting,
+  error: deletionError,
+  closesLobby,
+  sessionId: activeSessionId,
+} = deletion;
 
 onMounted(load);
 </script>
@@ -249,7 +206,7 @@ onMounted(load);
             :size="ButtonSize.SM"
             :variant="ButtonVariant.DANGER"
             full-width
-            @click="openDeletion"
+            @click="deletion.start"
             >Delete this hero</UiButton
           >
         </aside>
@@ -314,12 +271,12 @@ onMounted(load);
         :hero-name="hero.name"
         :hero-class-label="heroClassLabel"
         :hero-count="heroCount"
-        :closes-lobby="isInActiveSession && !isInRunningSession"
+        :closes-lobby="closesLobby"
         :session-id="activeSessionId"
         :deleting="deleting"
         :error="deletionError"
-        @confirm="deleteHero"
-        @view-session="viewSession"
+        @confirm="deletion.confirm"
+        @view-session="deletion.viewSession"
       />
     </template>
   </main>

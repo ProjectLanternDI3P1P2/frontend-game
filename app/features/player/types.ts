@@ -22,12 +22,18 @@ export interface HeroSummary {
   classCode: HeroClassCode;
   level: number;
   maximumHealth: number;
+  /** Derived by the backend from `activeSession`: true exactly when it is set. */
   isEngagedInActiveSession: boolean;
   isSelected: boolean;
   createdAt?: string;
   /** Open session holding the hero, if any: a lobby can be closed, a running dungeon cannot. */
-  activeSessionId?: string | null;
-  activeSessionState?: string | null;
+  activeSession?: HeroActiveSession | null;
+}
+
+/** The open session a hero is engaged in (`Lobby` or `Active`). */
+export interface HeroActiveSession {
+  id: string;
+  state: GameSessionState;
 }
 
 /** US-PLAYER-10 — steps of the hero deletion dialog (Figma "Heroes / Deletion"). */
@@ -90,7 +96,11 @@ export interface HeroSheet {
   abilities: HeroAbility[];
 }
 
-export type GameSessionState = "Lobby" | "Active" | "Failed" | "Pending";
+/**
+ * `Abandoned`: the lobby was closed before its run started, for instance because one of its
+ * heroes was deleted (US-PLAYER-10); `failureReason` then names the cause (`HeroDeleted`).
+ */
+export type GameSessionState = "Lobby" | "Active" | "Failed" | "Pending" | "Abandoned";
 
 export interface SessionHero {
   id: string;

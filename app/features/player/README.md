@@ -28,3 +28,12 @@ into URLs; every view, the dungeon's included, goes through it.
   `HERO_CATALOGUE`; `tests/appearance.spec.ts` checks that every listed sheet
   exists.
 - Colours start at `v01`: `v00` is the artist's palette template.
+
+The hero list tells which open session holds a hero through `activeSession`
+(`{ id, state }`, `Lobby` or `Active`); `isEngagedInActiveSession` is derived from
+it. The deletion flow lives in `composables/useHeroDeletion.ts`. A closed lobby
+arrives on the lobby page as `Abandoned` (`failureReason: HeroDeleted`): the page
+explains it and goes back to "Join a game" (`lobbyClosure.ts`).
+
+This client contract ships with the backend pull request that adds the delete
+endpoint: merge both together.
