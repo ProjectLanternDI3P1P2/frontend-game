@@ -5,21 +5,24 @@
  * exception: nothing here is a gameplay constraint.
  */
 const config = useRuntimeConfig();
+const navigationItems = [
+  { label: "Home", to: "/home" },
+  { label: "Heroes", to: "/players/00000000-0000-0000-0000-000000000001/heroes" },
+  { label: "Lobby", to: "/players/00000000-0000-0000-0000-000000000001/play" },
+  { label: "Dungeon", to: "/dungeon" },
+  { label: "Demo", to: "/demo" },
+];
 </script>
 
 <template>
   <div class="site-shell">
     <a class="skip-link" href="#main">Skip to main content</a>
 
-    <header class="site-shell__header">
-      <div class="layout-container site-shell__bar">
-        <NuxtLink to="/" class="site-shell__brand">Project Lantern</NuxtLink>
-
-        <nav class="site-shell__nav" aria-label="Main">
-          <NuxtLink to="/demo">UI kit</NuxtLink>
-        </nav>
-      </div>
-    </header>
+    <UiTopNavigation
+      brand="Project Lantern"
+      brand-to="/home"
+      :items="navigationItems"
+    />
 
     <main id="main" class="site-shell__main layout-container">
       <slot />
@@ -42,31 +45,6 @@ const config = useRuntimeConfig();
   display: flex;
   flex-direction: column;
   min-block-size: 100vh;
-
-  &__header {
-    border-block-end: 1px solid var(--color-border-subtle);
-    background-color: var(--color-surface-raised);
-  }
-
-  &__bar {
-    display: flex;
-    align-items: center;
-    gap: var(--space-6);
-    min-block-size: 3.5rem;
-  }
-
-  &__brand {
-    font-family: var(--font-family-display);
-    font-size: var(--font-size-lg);
-    color: var(--color-text-primary);
-    text-decoration: none;
-  }
-
-  &__nav {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-4);
-  }
 
   &__main {
     flex: 1;

@@ -20,7 +20,7 @@ import type {
   HeroSummary,
 } from "~/features/player/types";
 
-definePageMeta({ layout: "player" });
+definePageMeta({ layout: "default" });
 
 const MAX_HEROES = HERO_ROSTER_CAPACITY;
 const HERO_NAME_RULES: readonly TextValidationRule[] = [

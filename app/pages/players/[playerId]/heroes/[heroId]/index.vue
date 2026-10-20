@@ -9,7 +9,7 @@ import HeroDeletionModal from "~/features/player/components/HeroDeletionModal.vu
 import { useHeroDeletion } from "~/features/player/composables/useHeroDeletion";
 import type { HeroClassOption, HeroSheet, HeroSummary } from "~/features/player/types";
 
-definePageMeta({ layout: "player" });
+definePageMeta({ layout: "default" });
 
 const route = useRoute();
 const playerId = computed(() => String(route.params.playerId));
