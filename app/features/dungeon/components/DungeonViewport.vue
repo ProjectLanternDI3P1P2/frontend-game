@@ -17,14 +17,12 @@ import type { LoadedFloor } from "../composables/useDungeonFloor";
 import { gateOf, revealedTeleports } from "../dungeonMap";
 import { MOB_DEATH_MS, MOVE_COOLDOWN_MS, cameraOrigin, type Viewport } from "../dungeonRules";
 import { MAX_LAYERS } from "../tiles/autotile";
+import { HERO_SHEET, heroLayers, heroSprite, type HeroAppearance } from "../tiles/hero";
 import {
   BOSS,
   ENEMY,
-  HERO_SHEET,
   TRAP,
   gateSprite,
-  heroFacesWest,
-  heroSprite,
   itemSprite,
   mobClassName,
   spriteStyle,
@@ -38,6 +36,8 @@ const props = defineProps<{
   hero: Position;
   /** Where the hero last tried to go: it faces that way. */
   facing: Direction;
+  /** What the hero looks like: its body, clothes, hair, weapon and shield. */
+  appearance: HeroAppearance;
   revealed: Uint8Array;
   /** Bumped whenever `revealed` changes: typed arrays are not reactive. */
   revealVersion: number;
@@ -191,7 +191,7 @@ const doors = computed(() => {
   return arches;
 });
 
-/** Running while the hero moves, standing idle otherwise. */
+/** Shuffling while the hero moves, on guard otherwise. */
 const isWalking = ref(false);
 let walkTimer: ReturnType<typeof setTimeout> | undefined;
 watch(
@@ -204,14 +204,16 @@ watch(
 );
 onBeforeUnmount(() => clearTimeout(walkTimer));
 
-const facesWest = ref(heroFacesWest(props.facing, false));
-watch(
-  () => props.facing,
-  (facing) => (facesWest.value = heroFacesWest(facing, facesWest.value)),
+const heroStyle = computed(() =>
+  spriteStyle(heroSprite(isWalking.value ? "move" : "idle", props.facing), { x: 0, y: 0 }),
 );
 
-const heroStyle = computed(() =>
-  spriteStyle(heroSprite(isWalking.value ? "run" : "idle"), { x: 0, y: 0 }),
+/** The paper doll: one sheet per layer, stacked by depth for the way the hero faces. */
+const heroLayerStyles = computed(() =>
+  heroLayers(props.appearance, props.facing).map(({ slot, sheet, depth }) => ({
+    key: slot,
+    style: `background-image:url("${sheet}");z-index:${depth}`,
+  })),
 );
 
 const viewportStyle = computed(() => {
@@ -257,12 +259,15 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
           :key="bump?.id ?? 0"
           :class="['dungeon-token__body', bump ? `dungeon-token__body--bump-${bump.direction}` : null]"
         >
-          <!-- Keyed by pose: a new pose starts on its first frame. -->
-          <span
-            :key="isWalking ? 'run' : 'idle'"
-            :class="['dungeon-sprite', 'dungeon-sprite--hero', 'dungeon-hero', { 'dungeon-hero--west': facesWest }]"
-            :style="heroStyle"
-          />
+          <!-- Keyed by pose: a new pose starts every layer on its first frame, in step. -->
+          <span :key="isWalking ? 'move' : 'idle'" class="dungeon-hero" :style="heroStyle">
+            <span
+              v-for="layer in heroLayerStyles"
+              :key="layer.key"
+              class="dungeon-sprite dungeon-sprite--hero"
+              :style="layer.style"
+            />
+          </span>
         </span>
       </div>
     </div>
@@ -367,6 +372,19 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   z-index: calc(2 * var(--y) + 2);
 }
 
+// The walls hide the hero, the mobs and the furniture behind them or beside them, whose
+// sprites overflow their tile: nothing sticks out over the walls of a corridor (see
+// `TileLayer.wall`). The lower half of a face hides what stands on its row; the upper half
+// and the top of a wall, what stands on their row and the row below, still the wall's.
+// What stands in front of the wall is drawn over it.
+:deep(.dungeon-tile--wall-face) {
+  z-index: calc(2 * var(--y) + 4);
+}
+
+:deep(.dungeon-tile--wall-top) {
+  z-index: calc(2 * var(--y) + 6);
+}
+
 :deep(.dungeon-tile--torch) {
   background-image: url("@/assets/dongeon/objects.png");
   background-size: calc(320 * var(--px)) calc(480 * var(--px));
@@ -411,8 +429,8 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
     background-size: calc(32 * var(--px) * var(--scale)) calc(32 * var(--px) * var(--scale));
   }
 
+  // The image of each layer is set by the viewport (see `heroLayers`).
   &--hero {
-    background-image: url("@/assets/heroes/swordsman/hero_swordsman_spritesheet.png");
     background-size:
       calc(var(--hero-width) * var(--px) * var(--scale)) calc(var(--hero-height) * var(--px) * var(--scale));
   }
@@ -440,6 +458,22 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   transform: translate3d(calc(var(--x) * var(--tile) + var(--dx) * var(--px)),
       calc(var(--y) * var(--tile) + var(--dy) * var(--px)),
       0);
+}
+
+// The gate is set in its wall: over the faces and the top beside it (see
+// `.dungeon-tile--wall-face`), under what stands in front of it. It stays on its first
+// frame, closed, until its boss is defeated; then it rises to its last one, open.
+.dungeon-door {
+  z-index: calc(2 * var(--y) + 5);
+  animation: none;
+
+  &--opening {
+    background-position-x: calc((var(--sx) + var(--pitch) * 4) * var(--px) * -1);
+
+    @include bp.motion-safe {
+      animation: dungeon-door-open var(--duration) steps(4) backwards;
+    }
+  }
 }
 
 // In depth order with the furniture (see `.dungeon-tile--upright`).
@@ -677,22 +711,6 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   filter: drop-shadow(0 0 calc(var(--px) * 2) color-mix(in srgb, var(--color-accent) 60%, transparent));
 }
 
-// The gate down stays on its first frame, closed, until its boss is defeated; then it
-// rises to its last one, open.
-.dungeon-door {
-  animation: none;
-
-  &--opening {
-    background-position-x: calc((var(--sx) + var(--pitch) * 4) * var(--px) * -1);
-  }
-
-  &--opening {
-    @include bp.motion-safe {
-      animation: dungeon-door-open var(--duration) steps(4) backwards;
-    }
-  }
-}
-
 @keyframes dungeon-door-open {
   from {
     background-position-x: calc(var(--sx) * var(--px) * -1);
@@ -703,15 +721,16 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   }
 }
 
-// The hero idles on the spot and runs between tiles (see `heroSprite`). Its sheet faces
-// east: it is mirrored, in place, to face west.
+// The hero stands on guard and shuffles between tiles (see `heroSprite`), its layers
+// stacked in one window that casts a single shadow.
 .dungeon-hero {
+  position: absolute;
+  left: 0;
+  top: 0;
+  inline-size: calc(var(--sw) * var(--px));
+  block-size: calc(var(--sh) * var(--px));
   translate: calc(var(--dx) * var(--px)) calc(var(--dy) * var(--px));
   filter: drop-shadow(0 calc(var(--px) * 1) 0 rgb(0 0 0 / 35%));
-
-  &--west {
-    scale: -1 1;
-  }
 }
 
 .dungeon-token {
