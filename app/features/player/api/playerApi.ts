@@ -2,6 +2,7 @@
 import type {
   CreateHeroRequest,
   CreateHeroResponse,
+  DeleteHeroResponse,
   HeroClassOption,
   HeroSheet,
   HeroSummary,
@@ -54,6 +55,16 @@ export function createPlayerApi(client: GatewayClient) {
     deselectHero(playerId: string, heroId: string): Promise<undefined> {
       return client.delete<undefined>(
         `${heroesPath(playerId)}/${encodeURIComponent(heroId)}/selection`,
+      );
+    },
+
+    /**
+     * US-PLAYER-10. Idempotent: safe to retry after an uncertain outcome.
+     * Answers 409 while the hero is playing a running dungeon.
+     */
+    deleteHero(playerId: string, heroId: string): Promise<DeleteHeroResponse> {
+      return client.delete<DeleteHeroResponse>(
+        `${heroesPath(playerId)}/${encodeURIComponent(heroId)}`,
       );
     },
   };
