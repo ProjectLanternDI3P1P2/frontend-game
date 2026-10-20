@@ -19,6 +19,8 @@ COPY . .
 # on the frontend's origin. Runtime ENV alone cannot rewrite static HTML.
 ARG NUXT_PUBLIC_API_GATEWAY_URL=http://localhost:8080
 ENV NUXT_PUBLIC_API_GATEWAY_URL=$NUXT_PUBLIC_API_GATEWAY_URL
+ARG NUXT_PUBLIC_KEYCLOAK_URL=http://localhost:8081
+ENV NUXT_PUBLIC_KEYCLOAK_URL=$NUXT_PUBLIC_KEYCLOAK_URL
 RUN npm run build
 
 FROM node:24-bookworm-slim AS runtime

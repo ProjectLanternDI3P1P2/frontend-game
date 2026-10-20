@@ -1,69 +1,74 @@
-# Keycloak — Local Setup & Custom Login Theme
+# Keycloak — Local setup and Lantern theme
 
-This guide explains how to run Keycloak locally with Docker, configure the lantern realm, and apply the custom login theme.
+Keycloak is part of the local Docker Compose stack. It imports the Lantern
+realm and mounts the custom Lantern login theme automatically; no manual realm
+import, `docker cp`, or container restart is needed for the normal workflow.
 
+## Start with Docker Compose
 
-## 1. Start Keycloak with Docker
-Create and start the Keycloak container:
+From `frontend-game`, start either the complete stack or the backend-only
+variant:
 
-```docker run -d --name keycloak-local -p 127.0.0.1:8081:8080 -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:26.7.4 start-dev```
+```sh
+docker compose --env-file .env.compose up -d --build --wait --wait-timeout 240
+# or
+docker compose --env-file .env.compose -f compose.backend.yaml up -d --build --wait --wait-timeout 240
+```
 
-Access Keycloak using the following URLs:
-- **Login page**: [http://127.0.0.1:8081](http://127.0.0.1:8081)
-- **Admin Console**:[http://127.0.0.1:8081/admin/](http://127.0.0.1:8081/admin/)
+If `.env.compose` does not exist, copy `.env.compose.example` first. Its
+defaults are intended only for local development.
 
-Default local credentials:
-- **Username**: admin
-- **Password**: admin
+Keycloak is available at [http://localhost:8081](http://localhost:8081):
 
-## 2. Create the Lantern Realm
-1. Open the Keycloak Admin Console.
-2. Click Create realm.
-3. Import the following realm configuration file:
-```keycloak/realm/lantern-realm.json```
-4. Validate the configuration and click Create.
+- Admin Console: [http://localhost:8081/admin/](http://localhost:8081/admin/)
+- Realm: `lantern`
+- Local administrator: `admin` / `admin` by default; configure
+  `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` in `.env.compose` to change
+  this before exposing the stack.
+- Demo player: `demo` / `demo`
 
-The lantern realm should now be available in Keycloak.
+The Game frontend waits for Keycloak's healthcheck and is built with
+`NUXT_PUBLIC_KEYCLOAK_URL=http://localhost:8081`. The realm defines the public
+client `lantern-public`, its redirect URI for `http://localhost:3000`, and the
+demo player account.
 
-## 3. Configure Realm Login Settings
-In the Admin Console, select the lantern realm.
-Navigate to Realm settings → Login and enable the following options:
-- User registration: ON
-- Forgot password: ON
-- Remember me: ON
-Save the changes.
+## Run Nuxt outside Docker
 
-## 4. Compile the SCSS Stylesheet
-The login theme uses SCSS as its source stylesheet.
-Whenever you modify lantern.scss, compile it into lantern.css:
-```npx sass keycloak/themes/lantern/login/resources/css/lantern.scss keycloak/themes/lantern/login/resources/css/lantern.css```
+`compose.backend.yaml` also starts Keycloak. When the Game frontend is run with
+`npm run dev` on the host, retain the following settings in `.env`:
 
-## 5. Deploy the Custom Theme to Keycloak
-Copy the theme directory into the running Keycloak container:
-```docker cp keycloak/themes/lantern keycloak-local:/opt/keycloak/themes/```
+```dotenv
+NUXT_PUBLIC_KEYCLOAK_URL=http://localhost:8081
+NUXT_PUBLIC_KEYCLOAK_REALM=lantern
+NUXT_PUBLIC_KEYCLOAK_CLIENT_ID=lantern-public
+```
 
-Restart Keycloak to reload the theme:
-```docker restart keycloak-local```
+## Update the Lantern theme
 
-## 6. Enable the Lantern Login Theme
-In the Keycloak Admin Console:
-1. Select the lantern realm.
-2. Navigate to Realm settings → Themes.
-3. Set Login theme to lantern.
-4. Save the changes.
-The custom Lantern login theme should now be applied to the realm's login pages.
+The theme directory is bind-mounted into the Keycloak container. After editing
+the SCSS source, rebuild the generated CSS:
 
-## 7. Update the Theme After SCSS Changes
-After modifying the SCSS, compile the stylesheet, deploy the theme, and restart Keycloak.
+```sh
+npx sass keycloak/themes/lantern/login/resources/css/lantern.scss keycloak/themes/lantern/login/resources/css/lantern.css
+```
 
-**Option A — Run Each Command Separately**
-Compile the SCSS:
-```npx sass keycloak/themes/lantern/login/resources/css/lantern.scss keycloak/themes/lantern/login/resources/css/lantern.css```
-Copy the updated theme into the container:
-```docker cp keycloak/themes/lantern keycloak-local:/opt/keycloak/themes/```
-Restart Keycloak:
-```docker restart keycloak-local```
+Refresh the login page afterwards. If Keycloak has cached a template during a
+development session, restart only that service:
 
-**Option B — Run Everything in One Command**
-To save time, use the following command to compile the SCSS, copy the updated theme into Docker, and restart Keycloak:
-```npx sass keycloak/themes/lantern/login/resources/css/lantern.scss keycloak/themes/lantern/login/resources/css/lantern.css && docker cp keycloak/themes/lantern keycloak-local:/opt/keycloak/themes/ && docker restart keycloak-local```
+```sh
+docker compose --env-file .env.compose restart keycloak
+```
+
+## Realm changes
+
+Edit `keycloak/realm/lantern-realm.json` for versioned local defaults. The
+`start-dev --import-realm` command imports it whenever a new Keycloak container
+starts; changes are therefore picked up by recreating the service:
+
+```sh
+docker compose --env-file .env.compose up -d --force-recreate keycloak
+```
+
+The local development server intentionally uses Keycloak's development mode.
+Do not reuse its default administrator credentials or this configuration in a
+shared or production environment.
