@@ -1,0 +1,14 @@
+.git
+.github
+.nuxt
+.output
+node_modules
+coverage
+cypress/screenshots
+cypress/videos
+*.log
+.env
+.env.*
+!.env.example
+Dockerfile
+README.md

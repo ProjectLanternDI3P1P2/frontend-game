@@ -26,21 +26,12 @@ withDefaults(
       <span v-if="label">{{ label }}</span
       ><span v-if="showValue">{{ Math.round((value / max) * 100) }}%</span>
     </div>
-    <div
+    <progress
       class="ui-progress__track"
-      role="progressbar"
       :aria-label="label"
-      :aria-valuemin="0"
-      :aria-valuemax="max"
-      :aria-valuenow="value"
-    >
-      <div
-        class="ui-progress__value"
-        :style="{
-          width: Math.min(100, Math.max(0, (value / max) * 100)) + '%',
-        }"
-      />
-    </div>
+      :max="max"
+      :value="value"
+    />
   </div>
 </template>
 
@@ -57,24 +48,28 @@ withDefaults(
   font-size: var(--font-size-sm);
 }
 .ui-progress__track {
+  display: block;
+  width: 100%;
   height: var(--space-3);
   overflow: hidden;
   border-radius: var(--radius-pill);
   background-color: var(--color-surface-base);
 }
-.ui-progress__value {
-  height: 100%;
+.ui-progress__track::-webkit-progress-bar {
+  background-color: var(--color-surface-base);
+}
+.ui-progress__track::-webkit-progress-value {
   border-radius: inherit;
   background-color: var(--color-accent);
   transition: width var(--duration-slow) var(--easing-standard);
 }
-.ui-progress--success .ui-progress__value {
+.ui-progress--success .ui-progress__track::-webkit-progress-value {
   background-color: var(--color-success);
 }
-.ui-progress--danger .ui-progress__value {
+.ui-progress--danger .ui-progress__track::-webkit-progress-value {
   background-color: var(--color-danger);
 }
-.ui-progress--arcane .ui-progress__value {
+.ui-progress--arcane .ui-progress__track::-webkit-progress-value {
   background-color: var(--color-arcane);
 }
 </style>

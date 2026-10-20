@@ -12,17 +12,13 @@ import {
 useHead({ title: "Game data · UI kit" });
 const experience = ref(68);
 const selectedItem = ref("Azure Scepter");
-const heroFace = new URL("../../assets/heroes/dg_faceset.png", import.meta.url)
-  .href;
 </script>
 <template>
   <div class="demo-page">
     <header>
       <NuxtLink to="/demo">← Component library</NuxtLink>
       <h1>Game data</h1>
-      <p>
-        Presentational components powered by semantic colors and item rarity.
-      </p>
+      <p>Presentational components powered by semantic colors and item rarity.</p>
     </header>
     <UiPanel title="UiPanel & UiStat" :heading-level="PanelHeadingLevel.TWO"
       ><div class="demo-page__stats">
@@ -34,20 +30,13 @@ const heroFace = new URL("../../assets/heroes/dg_faceset.png", import.meta.url)
           detail="This season"
           :tone="StatTone.SUCCESS"
           ><template #icon>♜</template></UiStat
-        ><UiStat
-          label="Defeats"
-          value="12"
-          detail="This season"
-          :tone="StatTone.DANGER"
+        ><UiStat label="Defeats" value="12" detail="This season" :tone="StatTone.DANGER"
           ><template #icon>⚑</template></UiStat
         >
       </div></UiPanel
-    ><UiPanel
-      title="UiAvatar & UiProgressBar"
-      :heading-level="PanelHeadingLevel.TWO"
+    ><UiPanel title="UiAvatar & UiProgressBar" :heading-level="PanelHeadingLevel.TWO"
       ><div class="demo-page__hero">
         <UiAvatar
-          :src="heroFace"
           name="Mira the Scout"
           :status="AvatarStatus.ONLINE"
           :size="AvatarSize.LG"

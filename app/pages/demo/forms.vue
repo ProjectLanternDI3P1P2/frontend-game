@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import {
-  ButtonType,
-  NoticeTone,
-  PanelHeadingLevel,
-} from "~/shared/ui/ui.types";
+import { ButtonType, NoticeTone, PanelHeadingLevel } from "~/shared/ui/ui.types";
 useHead({ title: "Forms · UI kit" });
 const heroName = ref("Mira the Scout");
 const className = ref("");
@@ -17,9 +13,7 @@ const classOptions = [
   { label: "Scout", value: "scout" },
 ];
 const classError = computed(() =>
-  submitted.value && !className.value
-    ? "Choose a class before continuing."
-    : "",
+  submitted.value && !className.value ? "Choose a class before continuing." : "",
 );
 const submit = () => {
   submitted.value = true;
@@ -30,9 +24,7 @@ const submit = () => {
     <header>
       <NuxtLink to="/demo">← Component library</NuxtLink>
       <h1>Forms</h1>
-      <p>
-        Every control correctly connects its label, help text, and error state.
-      </p>
+      <p>Every control correctly connects its label, help text, and error state.</p>
     </header>
     <UiPanel title="Create an adventurer" :heading-level="PanelHeadingLevel.TWO"
       ><div class="demo-page__form">
@@ -68,8 +60,8 @@ const submit = () => {
       :tone="NoticeTone.SUCCESS"
       title="Valid form"
       >{{ heroName }} joins the
-      {{ classOptions.find((item) => item.value === className)?.label }}s. Guild
-      code: {{ agreed ? "accepted" : "pending" }}.</UiNotice
+      {{ classOptions.find((item) => item.value === className)?.label }}s. Guild code:
+      {{ agreed ? "accepted" : "pending" }}.</UiNotice
     >
   </form>
 </template>

@@ -14,9 +14,7 @@ const resource = (id: string, label: string): ExampleResource => ({
 describe("sortForDisplay", () => {
   it("orders by label", () => {
     expect(
-      sortForDisplay([resource("b", "Beta"), resource("a", "Alpha")]).map(
-        (r) => r.id,
-      ),
+      sortForDisplay([resource("b", "Beta"), resource("a", "Alpha")]).map((r) => r.id),
     ).toEqual(["a", "b"]);
   });
 

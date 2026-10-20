@@ -38,8 +38,7 @@
         --block-soft: #fbe6e5;
         --code-bg: #eef0f5;
 
-        --font-display:
-          "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+        --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
         --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
         --font-mono: "IBM Plex Mono", "Cascadia Mono", Consolas, monospace;
 
@@ -824,20 +823,18 @@
           </p>
           <h1>Architecture front de Project Lantern</h1>
           <p class="lede">
-            Deux applications Nuxt, chacune dans son dépôt, construites pour
-            appliquer les quinze ADR front. C'est un
-            <strong>squelette</strong> : le socle, la structure et les contrôles
-            qualité sont en place, et les features attendent les squads qui en
-            sont propriétaires.
+            Deux applications Nuxt, chacune dans son dépôt, construites pour appliquer
+            les quinze ADR front. C'est un
+            <strong>squelette</strong> : le socle, la structure et les contrôles qualité
+            sont en place, et les features attendent les squads qui en sont
+            propriétaires.
           </p>
           <ul class="meta">
             <li><strong>2</strong> dépôts Git indépendants</li>
             <li><strong>15</strong> ADR appliqués</li>
             <li><strong>7 + 4</strong> dossiers de features</li>
             <li>
-              <span class="tag tag--ok"
-                >Lint · typecheck · tests · build au vert</span
-              >
+              <span class="tag tag--ok">Lint · typecheck · tests · build au vert</span>
             </li>
           </ul>
         </header>
@@ -847,10 +844,9 @@
           <h2 id="vue-t">Vue d'ensemble</h2>
           <p class="section-intro">
             Le public et le jeu ont des besoins de rendu, de cache et de mise en
-            production trop différents pour une seule application (ADR-FE-002).
-            Chacune vit donc dans son propre dépôt, avec sa CI, sa doc et sa
-            copie des ADR (ADR-FE-007) : publier l'une ne demande jamais de
-            publier l'autre.
+            production trop différents pour une seule application (ADR-FE-002). Chacune
+            vit donc dans son propre dépôt, avec sa CI, sa doc et sa copie des ADR
+            (ADR-FE-007) : publier l'une ne demande jamais de publier l'autre.
           </p>
 
           <div class="apps">
@@ -860,22 +856,21 @@
                 <span class="tag tag--game">CSR</span>
               </div>
               <p class="app__role">
-                Le jeu authentifié et interactif : héros, run de donjon, combat,
-                butin, progression, coop.
+                Le jeu authentifié et interactif : héros, run de donjon, combat, butin,
+                progression, coop.
               </p>
               <dl class="facts">
                 <div>
                   <dt>Rendu</dt>
                   <dd>
-                    <code>ssr: false</code>, entièrement côté navigateur
-                    (ADR-FE-004)
+                    <code>ssr: false</code>, entièrement côté navigateur (ADR-FE-004)
                   </dd>
                 </div>
                 <div>
                   <dt>État</dt>
                   <dd>
-                    Pinia pour la session et l'UI, cache de requêtes pour les
-                    données serveur (ADR-FE-008)
+                    Pinia pour la session et l'UI, cache de requêtes pour les données
+                    serveur (ADR-FE-008)
                   </dd>
                 </div>
                 <div>
@@ -905,15 +900,14 @@
                 <span class="tag tag--public">SSG + SSR</span>
               </div>
               <p class="app__role">
-                La vitrine indexable : accueil, univers, règles, saison en
-                cours, statut des services.
+                La vitrine indexable : accueil, univers, règles, saison en cours, statut
+                des services.
               </p>
               <dl class="facts">
                 <div>
                   <dt>Rendu</dt>
                   <dd>
-                    Statique par défaut, SSR uniquement s'il est justifié
-                    (ADR-FE-003)
+                    Statique par défaut, SSR uniquement s'il est justifié (ADR-FE-003)
                   </dd>
                 </div>
                 <div>
@@ -927,8 +921,8 @@
                 <div>
                   <dt>Features</dt>
                   <dd>
-                    <code>universe</code>, <code>rules</code>,
-                    <code>season</code>, <code>status</code>,
+                    <code>universe</code>, <code>rules</code>, <code>season</code>,
+                    <code>status</code>,
                     <code>_template</code>
                   </dd>
                 </div>
@@ -945,11 +939,10 @@
         <section id="flux" aria-labelledby="flux-t">
           <h2 id="flux-t">Flux entre systèmes</h2>
           <p class="section-intro">
-            Aucun des deux fronts ne détient de données métier. Toute lecture et
-            toute écriture passent par l'API Gateway, via des clients HTTP typés
-            écrits à la main (ADR-FE-011). Les erreurs et les Web Vitals partent
-            vers le point d'entrée d'observabilité fourni par l'équipe Ops
-            (ADR-FE-013).
+            Aucun des deux fronts ne détient de données métier. Toute lecture et toute
+            écriture passent par l'API Gateway, via des clients HTTP typés écrits à la
+            main (ADR-FE-011). Les erreurs et les Web Vitals partent vers le point
+            d'entrée d'observabilité fourni par l'équipe Ops (ADR-FE-013).
           </p>
           <figure class="figure">
             <pre class="mermaid">
@@ -967,8 +960,8 @@ flowchart LR
   GC -. "erreurs + LCP/INP/CLS" .-> O
 </pre>
             <figcaption>
-              Les cinq services métier sont ceux du brief client ; le front ne
-              les connaît que par la Gateway.
+              Les cinq services métier sont ceux du brief client ; le front ne les
+              connaît que par la Gateway.
             </figcaption>
           </figure>
         </section>
@@ -983,13 +976,7 @@ flowchart LR
           <fieldset class="filter" id="adr-filter">
             <legend>Afficher</legend>
             <label
-              ><input
-                type="radio"
-                name="adr-app"
-                id="f-all"
-                value="all"
-                checked
-              />
+              ><input type="radio" name="adr-app" id="f-all" value="all" checked />
               Tous</label
             >
             <label
@@ -997,12 +984,7 @@ flowchart LR
               game-client</label
             >
             <label
-              ><input
-                type="radio"
-                name="adr-app"
-                id="f-public"
-                value="public"
-              />
+              ><input type="radio" name="adr-app" id="f-public" value="public" />
               public-site</label
             >
           </fieldset>
@@ -1028,8 +1010,8 @@ flowchart LR
                   <th scope="row" class="adr-num">002</th>
                   <td><span class="adr-title">Deux applications Nuxt</span></td>
                   <td>
-                    <code>game-client/</code> et <code>public-site/</code>,
-                    déployables séparément
+                    <code>game-client/</code> et <code>public-site/</code>, déployables
+                    séparément
                   </td>
                   <td><span class="tag tag--both">les deux</span></td>
                 </tr>
@@ -1039,8 +1021,8 @@ flowchart LR
                     <span class="adr-title">Rendu hybride du site public</span>
                   </td>
                   <td>
-                    <code>routeRules</code> dans <code>nuxt.config.ts</code>,
-                    registre dans <code>docs/rendering-modes.md</code>
+                    <code>routeRules</code> dans <code>nuxt.config.ts</code>, registre
+                    dans <code>docs/rendering-modes.md</code>
                   </td>
                   <td><span class="tag tag--public">public-site</span></td>
                 </tr>
@@ -1065,8 +1047,8 @@ flowchart LR
                   <th scope="row" class="adr-num">006</th>
                   <td><span class="adr-title">Rendu DOM Vue</span></td>
                   <td>
-                    Composants Vue + CSS, pas de Canvas. Tout passage à un
-                    hybride demande des mesures et un nouvel ADR
+                    Composants Vue + CSS, pas de Canvas. Tout passage à un hybride
+                    demande des mesures et un nouvel ADR
                   </td>
                   <td><span class="tag tag--game">game-client</span></td>
                 </tr>
@@ -1084,9 +1066,7 @@ flowchart LR
                 <tr data-app="game">
                   <th scope="row" class="adr-num">008</th>
                   <td>
-                    <span class="adr-title"
-                      >État client, cache, autorité serveur</span
-                    >
+                    <span class="adr-title">État client, cache, autorité serveur</span>
                   </td>
                   <td>
                     <code>shared/composables/useApiResource.ts</code> + stores
@@ -1097,13 +1077,11 @@ flowchart LR
                 <tr data-app="both">
                   <th scope="row" class="adr-num">009</th>
                   <td>
-                    <span class="adr-title"
-                      >Feature-first, un squad par feature</span
-                    >
+                    <span class="adr-title">Feature-first, un squad par feature</span>
                   </td>
                   <td>
-                    <code>features/&lt;nom&gt;/</code> avec un README par
-                    feature et <code>_template/</code> comme exemple complet
+                    <code>features/&lt;nom&gt;/</code> avec un README par feature et
+                    <code>_template/</code> comme exemple complet
                   </td>
                   <td><span class="tag tag--both">les deux</span></td>
                 </tr>
@@ -1120,8 +1098,8 @@ flowchart LR
                   <th scope="row" class="adr-num">011</th>
                   <td><span class="adr-title">Clients HTTP manuels</span></td>
                   <td>
-                    <code>shared/utils/gateway.ts</code>, typé, avec
-                    correlation-id et détection des résultats incertains
+                    <code>shared/utils/gateway.ts</code>, typé, avec correlation-id et
+                    détection des résultats incertains
                   </td>
                   <td><span class="tag tag--both">les deux</span></td>
                 </tr>
@@ -1129,8 +1107,8 @@ flowchart LR
                   <th scope="row" class="adr-num">012</th>
                   <td><span class="adr-title">Vitest et Cypress</span></td>
                   <td>
-                    Specs dans <code>&lt;feature&gt;/tests/</code>, harness
-                    Cypress + axe dans <code>cypress/e2e/shell.cy.ts</code>
+                    Specs dans <code>&lt;feature&gt;/tests/</code>, harness Cypress +
+                    axe dans <code>cypress/e2e/shell.cy.ts</code>
                   </td>
                   <td><span class="tag tag--both">les deux</span></td>
                 </tr>
@@ -1138,8 +1116,8 @@ flowchart LR
                   <th scope="row" class="adr-num">013</th>
                   <td><span class="adr-title">Erreurs et Web Vitals</span></td>
                   <td>
-                    <code>plugins/telemetry.client.ts</code>, champs en liste
-                    blanche, secrets masqués
+                    <code>plugins/telemetry.client.ts</code>, champs en liste blanche,
+                    secrets masqués
                   </td>
                   <td><span class="tag tag--both">les deux</span></td>
                 </tr>
@@ -1148,21 +1126,19 @@ flowchart LR
                   <td><span class="adr-title">Budgets de performance</span></td>
                   <td>
                     LCP ≤ 2,5 s · INP ≤ 200 ms · CLS ≤ 0,1 au p75.
-                    <code>lighthouse-budget.json</code> en CI. Mesure «
-                    authentification → jeu jouable » instrumentée
+                    <code>lighthouse-budget.json</code> en CI. Mesure « authentification
+                    → jeu jouable » instrumentée
                   </td>
                   <td><span class="tag tag--both">les deux</span></td>
                 </tr>
                 <tr data-app="both">
                   <th scope="row" class="adr-num">015</th>
                   <td>
-                    <span class="adr-title"
-                      >RGAA et exceptions documentées</span
-                    >
+                    <span class="adr-title">RGAA et exceptions documentées</span>
                   </td>
                   <td>
-                    Skip link, landmarks, focus verrouillé par un token, live
-                    region, lint <code>vuejs-accessibility</code> + axe
+                    Skip link, landmarks, focus verrouillé par un token, live region,
+                    lint <code>vuejs-accessibility</code> + axe
                   </td>
                   <td><span class="tag tag--both">les deux</span></td>
                 </tr>
@@ -1175,17 +1151,15 @@ flowchart LR
         <section id="arbo" aria-labelledby="arbo-t">
           <h2 id="arbo-t">Arborescence</h2>
           <p class="section-intro">
-            Le code est rangé par capacité utilisateur, pas par couche technique
-            : un squad travaille dans ses dossiers sans toucher ceux des autres
-            (ADR-FE-009). <code>pages/</code> compose les features, il ne les
-            implémente pas.
+            Le code est rangé par capacité utilisateur, pas par couche technique : un
+            squad travaille dans ses dossiers sans toucher ceux des autres (ADR-FE-009).
+            <code>pages/</code> compose les features, il ne les implémente pas.
           </p>
 
           <div class="trees">
             <div class="tree">
               <div class="tree__head">
-                <strong>game-client/</strong
-                ><span class="tag tag--game">CSR</span>
+                <strong>game-client/</strong><span class="tag tag--game">CSR</span>
               </div>
               <pre><span class="k">app/</span>
   features/
@@ -1264,8 +1238,8 @@ lighthouse-budget.json</pre>
                 <path d="m3 8.5 3.2 3L13 4.5" />
               </svg>
               <p>
-                <strong>Un composant n'appelle jamais la Gateway.</strong> Seul
-                le dossier <code>api/</code> de la feature le fait, via
+                <strong>Un composant n'appelle jamais la Gateway.</strong> Seul le
+                dossier <code>api/</code> de la feature le fait, via
                 <code>useGateway()</code>.
               </p>
             </li>
@@ -1283,8 +1257,8 @@ lighthouse-budget.json</pre>
               </svg>
               <p>
                 <strong
-                  >Rien ne passe dans <code>shared/</code> avant d'avoir deux
-                  vrais consommateurs</strong
+                  >Rien ne passe dans <code>shared/</code> avant d'avoir deux vrais
+                  consommateurs</strong
                 >
                 et l'accord des squads concernés.
               </p>
@@ -1320,11 +1294,10 @@ lighthouse-budget.json</pre>
               </svg>
               <p>
                 <strong
-                  >Aucune couleur, taille ou police en dur dans un
-                  composant.</strong
+                  >Aucune couleur, taille ou police en dur dans un composant.</strong
                 >
-                On utilise un token, et si aucun ne convient, on en ajoute un et
-                on le documente.
+                On utilise un token, et si aucun ne convient, on en ajoute un et on le
+                documente.
               </p>
             </li>
           </ul>
@@ -1334,12 +1307,12 @@ lighthouse-budget.json</pre>
         <section id="etat" aria-labelledby="etat-t">
           <h2 id="etat-t">État et autorité serveur</h2>
           <p class="section-intro">
-            Dans le game-client, deux mécanismes cohabitent et ne se confondent
-            pas (ADR-FE-008).
-            <strong>Pinia</strong> garde ce que le client possède : session,
-            panneau ouvert, file de notifications.
-            <strong><code>useApiResource</code></strong> garde une copie
-            temporaire de ce que le backend possède.
+            Dans le game-client, deux mécanismes cohabitent et ne se confondent pas
+            (ADR-FE-008).
+            <strong>Pinia</strong> garde ce que le client possède : session, panneau
+            ouvert, file de notifications.
+            <strong><code>useApiResource</code></strong> garde une copie temporaire de
+            ce que le backend possède.
           </p>
 
           <div class="table-wrap" style="margin-bottom: 20px">
@@ -1396,21 +1369,21 @@ sequenceDiagram
   else 4xx — refus
     F-->>C: « Action refusée » + raison
   end
-</pre>
+</pre
+            >
             <figcaption>
-              Le client ne corrige jamais son cache lui-même : il invalide puis
-              relit. Un 5xx ne compte pas comme un échec, parce que l'écriture a
-              pu être appliquée côté serveur.
+              Le client ne corrige jamais son cache lui-même : il invalide puis relit.
+              Un 5xx ne compte pas comme un échec, parce que l'écriture a pu être
+              appliquée côté serveur.
             </figcaption>
           </figure>
 
           <p>
-            Le cache évite les requêtes en double (deux écrans qui lisent la
-            même clé partagent le même appel), affiche la péremption grâce à une
-            horloge commune et au badge <code>UiStaleBadge</code>, et se vide
-            entièrement au logout. Il peut rester au niveau du module parce que
-            le client de jeu est en CSR : il ne traverse jamais de requête
-            serveur.
+            Le cache évite les requêtes en double (deux écrans qui lisent la même clé
+            partagent le même appel), affiche la péremption grâce à une horloge commune
+            et au badge <code>UiStaleBadge</code>, et se vide entièrement au logout. Il
+            peut rester au niveau du module parce que le client de jeu est en CSR : il
+            ne traverse jamais de requête serveur.
           </p>
         </section>
 
@@ -1418,11 +1391,10 @@ sequenceDiagram
         <section id="rendu" aria-labelledby="rendu-t">
           <h2 id="rendu-t">Rendu du site public</h2>
           <p class="section-intro">
-            Le rendu statique est la règle. Il est peu coûteux, indexable,
-            lisible avant l'exécution du JavaScript et continue de fonctionner
-            si la Gateway tombe. Le SSR est l'exception : il faut dire ce qui
-            change entre deux requêtes et qu'un build ne peut pas connaître
-            (ADR-FE-003).
+            Le rendu statique est la règle. Il est peu coûteux, indexable, lisible avant
+            l'exécution du JavaScript et continue de fonctionner si la Gateway tombe. Le
+            SSR est l'exception : il faut dire ce qui change entre deux requêtes et
+            qu'un build ne peut pas connaître (ADR-FE-003).
           </p>
 
           <div class="table-wrap">
@@ -1441,8 +1413,8 @@ sequenceDiagram
                   </th>
                   <td><code>{ prerender: true }</code></td>
                   <td>
-                    Par défaut. Contenu qui change à chaque release, pas à
-                    chaque requête
+                    Par défaut. Contenu qui change à chaque release, pas à chaque
+                    requête
                   </td>
                 </tr>
                 <tr>
@@ -1451,8 +1423,8 @@ sequenceDiagram
                   </th>
                   <td><code>{ ssr: true, prerender: false, swr: 60 }</code></td>
                   <td>
-                    Données assez fraîches à la minute près et qui doivent
-                    rester indexables
+                    Données assez fraîches à la minute près et qui doivent rester
+                    indexables
                   </td>
                 </tr>
                 <tr>
@@ -1463,23 +1435,21 @@ sequenceDiagram
                     <code>{ ssr: true, prerender: false, cache: false }</code>
                   </td>
                   <td>
-                    Quand une réponse en cache serait fausse, par exemple le
-                    statut des services pendant un incident
+                    Quand une réponse en cache serait fausse, par exemple le statut des
+                    services pendant un incident
                   </td>
                 </tr>
                 <tr>
                   <th scope="row"><span class="tag tag--both">CSR</span></th>
                   <td>—</td>
-                  <td>
-                    Jamais le mode par défaut ici. C'est le mode du game-client
-                  </td>
+                  <td>Jamais le mode par défaut ici. C'est le mode du game-client</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <p class="note">
-            Une route SSR sans stratégie de cache explicite est refusée en
-            revue. Toute nouvelle route se déclare dans
+            Une route SSR sans stratégie de cache explicite est refusée en revue. Toute
+            nouvelle route se déclare dans
             <code>nuxt.config.ts</code> <em>et</em> dans
             <code>docs/rendering-modes.md</code>. Aujourd'hui, seule
             <code>/</code> existe, et elle est statique.
@@ -1490,8 +1460,8 @@ sequenceDiagram
         <section id="squads" aria-labelledby="squads-t">
           <h2 id="squads-t">Features et squads</h2>
           <p class="section-intro">
-            Les cinq piliers du brief client correspondent aux cinq squads, et
-            donc aux cinq dossiers de features. Chaque README désigne
+            Les cinq piliers du brief client correspondent aux cinq squads, et donc aux
+            cinq dossiers de features. Chaque README désigne
             <strong>un seul</strong> squad propriétaire et reprend la question
             d'acceptation du client.
           </p>
@@ -1520,8 +1490,7 @@ sequenceDiagram
                   <th scope="row"><code>combat/</code></th>
                   <td>Combat</td>
                   <td>
-                    Le joueur comprend-il pourquoi une action a réussi ou échoué
-                    ?
+                    Le joueur comprend-il pourquoi une action a réussi ou échoué ?
                   </td>
                 </tr>
                 <tr>
@@ -1567,9 +1536,8 @@ sequenceDiagram
               </div>
               <p>
                 Le seul transport HTTP. Routes versionnées,
-                <code>X-Correlation-Id</code> sur chaque requête, enveloppe
-                d'erreur <code>GatewayError</code>, 204 géré,
-                <code>isOutcomeUncertain</code>.
+                <code>X-Correlation-Id</code> sur chaque requête, enveloppe d'erreur
+                <code>GatewayError</code>, 204 géré, <code>isOutcomeUncertain</code>.
               </p>
             </div>
             <div class="shared-item">
@@ -1578,8 +1546,8 @@ sequenceDiagram
                 ><span class="tag tag--game">game-client</span>
               </div>
               <p>
-                Cache de requêtes par clé, avec TTL, jonction des requêtes déjà
-                en cours, invalidation par préfixe et
+                Cache de requêtes par clé, avec TTL, jonction des requêtes déjà en
+                cours, invalidation par préfixe et
                 <code>clearApiCache()</code> au logout.
               </p>
             </div>
@@ -1589,9 +1557,9 @@ sequenceDiagram
                 ><span class="tag tag--game">game-client</span>
               </div>
               <p>
-                <code>session</code> garde le token en mémoire et lance la
-                mesure de performance. <code>notifications</code> gère la file
-                lue par la live region.
+                <code>session</code> garde le token en mémoire et lance la mesure de
+                performance. <code>notifications</code> gère la file lue par la live
+                region.
               </p>
             </div>
             <div class="shared-item">
@@ -1600,9 +1568,9 @@ sequenceDiagram
                 ><span class="tag tag--both">les deux</span>
               </div>
               <p>
-                LCP, INP, CLS, erreurs <code>window</code>, rejets de promesses
-                et erreurs Vue, envoyés par lots via <code>sendBeacon</code>.
-                Inactif tant qu'aucun endpoint n'est configuré.
+                LCP, INP, CLS, erreurs <code>window</code>, rejets de promesses et
+                erreurs Vue, envoyés par lots via <code>sendBeacon</code>. Inactif tant
+                qu'aucun endpoint n'est configuré.
               </p>
             </div>
             <div class="shared-item">
@@ -1617,8 +1585,7 @@ sequenceDiagram
             </div>
             <div class="shared-item">
               <div class="shared-item__top">
-                <code>shared/ui/</code
-                ><span class="tag tag--both">les deux</span>
+                <code>shared/ui/</code><span class="tag tag--both">les deux</span>
               </div>
               <p>
                 Primitives en BEM auto-importées : <code>UiButton</code>,
@@ -1633,8 +1600,8 @@ sequenceDiagram
         <section id="qualite" aria-labelledby="qualite-t">
           <h2 id="qualite-t">Qualité et CI</h2>
           <p class="section-intro">
-            Chaque dépôt a son propre pipeline, qui tourne sur chaque pull
-            request et sur <code>main</code>.
+            Chaque dépôt a son propre pipeline, qui tourne sur chaque pull request et
+            sur <code>main</code>.
           </p>
 
           <ol class="pipeline" aria-label="Étapes du pipeline">
@@ -1699,10 +1666,9 @@ sequenceDiagram
             </table>
           </div>
           <p class="note">
-            Deux règles de lint sont réglées volontairement, avec la
-            justification écrite dans <code>eslint.config.mjs</code> :
-            <code>role="list"</code> est conservé sur les
-            <code>&lt;ul&gt;</code>, parce que Safari/VoiceOver perd la
+            Deux règles de lint sont réglées volontairement, avec la justification
+            écrite dans <code>eslint.config.mjs</code> : <code>role="list"</code> est
+            conservé sur les <code>&lt;ul&gt;</code>, parce que Safari/VoiceOver perd la
             sémantique de liste quand on retire les puces, et
             <code>&lt;label for&gt;</code> + <code>id</code> compte comme une
             association valide.
@@ -1714,66 +1680,62 @@ sequenceDiagram
           <h2 id="feature-t">Ajouter une feature</h2>
           <p class="section-intro">
             La procédure est la même dans les deux dépôts. Le dossier
-            <code>_template/</code> reste exécutable et linté pour ne pas se
-            périmer en silence.
+            <code>_template/</code> reste exécutable et linté pour ne pas se périmer en
+            silence.
           </p>
 
           <ol class="steps">
             <li>
               <p>
                 <strong>Copier le template</strong
-                ><code
-                  >cp -r app/features/_template app/features/&lt;nom&gt;</code
-                >, puis renommer <code>example</code> partout.
+                ><code>cp -r app/features/_template app/features/&lt;nom&gt;</code>,
+                puis renommer <code>example</code> partout.
               </p>
             </li>
             <li>
               <p>
-                <strong>Écrire <code>types.ts</code> à la main</strong>d'après
-                le contrat versionné de la Gateway. Pas de génération OpenAPI
-                (ADR-FE-011).
+                <strong>Écrire <code>types.ts</code> à la main</strong>d'après le
+                contrat versionné de la Gateway. Pas de génération OpenAPI (ADR-FE-011).
               </p>
             </li>
             <li>
               <p>
                 <strong>Mettre chaque appel dans <code>api/</code></strong
-                >C'est le seul fichier de la feature autorisé à joindre la
-                Gateway.
+                >C'est le seul fichier de la feature autorisé à joindre la Gateway.
               </p>
             </li>
             <li>
               <p>
-                <strong>Isoler les règles pures</strong>dans un
-                <code>.ts</code> sans framework, testé par Vitest dans
-                <code>tests/</code> (ADR-FE-012).
+                <strong>Isoler les règles pures</strong>dans un <code>.ts</code> sans
+                framework, testé par Vitest dans <code>tests/</code> (ADR-FE-012).
               </p>
             </li>
             <li>
               <p>
-                <strong>Choisir la forme de l'état</strong>Local si l'état est
-                éphémère, <code>useApiResource</code> avec une clé et un TTL si
-                des données joueur sont partagées entre écrans (ADR-FE-008).
+                <strong>Choisir la forme de l'état</strong>Local si l'état est éphémère,
+                <code>useApiResource</code> avec une clé et un TTL si des données joueur
+                sont partagées entre écrans (ADR-FE-008).
               </p>
             </li>
             <li>
               <p>
                 <strong>Ajouter la route dans <code>pages/</code></strong
-                >et l'entrée de navigation. Côté public-site, déclarer aussi le
-                mode de rendu et le justifier.
+                >et l'entrée de navigation. Côté public-site, déclarer aussi le mode de
+                rendu et le justifier.
               </p>
             </li>
             <li>
               <p>
-                <strong>Remplir le README</strong>: objectif, routes, APIs
-                consommées, état partagé,
-                <strong style="display: inline">squad propriétaire</strong>,
-                couverture de tests.
+                <strong>Remplir le README</strong>: objectif, routes, APIs consommées,
+                état partagé,
+                <strong style="display: inline">squad propriétaire</strong>, couverture
+                de tests.
               </p>
             </li>
             <li>
               <p>
-                <strong>Écrire un parcours Cypress</strong>seulement si la
-                feature ajoute un chemin critique. Toutes n'en ont pas besoin.
+                <strong>Écrire un parcours Cypress</strong>seulement si la feature
+                ajoute un chemin critique. Toutes n'en ont pas besoin.
               </p>
             </li>
           </ol>
@@ -1789,22 +1751,22 @@ sequenceDiagram
             <div>
               <strong>Écrans</strong>
               <p>
-                <code>pages/</code> ne contient qu'un placeholder par
-                application, et la navigation est vide.
+                <code>pages/</code> ne contient qu'un placeholder par application, et la
+                navigation est vide.
               </p>
             </div>
             <div>
               <strong>Code de gameplay</strong>
               <p>
-                Les dossiers des piliers ne contiennent que leur README :
-                périmètre, squad, contraintes.
+                Les dossiers des piliers ne contiennent que leur README : périmètre,
+                squad, contraintes.
               </p>
             </div>
             <div>
               <strong>Parcours E2E</strong>
               <p>
-                Auth, démarrer ou reprendre une session, action de jeu : c'est
-                aux squads qui livrent ces routes de les écrire.
+                Auth, démarrer ou reprendre une session, action de jeu : c'est aux
+                squads qui livrent ces routes de les écrire.
               </p>
             </div>
           </div>
@@ -1814,10 +1776,10 @@ sequenceDiagram
         <section id="ouvert" aria-labelledby="ouvert-t">
           <h2 id="ouvert-t">Décisions ouvertes</h2>
           <p class="section-intro">
-            Le brief client demande des choses qu'aucun ADR actuel ne couvre.
-            Elles sont notées dans
-            <code>docs/open-decisions.md</code> et ne doivent pas être tranchées
-            au détour d'une pull request.
+            Le brief client demande des choses qu'aucun ADR actuel ne couvre. Elles sont
+            notées dans
+            <code>docs/open-decisions.md</code> et ne doivent pas être tranchées au
+            détour d'une pull request.
           </p>
 
           <div class="decisions">
@@ -1827,9 +1789,9 @@ sequenceDiagram
                 <h3>Transport temps réel pour la coop</h3>
               </div>
               <p>
-                Polling, Server-Sent Events ou WebSocket. L'ADR-008 prévoit un
-                cache sur requêtes, qui ne convient pas à un lobby où les
-                actions des autres joueurs doivent apparaître sans intervention.
+                Polling, Server-Sent Events ou WebSocket. L'ADR-008 prévoit un cache sur
+                requêtes, qui ne convient pas à un lobby où les actions des autres
+                joueurs doivent apparaître sans intervention.
                 <code>party/</code> reste vide tant qu'un ADR n'a pas tranché.
               </p>
             </article>
@@ -1839,8 +1801,8 @@ sequenceDiagram
                 <h3>Squad propriétaire de <code>party/</code></h3>
               </div>
               <p>
-                La coop concerne les cinq squads, alors que l'ADR-009 en exige
-                un seul. C'est à l'équipe de gouvernance d'attribuer ce dossier.
+                La coop concerne les cinq squads, alors que l'ADR-009 en exige un seul.
+                C'est à l'équipe de gouvernance d'attribuer ce dossier.
               </p>
             </article>
             <article class="decision">
@@ -1849,8 +1811,8 @@ sequenceDiagram
                 <h3>Paiement en argent réel dans le store</h3>
               </div>
               <p>
-                Choix du prestataire de paiement et du flux de redirection.
-                Aucune donnée de carte ne doit arriver dans nos composants.
+                Choix du prestataire de paiement et du flux de redirection. Aucune
+                donnée de carte ne doit arriver dans nos composants.
               </p>
             </article>
             <article class="decision">
@@ -1859,24 +1821,22 @@ sequenceDiagram
                 <h3>Langue du produit</h3>
               </div>
               <p>
-                Anglais pour l'instant (<code>lang="en"</code>), parce que le
-                brief client est rédigé en anglais. Aucun ADR ne fixe ce choix
-                ni l'i18n.
+                Anglais pour l'instant (<code>lang="en"</code>), parce que le brief
+                client est rédigé en anglais. Aucun ADR ne fixe ce choix ni l'i18n.
               </p>
             </article>
           </div>
 
           <p class="note">
             À corriger à part : les titres H1 des fichiers
-            <code>ADR-FE-014</code> et <code>ADR-FE-015</code> annoncent 015 et
-            016. Les noms de fichiers sont justes, ce sont les titres qui sont
-            décalés.
+            <code>ADR-FE-014</code> et <code>ADR-FE-015</code> annoncent 015 et 016. Les
+            noms de fichiers sont justes, ce sont les titres qui sont décalés.
           </p>
         </section>
 
         <footer class="page-foot">
-          État relevé sur les deux dépôts après le dernier passage de lint,
-          typecheck, tests unitaires et build. Rien n'est encore commité.
+          État relevé sur les deux dépôts après le dernier passage de lint, typecheck,
+          tests unitaires et build. Rien n'est encore commité.
         </footer>
       </main>
     </div>

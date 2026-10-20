@@ -13,17 +13,27 @@ const props = withDefaults(
   defineProps<{
     modelValue: boolean;
     title?: string;
+    /** Accessible name when the dialog renders its own heading instead of `title`. */
+    label?: string;
     size?: ModalSize;
     closeOnBackdrop?: boolean;
     closeOnEscape?: boolean;
     showCloseButton?: boolean;
+    dialogClass?: string;
+    bodyClass?: string;
+    /** Keep the modal frame and header fixed; a child owns scrolling. */
+    scrollBody?: boolean;
   }>(),
   {
     title: "",
+    label: "",
     size: ModalSize.MD,
     closeOnBackdrop: true,
     closeOnEscape: true,
     showCloseButton: true,
+    dialogClass: "",
+    bodyClass: "",
+    scrollBody: true,
   },
 );
 
@@ -36,8 +46,7 @@ const close = () => {
   emit("close");
 };
 const onKeydown = (event: KeyboardEvent) => {
-  if (props.modelValue && props.closeOnEscape && event.key === "Escape")
-    close();
+  if (props.modelValue && props.closeOnEscape && event.key === "Escape") close();
 };
 
 onMounted(() => window.addEventListener("keydown", onKeydown));
@@ -54,12 +63,15 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
         aria-label="Close dialog"
         @click="close"
       />
-      <section
+      <dialog
         class="ui-modal__dialog"
-        :class="'ui-modal__dialog--' + size"
-        role="dialog"
-        aria-modal="true"
-        :aria-label="title"
+        :class="[
+          'ui-modal__dialog--' + size,
+          dialogClass,
+          { 'ui-modal__dialog--fixed-body': !scrollBody },
+        ]"
+        :aria-label="title || label"
+        :open="modelValue"
         tabindex="-1"
       >
         <header
@@ -68,18 +80,18 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
         >
           <h2 v-if="title" class="ui-modal__title">{{ title }}</h2>
           <slot name="header" />
-          <UiIconButton
-            v-if="showCloseButton"
-            label="Close dialog"
-            @click="close"
+          <UiIconButton v-if="showCloseButton" label="Close dialog" @click="close"
             >×</UiIconButton
           >
         </header>
-        <div class="ui-modal__body"><slot /></div>
+        <div
+          class="ui-modal__body"
+          :class="[bodyClass, { 'ui-modal__body--fixed': !scrollBody }]"
+        ><slot /></div>
         <footer v-if="$slots.footer" class="ui-modal__footer">
           <slot name="footer" />
         </footer>
-      </section>
+      </dialog>
     </div>
   </Teleport>
 </template>
@@ -118,6 +130,12 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 .ui-modal__dialog--lg {
   max-width: 48rem;
 }
+.ui-modal__dialog--fixed-body {
+  display: flex;
+  height: min(42rem, calc(100dvh - var(--space-8)));
+  flex-direction: column;
+  overflow: hidden;
+}
 .ui-modal__header,
 .ui-modal__footer {
   display: flex;
@@ -141,5 +159,12 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 }
 .ui-modal__body {
   padding: var(--space-5);
+}
+.ui-modal__body--fixed {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
 }
 </style>

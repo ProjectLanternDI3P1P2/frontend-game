@@ -18,6 +18,12 @@ export interface GatewayErrorBody {
   details?: unknown;
 }
 
+interface GatewayProblemDetails {
+  title?: string;
+  detail?: string;
+  errors?: Record<string, string[]>;
+}
+
 export class GatewayError extends Error {
   readonly status: number;
   readonly code: string;
@@ -75,15 +81,28 @@ export interface GatewayClient {
     body?: unknown,
     req?: Omit<GatewayRequest, "path" | "method" | "body">,
   ) => Promise<TResponse>;
+  put: <TResponse>(
+    path: string,
+    body?: unknown,
+    req?: Omit<GatewayRequest, "path" | "method" | "body">,
+  ) => Promise<TResponse>;
+  delete: <TResponse>(
+    path: string,
+    req?: Omit<GatewayRequest, "path" | "method" | "body">,
+  ) => Promise<TResponse>;
 }
 
 function defaultCorrelationId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto)
-    return crypto.randomUUID();
-  return `cid-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const browserCrypto = globalThis.crypto;
+  if (browserCrypto?.randomUUID) return browserCrypto.randomUUID();
+  if (browserCrypto) {
+    const bytes = browserCrypto.getRandomValues(new Uint32Array(4));
+    return `cid-${Array.from(bytes, (byte) => byte.toString(16)).join("")}`;
+  }
+  return `cid-${Date.now()}`;
 }
 
-/** Builds `/api/v1/<path>?<query>` without ever leaking undefined parameters. */
+/** Builds `/api/v1/<path>` or `/api/<service>/v1/<path>` without undefined query parameters. */
 export function buildGatewayUrl(
   baseUrl: string,
   apiVersion: string,
@@ -92,25 +111,28 @@ export function buildGatewayUrl(
 ): string {
   const normalisedBase = baseUrl.replace(/\/+$/, "");
   const normalisedPath = path.replace(/^\/+/, "");
-  const url = new URL(`${normalisedBase}/api/${apiVersion}/${normalisedPath}`);
+  const isRelativeBase = normalisedBase === "" || normalisedBase.startsWith("/");
+  const [service, ...servicePath] = normalisedPath.split("/");
+  const apiPath =
+    service === "player"
+      ? `/api/player/${apiVersion}/${servicePath.join("/")}`
+      : `/api/${apiVersion}/${normalisedPath}`;
+  const url = new URL(`${normalisedBase}${apiPath}`, "http://local-gateway.invalid");
 
   for (const [key, value] of Object.entries(query ?? {})) {
     if (value !== undefined) url.searchParams.set(key, String(value));
   }
-  return url.toString();
+  return isRelativeBase ? `${url.pathname}${url.search}` : url.toString();
 }
 
-export function createGatewayClient(
-  options: GatewayClientOptions,
-): GatewayClient {
+export function createGatewayClient(options: GatewayClientOptions): GatewayClient {
   const doFetch = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
   const newCorrelationId = options.correlationIdFactory ?? defaultCorrelationId;
 
   async function request<TResponse>(req: GatewayRequest): Promise<TResponse> {
     const method = req.method ?? "GET";
     const correlationId = newCorrelationId();
-    const token =
-      req.token !== undefined ? req.token : (options.getToken?.() ?? null);
+    const token = req.token !== undefined ? req.token : (options.getToken?.() ?? null);
 
     const headers: Record<string, string> = {
       Accept: "application/json",
@@ -122,12 +144,7 @@ export function createGatewayClient(
     let response: Response;
     try {
       response = await doFetch(
-        buildGatewayUrl(
-          options.baseUrl,
-          options.apiVersion,
-          req.path,
-          req.query,
-        ),
+        buildGatewayUrl(options.baseUrl, options.apiVersion, req.path, req.query),
         {
           method,
           headers,
@@ -155,10 +172,21 @@ export function createGatewayClient(
     if (!response.ok) {
       const body: GatewayErrorBody = isErrorBody(payload)
         ? payload
-        : {
-            code: "UNEXPECTED_ERROR",
-            message: `Request ${method} ${req.path} failed (${response.status}).`,
-          };
+        : isProblemDetails(payload)
+          ? {
+              code: response.status === 422 ? "VALIDATION_ERROR" : "REQUEST_REJECTED",
+              // A field error says what to fix; ASP.NET's detail only says something is wrong.
+              message:
+                Object.values(payload.errors ?? {}).flat()[0] ??
+                payload.detail ??
+                payload.title ??
+                `Request ${method} ${req.path} failed (${response.status}).`,
+              details: payload,
+            }
+          : {
+              code: "UNEXPECTED_ERROR",
+              message: `Request ${method} ${req.path} failed (${response.status}).`,
+            };
       throw new GatewayError(
         response.status,
         body,
@@ -173,6 +201,8 @@ export function createGatewayClient(
     request,
     get: (path, req) => request({ ...req, path, method: "GET" }),
     post: (path, body, req) => request({ ...req, path, method: "POST", body }),
+    put: (path, body, req) => request({ ...req, path, method: "PUT", body }),
+    delete: (path, req) => request({ ...req, path, method: "DELETE" }),
   };
 }
 
@@ -182,5 +212,14 @@ function isErrorBody(value: unknown): value is GatewayErrorBody {
     value !== null &&
     typeof (value as GatewayErrorBody).code === "string" &&
     typeof (value as GatewayErrorBody).message === "string"
+  );
+}
+
+function isProblemDetails(value: unknown): value is GatewayProblemDetails {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (typeof (value as GatewayProblemDetails).title === "string" ||
+      typeof (value as GatewayProblemDetails).detail === "string")
   );
 }

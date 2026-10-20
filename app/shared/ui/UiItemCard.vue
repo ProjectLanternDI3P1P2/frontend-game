@@ -1,16 +1,6 @@
-<script lang="ts">
+<script setup lang="ts">
 import { BadgeSize, BadgeTone } from "./UiBadge.vue";
 
-export enum ItemRarity {
-  COMMON = "common",
-  MAGIC = "magic",
-  RARE = "rare",
-  LEGENDARY = "legendary",
-  MYTHIC = "mythic",
-}
-</script>
-
-<script setup lang="ts">
 withDefaults(
   defineProps<{
     name: string;
@@ -30,6 +20,16 @@ withDefaults(
 );
 
 defineEmits<{ select: [] }>();
+</script>
+
+<script lang="ts">
+export enum ItemRarity {
+  COMMON = "common",
+  MAGIC = "magic",
+  RARE = "rare",
+  LEGENDARY = "legendary",
+  MYTHIC = "mythic",
+}
 </script>
 
 <template>

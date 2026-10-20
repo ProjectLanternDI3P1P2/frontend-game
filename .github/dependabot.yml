@@ -16,7 +16,7 @@ updates:
       # those are the ones worth reading a changelog for.
       minor-patch:
         patterns:
-          - '*'
+          - "*"
         update-types:
           - minor
           - patch

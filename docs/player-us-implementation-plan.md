@@ -70,8 +70,8 @@ fusionnée.
 
 ## Écarts à résoudre avant les écrans finaux
 
-| Sujet | Figma | US / backend | Décision appliquée |
-| --- | --- | --- | --- |
-| Classes | Warrior, Mage, Ranger, Rogue | Warrior, Shaman, Mage | Le contrat backend prévaut ; mettre la maquette à jour ou faire évoluer le backend avant l’implémentation visuelle. |
-| Détail héros | Inclut équipement/progression | Player ne fournit pas équipement/inventaire | Afficher seulement Player ; intégrer les autres services en dégradation explicite. |
-| Suppression | États complets dessinés | Aucun endpoint implémenté | Bloquée côté intégration jusqu’au contrat de suppression. |
+| Sujet        | Figma                         | US / backend                                | Décision appliquée                                                                                                  |
+| ------------ | ----------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Classes      | Warrior, Mage, Ranger, Rogue  | Warrior, Shaman, Mage                       | Le contrat backend prévaut ; mettre la maquette à jour ou faire évoluer le backend avant l’implémentation visuelle. |
+| Détail héros | Inclut équipement/progression | Player ne fournit pas équipement/inventaire | Afficher seulement Player ; intégrer les autres services en dégradation explicite.                                  |
+| Suppression  | États complets dessinés       | Aucun endpoint implémenté                   | Bloquée côté intégration jusqu’au contrat de suppression.                                                           |

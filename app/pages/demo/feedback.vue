@@ -29,8 +29,7 @@ const acceptQuest = () => {
     </header>
     <UiPanel title="UiNotice" :heading-level="PanelHeadingLevel.TWO"
       ><div class="demo-page__stack">
-        <UiNotice title="Information"
-          >The Ancient Crypt portal is open.</UiNotice
+        <UiNotice title="Information">The Ancient Crypt portal is open.</UiNotice
         ><UiNotice :tone="NoticeTone.SUCCESS" title="Reward unlocked"
           >You received 120 coins.</UiNotice
         ><UiNotice :tone="NoticeTone.WARNING" title="Warning"
@@ -51,17 +50,12 @@ const acceptQuest = () => {
     ><UiPanel title="UiModal" :heading-level="PanelHeadingLevel.TWO"
       ><div class="demo-page__stack">
         <UiButton @click="modalOpen = true">Accept quest</UiButton
-        ><UiNotice
-          v-if="questAccepted"
-          :tone="NoticeTone.SUCCESS"
-          title="Quest added"
+        ><UiNotice v-if="questAccepted" :tone="NoticeTone.SUCCESS" title="Quest added"
           >The Ancient Crypt is now in your journal.</UiNotice
         >
       </div></UiPanel
     ><UiModal v-model="modalOpen" title="The Ancient Crypt" :size="ModalSize.SM"
-      ><p>
-        This quest is recommended for a level 20 party. Add it to your journal?
-      </p>
+      ><p>This quest is recommended for a level 20 party. Add it to your journal?</p>
       <template #footer
         ><UiButton :variant="ButtonVariant.GHOST" @click="modalOpen = false"
           >Later</UiButton

@@ -7,6 +7,8 @@ function gatewayStub(): GatewayClient {
     request: vi.fn(),
     get: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
   } as unknown as GatewayClient;
 }
 
@@ -18,31 +20,43 @@ describe("Player API", () => {
     const heroId = "hero/id";
 
     await api.listHeroes(playerId);
+    await api.listHeroClasses();
     await api.getHeroSheet(playerId, heroId);
     await api.createHero(playerId, {
       name: "Maëlle",
       classCode: "mage",
       idempotencyKey: "create-key",
     });
-    await api.startSoloRun(playerId, heroId, { idempotencyKey: "run-key" });
+    await api.selectHero(playerId, heroId);
+    await api.deselectHero(playerId, heroId);
+    await api.deleteHero(playerId, heroId);
 
-    expect(gateway.get).toHaveBeenNthCalledWith(1, "players/player%20id/heroes", {
+    expect(gateway.get).toHaveBeenNthCalledWith(1, "player/player%20id/heroes", {
+      signal: undefined,
+    });
+    expect(gateway.get).toHaveBeenNthCalledWith(2, "player/hero-classes", {
       signal: undefined,
     });
     expect(gateway.get).toHaveBeenNthCalledWith(
-      2,
-      "players/player%20id/heroes/hero%2Fid",
+      3,
+      "player/player%20id/heroes/hero%2Fid",
       { signal: undefined },
     );
     expect(gateway.post).toHaveBeenNthCalledWith(
       1,
-      "players/player%20id/heroes",
+      "player/player%20id/heroes",
       expect.objectContaining({ idempotencyKey: "create-key" }),
     );
-    expect(gateway.post).toHaveBeenNthCalledWith(
+    expect(gateway.put).toHaveBeenCalledWith(
+      "player/player%20id/heroes/hero%2Fid/selection",
+    );
+    expect(gateway.delete).toHaveBeenNthCalledWith(
+      1,
+      "player/player%20id/heroes/hero%2Fid/selection",
+    );
+    expect(gateway.delete).toHaveBeenNthCalledWith(
       2,
-      "players/player%20id/heroes/hero%2Fid/sessions",
-      { idempotencyKey: "run-key" },
+      "player/player%20id/heroes/hero%2Fid",
     );
   });
 });

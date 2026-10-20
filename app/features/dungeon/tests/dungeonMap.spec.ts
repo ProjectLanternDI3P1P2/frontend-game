@@ -1,0 +1,196 @@
+/**
+ * The fixtures were produced by the Dungeon service's own query handlers, so
+ * these tests also pin the contract between the backend and this client.
+ *
+ * TODO(tech-debt): they predate the current generator and their "kind" fields
+ * were added by hand — regenerate them from seeds whose first floor still shows
+ * every tile the autotile tests need.
+ */
+import { describe, expect, it } from "vitest";
+import {
+  Cell,
+  DungeonContractError,
+  cellAt,
+  corridorAt,
+  decodeFloor,
+  decodeVisitedTiles,
+  elementsAt,
+  gateOf,
+  goesDown,
+  isWalkableAt,
+  revealedTeleports,
+  roomAt,
+  step,
+} from "../dungeonMap";
+import type { DungeonMapResponse, MobState } from "../types";
+import fixture from "./fixtures/map-DGPEAP9GWJKZF-f0.json";
+import multiFloorFixture from "./fixtures/map-DDR55WKRPRVBN-f0.json";
+
+const map = fixture as DungeonMapResponse;
+
+describe("decodeFloor", () => {
+  const floor = decodeFloor(map);
+
+  it("keeps the size, rooms and elements sent by the backend", () => {
+    expect(floor.width * floor.height).toBe(floor.cells.length);
+    expect(floor.rooms).toHaveLength(10);
+    expect(floor.elements.filter((e) => e.type === "boss")).toHaveLength(1);
+  });
+
+  it("finds the gate down in the boss room's wall, which only leads down once the boss falls", () => {
+    const gate = gateOf(floor)!;
+    expect(cellAt(floor, gate.x, gate.y)).toBe(Cell.Gate);
+    expect(roomAt(floor, { x: gate.x, y: gate.y + 1 })?.type).toBe("boss");
+    expect(isWalkableAt(floor, gate)).toBe(false);
+    expect(goesDown(floor, gate, false)).toBe(false);
+    expect(goesDown(floor, gate, true)).toBe(true);
+  });
+
+  it("brings the party in down a ladder, in the middle of the start room", () => {
+    const start = roomAt(floor, floor.entrance)!;
+    expect(start.type).toBe("start");
+    expect(floor.entrance).toEqual(start.center);
+    expect(cellAt(floor, floor.entrance.x, floor.entrance.y)).toBe(Cell.Floor);
+    expect(isWalkableAt(floor, floor.entrance)).toBe(true);
+  });
+
+  it("finds every element on its own tile, inside its room", () => {
+    for (const element of floor.elements) {
+      expect(elementsAt(floor, element)).toContain(element);
+      expect(roomAt(floor, element)?.id).toBe(element.roomId);
+      expect(cellAt(floor, element.x, element.y)).toBe(Cell.Floor);
+    }
+  });
+
+  it("leaves the pits and inner walls of a room out of it, as the backend does", () => {
+    const carved = floor.rooms.flatMap((room) => {
+      const tiles: { x: number; y: number }[] = [];
+      for (let y = room.y; y < room.y + room.height; y++) {
+        for (let x = room.x; x < room.x + room.width; x++) {
+          const code = cellAt(floor, x, y);
+          if (code === Cell.Wall || code === Cell.Void) tiles.push({ x, y });
+        }
+      }
+      return tiles;
+    });
+
+    expect(carved.length).toBeGreaterThan(0);
+    for (const tile of carved) expect(roomAt(floor, tile)).toBeUndefined();
+  });
+
+  it("reads every floor but the last with its gate down", () => {
+    const upper = decodeFloor(multiFloorFixture as DungeonMapResponse);
+    expect(upper.floorCount).toBe(4);
+    expect(upper.cells.filter((code) => code === Cell.Gate)).toHaveLength(1);
+  });
+
+  it("rejects a row of the wrong width instead of drawing a broken floor", () => {
+    const broken = { ...map, rows: [map.rows[0]!.slice(1), ...map.rows.slice(1)] };
+    expect(() => decodeFloor(broken)).toThrow(DungeonContractError);
+  });
+
+  it("rejects an unknown cell symbol", () => {
+    const broken = { ...map, rows: [`?${map.rows[0]!.slice(1)}`, ...map.rows.slice(1)] };
+    expect(() => decodeFloor(broken)).toThrow(DungeonContractError);
+  });
+});
+
+describe("decodeVisitedTiles", () => {
+  it("reads one bit per tile, in row order, low bit first", () => {
+    // 3 × 3 floor, its diagonal: tiles 0 and 4 in byte 0, tile 8 in byte 1.
+    const encoded = btoa(String.fromCharCode(0b0001_0001, 0b0000_0001));
+
+    expect(decodeVisitedTiles({ width: 3, height: 3 }, encoded)).toEqual([
+      { x: 0, y: 0 },
+      { x: 1, y: 1 },
+      { x: 2, y: 2 },
+    ]);
+  });
+
+  it("knows no tile of a run that has not moved since the bitset was added", () => {
+    expect(decodeVisitedTiles({ width: 3, height: 3 }, "")).toEqual([]);
+  });
+});
+
+describe("walkability", () => {
+  const floor = decodeFloor(map);
+
+  it("matches the backend rule: floor, door and grate only", () => {
+    const walkable = new Set<number>();
+    const blocking = new Set<number>();
+    floor.cells.forEach((code, index) => {
+      const position = { x: index % floor.width, y: Math.floor(index / floor.width) };
+      (isWalkableAt(floor, position) ? walkable : blocking).add(code);
+    });
+
+    expect([...walkable].sort()).toEqual([Cell.Floor, Cell.Door, Cell.Grate].sort());
+    expect(blocking.has(Cell.Gate)).toBe(true);
+    expect(blocking.has(Cell.Wall)).toBe(true);
+    expect(blocking.has(Cell.Obstacle)).toBe(true);
+    expect(blocking.has(Cell.Pillar)).toBe(true);
+    expect(blocking.has(Cell.Fence)).toBe(true);
+    expect(blocking.has(Cell.Void)).toBe(true);
+    expect(blocking.has(Cell.Water)).toBe(true);
+    expect(blocking.has(Cell.Lava)).toBe(true);
+    expect(blocking.has(Cell.Tomb)).toBe(true);
+  });
+
+  it("treats outside the floor as void", () => {
+    expect(cellAt(floor, -1, 0)).toBe(Cell.Void);
+    expect(isWalkableAt(floor, { x: floor.width, y: 0 })).toBe(false);
+  });
+});
+
+describe("corridorAt", () => {
+  const floor = decodeFloor(map);
+  const tiles = (keep: (code: number, roomId: number) => boolean) =>
+    [...floor.cells.keys()]
+      .filter((i) => keep(floor.cells[i]!, floor.roomIdByCell[i]!))
+      .map((i) => ({ x: i % floor.width, y: Math.floor(i / floor.width) }));
+
+  it("names the two connected rooms from every corridor tile and door", () => {
+    const corridorTiles = tiles(
+      (code, roomId) => roomId === -1 && (code === Cell.Floor || code === Cell.Door),
+    );
+    expect(corridorTiles.length).toBeGreaterThan(0);
+    for (const tile of corridorTiles) {
+      const [first, second] = corridorAt(floor, tile)!;
+      expect(first).toBeLessThan(second);
+      expect(floor.rooms[first]!.connectedRoomIds).toContain(second);
+    }
+  });
+
+  it("is undefined in a room and on a wall", () => {
+    expect(corridorAt(floor, floor.entrance)).toBeUndefined();
+    expect(corridorAt(floor, tiles((code) => code === Cell.Wall)[0]!)).toBeUndefined();
+  });
+});
+
+describe("step", () => {
+  it("moves one tile in the given direction", () => {
+    expect(step({ x: 5, y: 5 }, "north")).toEqual({ x: 5, y: 4 });
+    expect(step({ x: 5, y: 5 }, "east")).toEqual({ x: 6, y: 5 });
+    expect(step({ x: 5, y: 5 }, "south")).toEqual({ x: 5, y: 6 });
+    expect(step({ x: 5, y: 5 }, "west")).toEqual({ x: 4, y: 5 });
+  });
+});
+
+describe("revealedTeleports", () => {
+  it("only marks the jumps announced on tiles the party has seen", () => {
+    const width = 4;
+    const revealed = new Uint8Array([1, 1, 0, 0]);
+    const mage = (id: number, x: number): MobState => ({
+      id,
+      kind: "mage",
+      x: 0,
+      y: 0,
+      aggro: true,
+      nextTeleport: { x, y: 0 },
+    });
+    const zombie: MobState = { ...mage(3, 0), kind: "zombie", nextTeleport: null };
+
+    const marks = revealedTeleports([mage(1, 1), mage(2, 3), zombie], revealed, width);
+
+    expect(marks).toEqual([{ id: 1, x: 1, y: 0 }]);
+  });
+});

@@ -15,20 +15,14 @@ defineEmits<{ "update:modelValue": [value: boolean] }>();
 </script>
 
 <template>
-  <label
-    class="ui-checkbox"
-    :class="{ 'ui-checkbox--disabled': disabled }"
-    :for="id"
-  >
+  <label class="ui-checkbox" :class="{ 'ui-checkbox--disabled': disabled }" :for="id">
     <input
       :id="id"
       type="checkbox"
       :name="name"
       :checked="modelValue"
       :disabled="disabled"
-      @change="
-        $emit('update:modelValue', ($event.target as HTMLInputElement).checked)
-      "
+      @change="$emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
     />
     <span class="ui-checkbox__box" aria-hidden="true">✓</span>
     <span class="ui-checkbox__content">

@@ -4,6 +4,7 @@ export enum ButtonVariant {
   SECONDARY = "secondary",
   GHOST = "ghost",
   DANGER = "danger",
+  SUCCESS = "success",
 }
 
 export enum ButtonSize {
@@ -130,6 +131,16 @@ defineEmits<{ click: [event: MouseEvent] }>();
 
     &:hover:not(:disabled) {
       background-color: var(--color-danger-strong);
+    }
+  }
+
+  &--success {
+    background-color: var(--color-success);
+    color: var(--color-text-inverse);
+    border-color: var(--color-success);
+
+    &:hover:not(:disabled) {
+      background-color: var(--color-text-muted);
     }
   }
 

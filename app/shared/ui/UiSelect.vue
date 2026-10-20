@@ -54,9 +54,7 @@ defineEmits<{ "update:modelValue": [value: string] }>();
       :aria-describedby="
         hint || error ? (id ? id + '-description' : undefined) : undefined
       "
-      @change="
-        $emit('update:modelValue', ($event.target as HTMLSelectElement).value)
-      "
+      @change="$emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
     >
       <option v-if="placeholder" value="" disabled>{{ placeholder }}</option>
       <option

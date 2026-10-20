@@ -1,29 +1,46 @@
 <script setup lang="ts">
+import { SEEDED_PLAYER_ID } from "~/features/player/seededPlayer";
+import { useAuth } from "~/features/auth/composables/useAuth";
+import { ButtonSize, ButtonVariant } from "~/shared/ui/UiButton.vue";
+
 /**
  * ADR-FE-015 — Landmarks and the skip link live in the layout so every public
  * page inherits them. The public site targets RGAA compliance with no expected
  * exception: nothing here is a gameplay constraint.
  */
 const config = useRuntimeConfig();
+const { isAuthenticated, user, login, logout } = useAuth();
+const navigationItems = [
+  { label: "Home", to: "/home" },
+  { label: "Heroes", to: `/players/${SEEDED_PLAYER_ID}/heroes` },
+  { label: "Lobby", to: `/players/${SEEDED_PLAYER_ID}/play` },
+  { label: "Dungeon", to: "/dungeon" },
+  { label: "Demo", to: "/demo" },
+];
 </script>
 
 <template>
   <div class="site-shell">
     <a class="skip-link" href="#main">Skip to main content</a>
 
-    <header class="site-shell__header">
-      <div class="layout-container site-shell__bar">
-        <NuxtLink to="/" class="site-shell__brand">Project Lantern</NuxtLink>
+    <UiTopNavigation brand="Project Lantern" brand-to="/home" :items="navigationItems">
+      <template #actions>
+        <span v-if="isAuthenticated" class="site-shell__identity">
+          {{ user?.username }}
+        </span>
+        <UiButton
+          :variant="isAuthenticated ? ButtonVariant.GHOST : ButtonVariant.PRIMARY"
+          :size="ButtonSize.SM"
+          @click="isAuthenticated ? logout() : login()"
+        >
+          {{ isAuthenticated ? "Sign out" : "Login" }}
+        </UiButton>
+      </template>
+    </UiTopNavigation>
 
-        <nav class="site-shell__nav" aria-label="Main">
-          <NuxtLink to="/demo">UI kit</NuxtLink>
-        </nav>
-      </div>
-    </header>
-
-    <main id="main" class="site-shell__main layout-container">
+    <div class="site-shell__main layout-container">
       <slot />
-    </main>
+    </div>
 
     <footer class="site-shell__footer">
       <div class="layout-container">
@@ -43,31 +60,6 @@ const config = useRuntimeConfig();
   flex-direction: column;
   min-block-size: 100vh;
 
-  &__header {
-    border-block-end: 1px solid var(--color-border-subtle);
-    background-color: var(--color-surface-raised);
-  }
-
-  &__bar {
-    display: flex;
-    align-items: center;
-    gap: var(--space-6);
-    min-block-size: 3.5rem;
-  }
-
-  &__brand {
-    font-family: var(--font-family-display);
-    font-size: var(--font-size-lg);
-    color: var(--color-text-primary);
-    text-decoration: none;
-  }
-
-  &__nav {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-4);
-  }
-
   &__main {
     flex: 1;
     padding-block: var(--space-7);
@@ -82,6 +74,11 @@ const config = useRuntimeConfig();
 
   &__build {
     font-family: var(--font-family-mono);
+  }
+
+  &__identity {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
   }
 }
 </style>

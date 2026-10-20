@@ -2,16 +2,16 @@
 import type {
   CreateHeroRequest,
   CreateHeroResponse,
+  DeleteHeroResponse,
+  HeroClassOption,
   HeroSheet,
   HeroSummary,
-  StartSoloRunRequest,
-  StartSoloRunResponse,
 } from "../types";
 import { useGateway } from "~/shared/composables/useGateway";
 import type { GatewayClient } from "~/shared/utils/gateway";
 
 function heroesPath(playerId: string): string {
-  return `players/${encodeURIComponent(playerId)}/heroes`;
+  return `player/${encodeURIComponent(playerId)}/heroes`;
 }
 
 /**
@@ -20,6 +20,10 @@ function heroesPath(playerId: string): string {
  */
 export function createPlayerApi(client: GatewayClient) {
   return {
+    listHeroClasses(signal?: AbortSignal): Promise<HeroClassOption[]> {
+      return client.get<HeroClassOption[]>("player/hero-classes", { signal });
+    },
+
     listHeroes(playerId: string, signal?: AbortSignal): Promise<HeroSummary[]> {
       return client.get<HeroSummary[]>(heroesPath(playerId), { signal });
     },
@@ -42,14 +46,25 @@ export function createPlayerApi(client: GatewayClient) {
       return client.post<CreateHeroResponse>(heroesPath(playerId), request);
     },
 
-    startSoloRun(
-      playerId: string,
-      heroId: string,
-      request: StartSoloRunRequest,
-    ): Promise<StartSoloRunResponse> {
-      return client.post<StartSoloRunResponse>(
-        `${heroesPath(playerId)}/${encodeURIComponent(heroId)}/sessions`,
-        request,
+    selectHero(playerId: string, heroId: string): Promise<undefined> {
+      return client.put<undefined>(
+        `${heroesPath(playerId)}/${encodeURIComponent(heroId)}/selection`,
+      );
+    },
+
+    deselectHero(playerId: string, heroId: string): Promise<undefined> {
+      return client.delete<undefined>(
+        `${heroesPath(playerId)}/${encodeURIComponent(heroId)}/selection`,
+      );
+    },
+
+    /**
+     * US-PLAYER-10. Idempotent: safe to retry after an uncertain outcome.
+     * Answers 409 while the hero is playing a running dungeon.
+     */
+    deleteHero(playerId: string, heroId: string): Promise<DeleteHeroResponse> {
+      return client.delete<DeleteHeroResponse>(
+        `${heroesPath(playerId)}/${encodeURIComponent(heroId)}`,
       );
     },
   };

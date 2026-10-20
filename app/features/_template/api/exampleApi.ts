@@ -18,7 +18,5 @@ export function fetchExample(signal?: AbortSignal): Promise<ExampleResource[]> {
 
 /** POST /api/v1/example/:id/act */
 export function actOnExample(id: string): Promise<ExampleOutcome> {
-  return useGateway().post<ExampleOutcome>(
-    `example/${encodeURIComponent(id)}/act`,
-  );
+  return useGateway().post<ExampleOutcome>(`example/${encodeURIComponent(id)}/act`);
 }

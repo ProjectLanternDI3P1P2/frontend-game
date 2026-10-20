@@ -23,8 +23,7 @@ export default defineNuxtPlugin((nuxtApp) => {
   );
 
   const currentRoute = () =>
-    router.currentRoute.value.matched.at(-1)?.path ??
-    router.currentRoute.value.path;
+    router.currentRoute.value.matched.at(-1)?.path ?? router.currentRoute.value.path;
 
   const reportVital = ({
     name,
