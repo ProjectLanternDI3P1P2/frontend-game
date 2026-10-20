@@ -20,3 +20,17 @@ frame in one canvas pass. Headwear hides the hair. No other file imports the she
 US-PLAYER-10 deliberately has no API function yet: the checked-in Player
 backend has no delete endpoint or handler. Add it only alongside the backend
 contract instead of guessing a route or response shape.
+
+## Hero sheets
+
+The hero is a stack of Mana Seed sheets, never a single image. `appearance.ts`
+is the only file that imports them and turns their codes (slot, style, colour)
+into URLs; every view, the dungeon's included, goes through it.
+
+- The sheets live in `app/assets/heroes/mana-seed/<slot>/` (`body`, `outfit`,
+  `hair`, `hat`, `weapon`, `shield`), under the art's own names:
+  `char_a_{page}_{layer}_{style}_v{NN}.webp`.
+- To add a sheet, drop it in the folder of its slot and list it in
+  `HERO_CATALOGUE`; `tests/appearance.spec.ts` checks that every listed sheet
+  exists.
+- Colours start at `v01`: `v00` is the artist's palette template.

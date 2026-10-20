@@ -65,10 +65,10 @@ Installed by `npm install` (the `prepare` script runs husky). Nothing else to do
 
 | Hook         | Does                                                                                          |
 | ------------ | --------------------------------------------------------------------------------------------- |
-| `pre-commit` | lint-staged: `oxlint --fix` then `prettier --write` on staged files, re-staged automatically. |
-| `commit-msg` | commitlint, same rules as CI (`.commitlintrc.json`).                                          |
+| `pre-commit` | lint-staged: `eslint --fix` then `prettier --write` on staged files, re-staged automatically. |
+| `commit-msg` | Conventional Commits check in plain `sh` (`.husky/commit-msg`).                               |
 
-Hooks can be skipped with `--no-verify`. CI runs the same checks and cannot be.
+Hooks can be skipped with `--no-verify`.
 
 ## Linters and formatter
 

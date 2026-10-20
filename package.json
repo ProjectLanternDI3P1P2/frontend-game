@@ -21,7 +21,8 @@
     "test:e2e": "cypress run",
     "test:e2e:open": "cypress open",
     "test": "npm run test:unit && npm run test:e2e",
-    "assets:dungeon": "node scripts/dungeon-atlas/build.mjs"
+    "assets:dungeon": "node scripts/dungeon-atlas/build.mjs",
+    "prepare": "husky"
   },
   "dependencies": {
     "nuxt": "^4.0.0",
@@ -42,6 +43,8 @@
     "eslint": "^9.0.0",
     "eslint-plugin-vuejs-accessibility": "^2.4.1",
     "happy-dom": "^20.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
     "prettier": "3.5.3",
     "sass-embedded": "^1.83.0",
     "typescript": "^5.7.0",
@@ -53,5 +56,9 @@
     "esbuild@0.28.2": true,
     "unrs-resolver@1.12.2": true,
     "@parcel/watcher@2.6.0": true
+  },
+  "lint-staged": {
+    "*.{js,mjs,ts,vue}": "eslint --fix",
+    "*": "prettier --write --ignore-unknown"
   }
 }

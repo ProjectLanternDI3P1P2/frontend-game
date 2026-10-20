@@ -21,6 +21,7 @@ const {
   run,
   loaded,
   hero,
+  appearance,
   status,
   errorMessage,
   announcement,
@@ -89,6 +90,7 @@ async function copyShareLink() {
           :loaded="loaded"
           :hero="hero"
           :facing="facing"
+          :appearance="appearance"
           :revealed="revealed"
           :reveal-version="revealVersion"
           :bump="bump"
