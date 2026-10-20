@@ -1,22 +1,15 @@
 /**
- * The sprites that stand on the board: the hero, enemies, bosses, items, traps and the
- * boss gate. Data only: the viewport binds `spriteStyle` and CSS plays the frames.
+ * The sprites that stand on the board: enemies, bosses, items, traps and the boss gate (the
+ * hero, a paper doll, is in `hero.ts`). Data only: the viewport binds `spriteStyle` and CSS
+ * plays the frames.
  *
  * An animation is a row of frames `pitch` pixels apart in its sheet; CSS steps through
  * them by moving the background, so no JavaScript runs per frame.
  */
-import type { Direction, MobState } from "../types";
+import type { MobState } from "../types";
 import type { Theme } from "./tileset";
 
 export type SpriteSheet = "objects" | "hero" | "mob";
-
-/**
- * The hero sheet: one animation per row, in cells of 100 x 40, the hero facing east and
- * standing on the line y = 34 of its cell, around x = 40.
- * Rows: 0 idle (6 frames), 1 run (8), 2 walk (8), 3 and 4 sword attacks (8 and 2),
- * 5 hurt (4), 6 dash attack (8).
- */
-export const HERO_SHEET = { width: 800, height: 280 } as const;
 
 export interface AnimatedSprite {
   sheet: SpriteSheet;
@@ -78,48 +71,6 @@ export function itemSprite(id: number): AnimatedSprite {
 export const TRAP: AnimatedSprite = {
   sheet: "objects", x: 160, y: 262, w: 32, h: 20, frames: 3, pitch: 32, duration: 1.2, dx: -8, dy: -2,
 };
-
-/** Standing still, or running from one tile to the next. */
-export type HeroPose = "idle" | "run";
-
-const HERO_CELL = { width: 100, height: 40 } as const;
-
-const HERO_POSES: Record<HeroPose, { row: number; frames: number; duration: number }> = {
-  idle: { row: 0, frames: 6, duration: 0.9 },
-  run: { row: 1, frames: 8, duration: 0.64 },
-};
-
-/**
- * The hero in a pose. The window is 56 pixels wide around the hero, wide enough for the
- * sword of the attack rows, and centred on it so that it can be flipped in place. The
- * hero stands at the bottom of its tile, as tall as about two tiles: its head overlaps
- * the row above, drawn behind it.
- */
-export function heroSprite(pose: HeroPose): AnimatedSprite {
-  const { row, frames, duration } = HERO_POSES[pose];
-  return {
-    sheet: "hero",
-    x: 12,
-    y: row * HERO_CELL.height,
-    w: 56,
-    h: HERO_CELL.height,
-    frames,
-    pitch: HERO_CELL.width,
-    duration,
-    dx: -20,
-    dy: -20,
-  };
-}
-
-/**
- * The sheet only draws the hero facing east: it is mirrored to face west. Going north or
- * south, it keeps facing the way it last went sideways.
- */
-export function heroFacesWest(facing: Direction, facedWest: boolean): boolean {
-  if (facing === "west") return true;
-  if (facing === "east") return false;
-  return facedWest;
-}
 
 /**
  * The portcullis of a boss room, drawn over the gate down: closed on its first frame, it

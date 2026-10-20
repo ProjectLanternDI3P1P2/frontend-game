@@ -23,6 +23,7 @@ import {
   step,
 } from "../dungeonMap";
 import { MOB_DEATH_MS, MOVE_COOLDOWN_MS, reveal } from "../dungeonRules";
+import { heroAppearanceOf } from "../tiles/hero";
 import type {
   Direction,
   DungeonElement,
@@ -42,6 +43,8 @@ export function useDungeonExplorer(runId: string) {
   const run = shallowRef<DungeonRunResponse | null>(null);
   const loaded = shallowRef<LoadedFloor | null>(null);
   const hero = ref<Position>({ x: 0, y: 0 });
+  /** The look of the hero: for now drawn at random for each run (see `heroAppearanceOf`). */
+  const appearance = heroAppearanceOf(runId);
   const status = ref<ExplorerStatus>("loading");
   const errorMessage = ref<string | null>(null);
   const announcement = ref("");
@@ -296,6 +299,7 @@ export function useDungeonExplorer(runId: string) {
     loaded,
     floor,
     hero,
+    appearance,
     status,
     errorMessage,
     announcement,
