@@ -9,6 +9,7 @@ services:
     extends: { file: compose.backend.yaml, service: rabbitmq }
   player:
     extends: { file: compose.backend.yaml, service: player }
+    image: !reset null
     build:
       context: ../player-backend
       dockerfile: Dockerfile.dev
@@ -17,15 +18,22 @@ services:
         dungeon-contracts: ../dungeon-backend
   combat:
     extends: { file: compose.backend.yaml, service: combat }
-    build: { context: ../combat-backend, dockerfile: Dockerfile.dev, secrets: !reset [] }
+    image: !reset null
+    build:
+      { context: ../combat-backend, dockerfile: Dockerfile.dev, secrets: !reset [] }
   dungeon:
     extends: { file: compose.backend.yaml, service: dungeon }
-    build: { context: ../dungeon-backend, dockerfile: Dockerfile.dev, secrets: !reset [] }
+    image: !reset null
+    build:
+      { context: ../dungeon-backend, dockerfile: Dockerfile.dev, secrets: !reset [] }
   reward:
     extends: { file: compose.backend.yaml, service: reward }
-    build: { context: ../reward-backend, dockerfile: Dockerfile.dev, secrets: !reset [] }
+    image: !reset null
+    build:
+      { context: ../reward-backend, dockerfile: Dockerfile.dev, secrets: !reset [] }
   leaderboard:
     extends: { file: compose.backend.yaml, service: leaderboard }
+    image: !reset null
     build:
       context: ../leaderboard-backend
       dockerfile: Dockerfile.dev

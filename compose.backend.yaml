@@ -129,10 +129,7 @@ services:
 
   player:
     <<: *api
-    build:
-      context: ../player-backend
-      dockerfile: Dockerfile
-      secrets: [github_packages_credentials]
+    image: diiageplayerimage/player-image:latest
     environment:
       <<: *api-environment
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=player;Username=player;Password=${SERVICE_DB_PASSWORD:-lantern-local}"
@@ -152,10 +149,7 @@ services:
 
   dungeon:
     <<: *api
-    build:
-      context: ../dungeon-backend
-      dockerfile: Dockerfile
-      secrets: [github_packages_credentials]
+    image: diiagedungeonimage/dungeon-image:latest
     environment:
       <<: *api-environment
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=dungeon;Username=dungeon;Password=${SERVICE_DB_PASSWORD:-lantern-local}"
@@ -171,10 +165,7 @@ services:
 
   combat:
     <<: *api
-    build:
-      context: ../combat-backend
-      dockerfile: Dockerfile
-      secrets: [github_packages_credentials]
+    image: diiagecombatimage/combat-image:latest
     environment:
       <<: *api-environment
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=combat;Username=combat;Password=${SERVICE_DB_PASSWORD:-lantern-local}"
@@ -194,10 +185,7 @@ services:
 
   reward:
     <<: *api
-    build:
-      context: ../reward-backend
-      dockerfile: Dockerfile
-      secrets: [github_packages_credentials]
+    image: diiagerewardimage/reward-image:latest
     environment:
       <<: *api-environment
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=reward;Username=reward;Password=${SERVICE_DB_PASSWORD:-lantern-local}"
@@ -212,10 +200,7 @@ services:
 
   leaderboard:
     <<: *api
-    build:
-      context: ../leaderboard-backend
-      dockerfile: Dockerfile
-      secrets: [github_packages_credentials]
+    image: diiageleaderboardimage/leaderboard-image:latest
     environment:
       <<: *api-environment
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=leaderboard;Username=leaderboard;Password=${SERVICE_DB_PASSWORD:-lantern-local}"
@@ -263,7 +248,3 @@ networks:
 volumes:
   postgres-data:
   rabbitmq-data:
-
-secrets:
-  github_packages_credentials:
-    environment: GITHUB_PACKAGES_CREDENTIALS
