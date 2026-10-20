@@ -4,6 +4,8 @@ import { NoticeTone } from "~/shared/ui/UiNotice.vue";
 import { useToast } from "~/shared/composables/useToast";
 import { GatewayError } from "~/shared/utils/gateway";
 import { usePlayerApi } from "~/features/player/api/playerApi";
+import HeroInventoryPanel from "~/features/inventory/components/HeroInventoryPanel.vue";
+import { useHeroInventory } from "~/features/inventory/composables/useHeroInventory";
 import HeroPortraitPlaceholder from "~/features/player/components/HeroPortraitPlaceholder.vue";
 import type { HeroClassOption, HeroSheet, HeroSummary } from "~/features/player/types";
 
@@ -22,6 +24,12 @@ const loading = ref(true);
 const updatingSelection = ref(false);
 const error = ref("");
 const { success } = useToast();
+const {
+  inventory,
+  loading: inventoryLoading,
+  unavailable: inventoryUnavailable,
+  refresh: refreshInventory,
+} = useHeroInventory(heroId);
 
 const isSelected = computed(() => heroSummary.value?.isSelected ?? false);
 const isInActiveSession = computed(
@@ -107,7 +115,10 @@ async function toggleSelection() {
   }
 }
 
-onMounted(load);
+onMounted(async () => {
+  await load();
+  if (hero.value) await refreshInventory();
+});
 </script>
 
 <template>
@@ -222,8 +233,17 @@ onMounted(load);
                 <small>{{ slot }}</small>
               </div>
             </div>
-            <a href="#inventory">Manage equipment in Inventory →</a>
+            <a href="#hero-inventory">View inventory →</a>
           </section>
+
+          <HeroInventoryPanel
+            id="hero-inventory"
+            class="hero-detail__panel"
+            :inventory="inventory"
+            :loading="inventoryLoading"
+            :unavailable="inventoryUnavailable"
+            @retry="refreshInventory"
+          />
 
           <section
             id="inventory"
