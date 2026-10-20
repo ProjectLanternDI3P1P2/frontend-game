@@ -2,13 +2,13 @@
 
 Shared contracts and typed Gateway calls for US-PLAYER-07 to US-PLAYER-11.
 
-| API function   | Gateway route                                            | Used by |
-| -------------- | -------------------------------------------------------- | ------- |
-| `createHero`   | `POST /api/v1/players/:playerId/heroes`                  | US-07   |
-| `listHeroes`   | `GET /api/v1/players/:playerId/heroes`                   | US-08   |
-| `getHeroSheet` | `GET /api/v1/players/:playerId/heroes/:heroId`           | US-09   |
-| `deleteHero`   | `DELETE /api/v1/players/:playerId/heroes/:heroId`        | US-10   |
-| `startSoloRun` | `POST /api/v1/players/:playerId/heroes/:heroId/sessions` | US-11   |
+| API function   | Gateway route                                           | Used by |
+| -------------- | ------------------------------------------------------- | ------- |
+| `createHero`   | `POST /api/player/v1/:playerId/heroes`                  | US-07   |
+| `listHeroes`   | `GET /api/player/v1/:playerId/heroes`                   | US-08   |
+| `getHeroSheet` | `GET /api/player/v1/:playerId/heroes/:heroId`           | US-09   |
+| `deleteHero`   | `DELETE /api/player/v1/:playerId/heroes/:heroId`        | US-10   |
+| `startSoloRun` | `POST /api/player/v1/:playerId/heroes/:heroId/sessions` | US-11   |
 
 ## Hero appearance
 
