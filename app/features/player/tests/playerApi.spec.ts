@@ -31,32 +31,32 @@ describe("Player API", () => {
     await api.deselectHero(playerId, heroId);
     await api.deleteHero(playerId, heroId);
 
-    expect(gateway.get).toHaveBeenNthCalledWith(1, "players/player%20id/heroes", {
+    expect(gateway.get).toHaveBeenNthCalledWith(1, "player/player%20id/heroes", {
       signal: undefined,
     });
-    expect(gateway.get).toHaveBeenNthCalledWith(2, "hero-classes", {
+    expect(gateway.get).toHaveBeenNthCalledWith(2, "player/hero-classes", {
       signal: undefined,
     });
     expect(gateway.get).toHaveBeenNthCalledWith(
       3,
-      "players/player%20id/heroes/hero%2Fid",
+      "player/player%20id/heroes/hero%2Fid",
       { signal: undefined },
     );
     expect(gateway.post).toHaveBeenNthCalledWith(
       1,
-      "players/player%20id/heroes",
+      "player/player%20id/heroes",
       expect.objectContaining({ idempotencyKey: "create-key" }),
     );
     expect(gateway.put).toHaveBeenCalledWith(
-      "players/player%20id/heroes/hero%2Fid/selection",
+      "player/player%20id/heroes/hero%2Fid/selection",
     );
     expect(gateway.delete).toHaveBeenNthCalledWith(
       1,
-      "players/player%20id/heroes/hero%2Fid/selection",
+      "player/player%20id/heroes/hero%2Fid/selection",
     );
     expect(gateway.delete).toHaveBeenNthCalledWith(
       2,
-      "players/player%20id/heroes/hero%2Fid",
+      "player/player%20id/heroes/hero%2Fid",
     );
   });
 });
