@@ -14,8 +14,8 @@
  */
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import type { LoadedFloor } from "../composables/useDungeonFloor";
-import { gateOf } from "../dungeonMap";
-import { cameraOrigin, type Viewport } from "../dungeonRules";
+import { gateOf, revealedTeleports } from "../dungeonMap";
+import { MOB_DEATH_MS, MOVE_COOLDOWN_MS, cameraOrigin, type Viewport } from "../dungeonRules";
 import { MAX_LAYERS } from "../tiles/autotile";
 import {
   BOSS,
@@ -26,11 +26,12 @@ import {
   heroFacesWest,
   heroSprite,
   itemSprite,
+  mobClassName,
   spriteStyle,
   type AnimatedSprite,
 } from "../tiles/sprites";
 import { SHEETS, themeOf } from "../tiles/tileset";
-import type { Direction, DungeonElement, Position } from "../types";
+import type { Direction, DungeonElement, MobState, Position } from "../types";
 
 const props = defineProps<{
   loaded: LoadedFloor;
@@ -45,6 +46,10 @@ const props = defineProps<{
   viewport: Viewport & { tile: number };
   /** Opens the gate down and removes the boss. */
   floorBossDefeated: boolean;
+  /** The living mobs, where the server last saw them. */
+  mobs: MobState[];
+  /** Mobs just killed, fading out where they fell. */
+  dyingMobs: MobState[];
 }>();
 
 const theme = computed(() => themeOf(props.loaded.floor.floor));
@@ -122,6 +127,8 @@ const visibleElements = computed<VisibleSprite[]>(() => {
     .filter(
       (element) =>
         revealed[element.y * floor.width + element.x] === 1 &&
+        // Enemies only give the spawn tiles: the mobs of the run are drawn below.
+        element.type !== "enemy" &&
         !(element.type === "boss" && props.floorBossDefeated),
     )
     .map((element) => {
@@ -134,6 +141,28 @@ const visibleElements = computed<VisibleSprite[]>(() => {
       };
     });
 });
+
+/** The mobs on revealed tiles, keyed by id so that a move slides the same sprite. */
+const visibleMobs = computed<VisibleSprite[]>(() => {
+  const { cells: revealed } = revealedMask.value;
+  const { floor } = props.loaded;
+  const dying = new Set(props.dyingMobs.map((mob) => mob.id));
+  return [...props.mobs, ...props.dyingMobs]
+    .filter((mob) => revealed[mob.y * floor.width + mob.x] === 1)
+    .map((mob) => ({
+      // Same key alive and dying: the sprite stays where it fell and fades out.
+      key: `mob-${mob.id}`,
+      className: `${mobClassName(mob)}${dying.has(mob.id) ? " dungeon-mob--dying" : ""}`,
+      style: `${spriteStyle(ENEMY, mob)};--delay:-${((mob.id * 0.37) % 1.6).toFixed(2)}s`,
+    }));
+});
+
+/** Where the mages will land, announced a turn ahead. */
+const teleports = computed(() =>
+  revealedTeleports(props.mobs, revealedMask.value.cells, props.loaded.floor.width).map(
+    ({ id, x, y }) => ({ key: `teleport-${id}`, style: `--x:${x};--y:${y}` }),
+  ),
+);
 
 /**
  * The portcullis of the gate down, drawn over its wall: closed until the boss falls, then
@@ -190,7 +219,8 @@ const viewportStyle = computed(() => {
   return (
     `--columns:${columns};--rows:${rows};--tile:${tile}px;` +
     `--atlas-width:${SHEETS.atlas.width};--atlas-height:${SHEETS.atlas.height};` +
-    `--hero-width:${HERO_SHEET.width};--hero-height:${HERO_SHEET.height}`
+    `--hero-width:${HERO_SHEET.width};--hero-height:${HERO_SHEET.height};` +
+    `--slide:${MOVE_COOLDOWN_MS}ms;--death:${MOB_DEATH_MS}ms`
   );
 });
 
@@ -214,6 +244,13 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
         :class="element.className"
         :style="element.style"
       />
+
+      <div v-for="mark in teleports" :key="mark.key" class="dungeon-teleport" :style="mark.style">
+        <!-- 1–8 spiral in, 9–12 rise (see `.dungeon-teleport__mote`). -->
+        <span v-for="i in 12" :key="i" class="dungeon-teleport__mote" :style="{ '--i': i }" />
+      </div>
+
+      <div v-for="mob in visibleMobs" :key="mob.key" :class="mob.className" :style="mob.style" />
 
       <div class="dungeon-token dungeon-token--hero" :style="tokenStyle(hero)">
         <span
@@ -264,7 +301,7 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
     will-change: transform;
 
     @include bp.motion-safe {
-      transition: transform var(--duration-fast) var(--easing-standard);
+      transition: transform var(--slide) ease-in-out;
     }
   }
 }
@@ -410,6 +447,157 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   z-index: calc(2 * var(--y) + 3);
 }
 
+// Once in aggro, a mob glows red and its glow throbs: it hunts the party. Two classes, so
+// that it wins over the hover animation of `.dungeon-element--enemy` below.
+@property --mob-glow-size {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+.dungeon-mob.dungeon-mob--aggro {
+  --mob-glow: rgb(255 70 70 / 95%);
+  --mob-glow-size: calc(var(--px) * 3);
+
+  @include bp.motion-safe {
+    animation:
+      dungeon-hover 1.6s ease-in-out var(--delay, 0s) infinite,
+      dungeon-aggro-glow 0.7s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes dungeon-aggro-glow {
+  to {
+    --mob-glow-size: calc(var(--px) * 6);
+  }
+}
+
+// A killed mob first slides to the tile it fell on (the transition of `.dungeon-mob`), then
+// flashes white, rises and fades out. No `scale` here nor
+// on any sprite placed by `transform`: `scale` applies before `transform`, so it would
+// shrink the tile offset too and drag the sprite toward the top-left corner of the floor.
+.dungeon-mob.dungeon-mob--dying {
+  animation: dungeon-mob-death var(--death) ease-in var(--slide) forwards;
+}
+
+@keyframes dungeon-mob-death {
+  20% {
+    opacity: 1;
+    filter: brightness(6) drop-shadow(0 0 calc(var(--px) * 6) rgb(255 255 255 / 95%));
+  }
+
+  to {
+    opacity: 0;
+    translate: 0 calc(var(--px) * -10);
+  }
+}
+
+// A mob slides from one tile to the next between turns, as the hero does; a mage jumps.
+.dungeon-mob {
+  @include bp.motion-safe {
+    transition: transform var(--slide) ease-in-out;
+  }
+}
+
+.dungeon-element--mage {
+  transition: none;
+}
+
+// The tile a mage announced: a bright violet glow, larger than its tile, drawn over the
+// mobs so that it reads at a glance.
+.dungeon-teleport {
+  position: absolute;
+  left: 0;
+  top: 0;
+  inline-size: calc(var(--tile) * 1.5);
+  block-size: calc(var(--tile) * 1.5);
+  transform: translate3d(
+    calc((var(--x) - 0.25) * var(--tile)),
+    calc((var(--y) - 0.25) * var(--tile)),
+    0
+  );
+  z-index: calc(2 * var(--y) + 4);
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    rgb(255 255 255 / 95%),
+    rgb(214 150 255 / 90%) 30%,
+    rgb(160 70 255 / 55%) 60%,
+    transparent
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+
+  // A slow breath of light and motes of magic: eight spiral into the tile, gathering for
+  // the jump, four rise from it.
+  @include bp.motion-safe {
+    animation: dungeon-teleport-pulse 1.2s ease-in-out infinite alternate;
+  }
+
+  // Pixel squares, centred on the tile; hidden without motion, where they would only
+  // be dots.
+  &__mote {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    inline-size: calc(var(--px) * 1.5);
+    block-size: calc(var(--px) * 1.5);
+    margin: calc(var(--px) * -0.75);
+    background: rgb(230 190 255);
+    box-shadow: 0 0 calc(var(--px) * 2) calc(var(--px) * 0.5) rgb(170 90 255 / 90%);
+    opacity: 0;
+
+    &:nth-child(odd) {
+      background: rgb(255 255 255);
+    }
+
+    @include bp.motion-safe {
+      animation: dungeon-teleport-gather 1.6s ease-in calc(var(--i) * -0.2s) infinite;
+
+      &:nth-child(n + 9) {
+        animation: dungeon-teleport-rise 1.4s ease-out calc(var(--i) * -0.37s) infinite;
+      }
+    }
+  }
+}
+
+@keyframes dungeon-teleport-gather {
+  from {
+    transform: rotate(calc(var(--i) * 45deg)) translateX(calc(var(--tile) * 0.85)) scale(1.3);
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  to {
+    transform: rotate(calc(var(--i) * 45deg + 200deg)) translateX(0) scale(0.4);
+    opacity: 0;
+  }
+}
+
+// Spread across the tile: --i is 9 to 12, so the offset runs from -1.5 to 1.5 steps.
+@keyframes dungeon-teleport-rise {
+  from {
+    transform: translate(calc((var(--i) - 10.5) * var(--tile) * 0.15), calc(var(--tile) * 0.25));
+  }
+
+  30% {
+    opacity: 1;
+  }
+
+  to {
+    transform: translate(calc((var(--i) - 10.5) * var(--tile) * 0.15), calc(var(--tile) * -0.9));
+    opacity: 0;
+  }
+}
+
+@keyframes dungeon-teleport-pulse {
+  to {
+    opacity: 0.75;
+  }
+}
+
 // Mobs float: a single still image, bobbing over a shadow that stays on the floor and
 // shrinks as they rise. A pale outline keeps the dark placeholder visible on the stones.
 .dungeon-element--enemy,
@@ -451,7 +639,7 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 .dungeon-element--bat {
   filter: brightness(3) sepia(1) saturate(var(--mob-saturation, 4))
     hue-rotate(var(--mob-hue))
-    drop-shadow(0 0 calc(var(--px) * 1) rgb(214 206 255 / 55%));
+    drop-shadow(0 0 var(--mob-glow-size, calc(var(--px) * 1)) var(--mob-glow, rgb(214 206 255 / 55%)));
 }
 
 .dungeon-element--zombie {
@@ -542,7 +730,7 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
     z-index: calc(2 * var(--y) + 3);
 
     @include bp.motion-safe {
-      transition: transform var(--duration-fast) var(--easing-standard);
+      transition: transform var(--slide) ease-in-out;
     }
   }
 

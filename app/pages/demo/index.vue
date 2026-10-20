@@ -22,6 +22,11 @@ const sections = [
     title: "Feedback & overlays",
     description: "Notices, tabs, and dialogs.",
   },
+  {
+    to: "/demo/dungeon",
+    title: "Dungeon assets",
+    description: "Hero, mobs, walls, floors, decor, and source sheets.",
+  },
 ];
 </script>
 
