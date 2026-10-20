@@ -9,12 +9,13 @@
  * backend did not accept.
  */
 import { computed, ref, shallowRef, watch } from "vue";
-import { defeatFloorBoss, fetchDungeonRun, moveHero } from "../api/dungeonApi";
+import { defeatFloorBoss, joinDungeon, moveHero } from "../api/dungeonApi";
 import type { DecodedFloor } from "../dungeonMap";
 import {
   Cell,
   cellAt,
   corridorAt,
+  decodeVisitedTiles,
   elementsAt,
   goesDown,
   isWalkableAt,
@@ -100,7 +101,7 @@ export function useDungeonExplorer(runId: string) {
     status.value = "loading";
     errorMessage.value = null;
     try {
-      const state = await fetchDungeonRun(runId);
+      const state = await joinDungeon(runId);
       await enterFloor(state);
       status.value = "ready";
     } catch (error) {
@@ -115,11 +116,28 @@ export function useDungeonExplorer(runId: string) {
     loaded.value = next;
     revealed.value = new Uint8Array(next.floor.width * next.floor.height);
     visitedRoomIds.value = [];
+    restoreExploration(next.floor, state.visitedTiles);
     placeHero(state.hero);
 
     if (state.currentFloor + 1 < state.floorCount) {
       prefetchFloor(state.seed, state.currentFloor + 1);
     }
+  }
+
+  /**
+   * The server keeps the tiles the hero stood on: revealing around each of them
+   * again rebuilds the fog and the minimap as they were before a reload.
+   */
+  function restoreExploration(current: DecodedFloor, visitedTiles: string): void {
+    const roomIds = new Set<number>();
+    for (const tile of decodeVisitedTiles(current, visitedTiles)) {
+      const room = roomAt(current, tile);
+      if (room && roomIds.has(room.id)) continue; // already revealed whole
+      reveal(current, revealed.value, tile);
+      if (room) roomIds.add(room.id);
+    }
+    visitedRoomIds.value = [...roomIds];
+    revealVersion.value++;
   }
 
   function placeHero(position: Position): void {
@@ -255,7 +273,7 @@ export function useDungeonExplorer(runId: string) {
     generation++;
     errorMessage.value = describe(error);
     try {
-      const authoritative = await fetchDungeonRun(runId);
+      const authoritative = await joinDungeon(runId);
       if (authoritative.currentFloor !== run.value?.currentFloor) {
         await enterFloor(authoritative);
       } else {

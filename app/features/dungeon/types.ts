@@ -121,6 +121,13 @@ export interface DungeonRunResponse {
   mobs: MobState[];
   /** Mobs that died on this turn, on the tile they fell on. */
   killedMobs: MobState[];
+  /** Rooms of the current floor the party has discovered: their mobs know it is here. */
+  discoveredRoomIds: number[];
+  /**
+   * Tiles of the current floor the hero has stood on, as a base64 bitset
+   * (`decodeVisitedTiles`): the fog of war is rebuilt from it after a reload.
+   */
+  visitedTiles: string;
   startedAt: string;
 }
 
