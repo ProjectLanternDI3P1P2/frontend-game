@@ -27,7 +27,9 @@ const inventory = {
 };
 
 describe("useHeroInventory", () => {
-  beforeEach(() => getHeroInventory.mockReset());
+  beforeEach(() => {
+    getHeroInventory.mockReset();
+  });
 
   it("exposes the inventory Reward returned", async () => {
     getHeroInventory.mockResolvedValue(inventory);
