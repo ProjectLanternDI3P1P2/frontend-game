@@ -132,3 +132,44 @@ export interface CreateDungeonRunRequest {
   /** Omitted for a new dungeon; set to replay a shared seed. */
   seed?: string;
 }
+
+export type ChestLootDifficulty = "NORMAL" | "HARD";
+
+/** POST /api/v1/rewards/chest-loot/generate. */
+export interface GenerateChestLootRequest {
+  commandId: string;
+  dungeonRunId: string;
+  chestElementId: number;
+  floor: number;
+  difficulty: ChestLootDifficulty;
+}
+
+export interface GeneratedChestLootItem {
+  itemId: string;
+  name: string;
+  rarity: string;
+  quantity: number;
+}
+
+export interface GenerateChestLootResult {
+  rewardId: string;
+  dungeonRunId: string;
+  chestId: string;
+  lootTableId: string;
+  floor: number;
+  difficulty: ChestLootDifficulty;
+  alreadyGenerated: boolean;
+  items: GeneratedChestLootItem[];
+}
+
+export type ChestLootStatus = "loading" | "success" | "error";
+
+/** One modal lifecycle, including the idempotency key kept across retries. */
+export interface ChestLootInteraction {
+  commandId: string;
+  chestElementId: number;
+  floor: number;
+  status: ChestLootStatus;
+  result: GenerateChestLootResult | null;
+  errorMessage: string | null;
+}

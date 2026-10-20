@@ -69,9 +69,9 @@ const CHESTS: readonly AnimatedSprite[] = [64, 96, 128].map((y) => ({
   dy: -16,
 }));
 
-/** A chest, of a colour chosen by the item's id. */
-export function itemSprite(id: number): AnimatedSprite {
-  return CHESTS[id % CHESTS.length]!;
+/** A chest, of a colour chosen by the item's id, on its closed or open frame. */
+export function itemSprite(id: number, open = false): AnimatedSprite {
+  return { ...CHESTS[id % CHESTS.length]!, x: open ? 96 : 0 };
 }
 
 /** Spikes that come out of the floor and go back in. */

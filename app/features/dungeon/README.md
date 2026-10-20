@@ -29,6 +29,7 @@ copying `app/features/dungeon/`, `app/pages/dungeon/` and the route rule.
 | `moveHero`         | `POST /api/v1/dungeon-runs/{runId}/moves`  | never                                   |
 | `defeatFloorBoss`  | `POST /api/v1/dungeon-runs/{runId}/boss-defeats` | never                             |
 | `fetchDungeonMap`  | `GET /api/v1/dungeons/{seed}/map?floor=n`  | forever: a floor is immutable per seed  |
+| `generateChestLoot` | `POST /api/v1/rewards/chest-loot/generate` | never: the response is an interaction snapshot |
 
 `defeatFloorBoss` is temporary too: it stands in for Combat's fight when the
 hero walks into the boss, and Combat calls it once the fight exists.
@@ -36,6 +37,25 @@ hero walks into the boss, and Combat calls it once the fight exists.
 `createDungeonRun` is temporary: in the target flow the Player service creates
 the game session and requests the run (ADR-GLOB-011). Only
 `composables/useDungeonLauncher.ts` changes when Player exposes it.
+
+### Chest loot interaction
+
+After a confirmed move onto an item element, `useDungeonExplorer` starts one
+chest interaction and opens `ChestLootModal`. The interaction sends
+`commandId`, `dungeonRunId`, `chestElementId`, `floor` as `currentFloor + 1`,
+and the temporary configured difficulty `NORMAL`. Movement stays blocked while
+the interaction is loading, showing loot, or showing an error.
+
+The temporary `NORMAL` value is defined in `chestLootConfig.ts`. Chest loot is
+shown as the interaction result; this flow does not add the items to the
+player's inventory automatically.
+
+The modal has loading, saved items, and error states. `Retry` repeats the same
+command with the same `commandId`; a successful response marks the chest open.
+Closing the modal cancels the active request and resumes movement. Walking away
+and returning reads the chest loot again, without a local loop or a second
+generation identity. Responses that arrive after close, disposal, or a run
+change are ignored.
 
 ### How it stays fast without an engine or a canvas (ADR-FE-005, ADR-FE-006)
 
@@ -181,6 +201,8 @@ HUD, the minimap and the actions float over the board.
 | Unit  | `tests/sprites.spec.ts`            | Animated sprites: chests only for items, the hero's rows, the boss, the doors. |
 | Unit  | `tests/dungeonRules.spec.ts`       | Key mapping, camera clamping, fog of war (void under the walls included).       |
 | Unit  | `tests/useDungeonExplorer.spec.ts` | Predicted moves in order, no request into a wall or a locked gate, boss fight opens the gate, resync on refusal, one fetch per floor. |
+| Unit  | `tests/ChestLootModal.spec.ts`     | Loading, error and retry, saved loot, and close behavior.                       |
+| Unit  | `tests/useDungeonExplorer.spec.ts` | Confirmed chest movement, blocked interaction, one generation call, stable retry command, close/resume, and late-response handling. |
 
 The fixtures in `tests/fixtures/` were produced by the Dungeon service's query
 handlers: regenerate them when the contract changes.

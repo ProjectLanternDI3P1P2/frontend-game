@@ -15,6 +15,8 @@ describe("sprites", () => {
   it("only uses chests for items", () => {
     expect(new Set([0, 1, 2, 3, 4, 5].map((id) => itemSprite(id).x))).toEqual(new Set([0]));
     expect(new Set([0, 1, 2].map((id) => itemSprite(id).y))).toEqual(new Set([64, 96, 128]));
+    expect(itemSprite(1, true).x).toBe(96);
+    expect(itemSprite(1, true).y).toBe(itemSprite(1).y);
   });
 
   it("gives a chest the same look every time: it depends on its id only", () => {

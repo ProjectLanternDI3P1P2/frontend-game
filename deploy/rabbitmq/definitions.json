@@ -98,6 +98,15 @@
       }
     },
     {
+      "name": "rewards.chest-loot-publications.v1",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
       "name": "progression.events.v1",
       "vhost": "/",
       "durable": true,
@@ -147,6 +156,22 @@
       "destination": "rewards.events.v1.dead",
       "destination_type": "queue",
       "routing_key": "rewards.events.v1",
+      "arguments": {}
+    },
+    {
+      "source": "rewards.events",
+      "vhost": "/",
+      "destination": "rewards.chest-loot-publications.v1",
+      "destination_type": "queue",
+      "routing_key": "rewards.chest-loot-generated.v1",
+      "arguments": {}
+    },
+    {
+      "source": "rewards.events",
+      "vhost": "/",
+      "destination": "rewards.chest-loot-publications.v1",
+      "destination_type": "queue",
+      "routing_key": "logs.reward.chest-loot-generation.v1",
       "arguments": {}
     },
     {
@@ -305,6 +330,17 @@
         "dead-letter-exchange": "lantern.dead-letter",
         "dead-letter-routing-key": "rewards.events.v1",
         "dead-letter-strategy": "at-least-once",
+        "overflow": "reject-publish",
+        "message-ttl": 604800000
+      }
+    },
+    {
+      "vhost": "/",
+      "name": "rewards.chest-loot-publications.v1",
+      "pattern": "^rewards\\.chest-loot-publications\\.v1$",
+      "apply-to": "quorum_queues",
+      "priority": 10,
+      "definition": {
         "overflow": "reject-publish",
         "message-ttl": 604800000
       }

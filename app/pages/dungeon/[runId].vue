@@ -4,6 +4,7 @@
  * Composes the dungeon feature; holds no rule of its own.
  */
 import DungeonControls from "~/features/dungeon/components/DungeonControls.vue";
+import ChestLootModal from "~/features/dungeon/components/ChestLootModal.vue";
 import DungeonMinimap from "~/features/dungeon/components/DungeonMinimap.vue";
 import DungeonViewport from "~/features/dungeon/components/DungeonViewport.vue";
 import { useBoardViewport } from "~/features/dungeon/composables/useBoardViewport";
@@ -12,7 +13,8 @@ import { MOVE_COOLDOWN_MS, createCooldown, directionForKey } from "~/features/du
 import type { Direction } from "~/features/dungeon/types";
 import { ButtonSize, ButtonVariant } from "~/shared/ui/ui.types";
 
-definePageMeta({ layout: "game" });
+// A run id change remounts the explorer after its in-flight work is invalidated.
+definePageMeta({ layout: "game", key: (route) => route.fullPath });
 useHead({ title: "Exploration" });
 
 const route = useRoute();
@@ -34,6 +36,9 @@ const {
   floorBossDefeated,
   mobs,
   dyingMobs,
+  movementBlocked,
+  chestLoot,
+  openedChestIds,
 } = explorer;
 
 const board = ref<HTMLElement | null>(null);
@@ -46,11 +51,19 @@ onMounted(async () => {
   board.value?.focus();
 });
 
+watch(
+  () => String(route.params.runId),
+  (nextRunId, previousRunId) => {
+    if (nextRunId !== previousRunId) explorer.dispose();
+  },
+);
+onBeforeUnmount(() => explorer.dispose());
+
 const canMove = createCooldown(MOVE_COOLDOWN_MS);
 
 /** One move per slide, from the keyboard as from the on-screen pad. */
 function move(direction: Direction) {
-  if (canMove()) explorer.move(direction);
+  if (!movementBlocked.value && canMove()) explorer.move(direction);
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -96,6 +109,7 @@ async function copyShareLink() {
           :floor-boss-defeated="floorBossDefeated"
           :mobs="mobs"
           :dying-mobs="dyingMobs"
+          :opened-chest-ids="openedChestIds"
         />
       </div>
 
@@ -143,7 +157,7 @@ async function copyShareLink() {
 
       <DungeonControls
         class="dungeon-page__pad"
-        :disabled="run.status !== 'active'"
+        :disabled="run.status !== 'active' || movementBlocked"
         @move="move"
       />
 
@@ -152,6 +166,13 @@ async function copyShareLink() {
         fight it; once it is defeated, walk into the gate behind it to go down.
       </p>
       <p class="visually-hidden" aria-live="polite">{{ announcement }}</p>
+
+      <ChestLootModal
+        v-if="chestLoot"
+        :interaction="chestLoot"
+        @retry="explorer.retryChestLoot"
+        @close="explorer.closeChestLoot"
+      />
     </template>
   </div>
 </template>

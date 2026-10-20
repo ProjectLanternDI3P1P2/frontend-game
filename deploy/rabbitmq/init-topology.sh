@@ -19,7 +19,7 @@ attempt=0
 while :; do
   queue_names=$(rabbitmqctl -q --timeout 5 list_queues name)
   all_ready=true
-  for queue in player.events.v1 player.events.v1.dead rewards.events.v1 rewards.events.v1.dead progression.events.v1 progression.events.v1.dead; do
+  for queue in player.events.v1 player.events.v1.dead rewards.events.v1 rewards.events.v1.dead rewards.chest-loot-publications.v1 progression.events.v1 progression.events.v1.dead; do
     if ! printf '%s\n' "$queue_names" | grep -Fxq "$queue"; then
       all_ready=false
     fi

@@ -50,6 +50,8 @@ const props = defineProps<{
   mobs: MobState[];
   /** Mobs just killed, fading out where they fell. */
   dyingMobs: MobState[];
+  /** Item element ids whose persisted loot has been loaded successfully. */
+  openedChestIds: number[];
 }>();
 
 const theme = computed(() => themeOf(props.loaded.floor.floor));
@@ -114,7 +116,7 @@ function spriteOf(element: DungeonElement): AnimatedSprite {
     case "boss":
       return BOSS;
     case "item":
-      return itemSprite(element.id);
+      return itemSprite(element.id, props.openedChestIds.includes(element.id));
     case "trap":
       return TRAP;
   }

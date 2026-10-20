@@ -9,7 +9,13 @@
  * backend did not accept.
  */
 import { computed, ref, shallowRef, watch } from "vue";
-import { defeatFloorBoss, fetchDungeonRun, moveHero } from "../api/dungeonApi";
+import {
+  defeatFloorBoss,
+  fetchDungeonRun,
+  generateChestLoot,
+  moveHero,
+} from "../api/dungeonApi";
+import { CHEST_LOOT_DIFFICULTY } from "../chestLootConfig";
 import type { DecodedFloor } from "../dungeonMap";
 import {
   Cell,
@@ -24,11 +30,13 @@ import {
 import { MOB_DEATH_MS, MOVE_COOLDOWN_MS, reveal } from "../dungeonRules";
 import type {
   Direction,
+  ChestLootInteraction,
   DungeonElement,
   DungeonRunResponse,
   MobState,
   Position,
 } from "../types";
+import { createIdempotencyKey } from "~/shared/utils/idempotency";
 import type { LoadedFloor } from "./useDungeonFloor";
 import { loadFloor, prefetchFloor } from "./useDungeonFloor";
 
@@ -49,6 +57,9 @@ export function useDungeonExplorer(runId: string) {
   /** Where the hero last tried to go: the view turns it that way. */
   const facing = ref<Direction>("south");
   const pendingMoves = ref(0);
+  const pendingChestKey = ref<string | null>(null);
+  const chestLoot = shallowRef<ChestLootInteraction | null>(null);
+  const openedChestIds = ref<number[]>([]);
 
   // The fog lives in a typed array; the version counter is what Vue tracks.
   const revealed = shallowRef<Uint8Array>(new Uint8Array(0));
@@ -59,6 +70,10 @@ export function useDungeonExplorer(runId: string) {
   let generation = 0;
   let bumpCount = 0;
   let isFighting = false;
+  let observedChestKey: string | null = null;
+  let chestRequestGeneration = 0;
+  let chestAbortController: AbortController | null = null;
+  let disposed = false;
 
   const floor = computed<DecodedFloor | null>(() => loaded.value?.floor ?? null);
   const currentRoom = computed(() =>
@@ -73,6 +88,9 @@ export function useDungeonExplorer(runId: string) {
   const mobs = computed(() => run.value?.mobs ?? []);
   /** Mobs the last turn killed: they slide to where they fell, then fade out. */
   const dyingMobs = shallowRef<MobState[]>([]);
+  const movementBlocked = computed(
+    () => disposed || pendingChestKey.value !== null || chestLoot.value !== null,
+  );
 
   // The server dates each death: only a new turn brings new deaths to show.
   watch(
@@ -97,13 +115,16 @@ export function useDungeonExplorer(runId: string) {
   );
 
   async function start(): Promise<void> {
+    disposed = false;
     status.value = "loading";
     errorMessage.value = null;
     try {
       const state = await fetchDungeonRun(runId);
       await enterFloor(state);
+      if (disposed) return;
       status.value = "ready";
     } catch (error) {
+      if (disposed) return;
       status.value = "error";
       errorMessage.value = describe(error);
     }
@@ -111,11 +132,14 @@ export function useDungeonExplorer(runId: string) {
 
   async function enterFloor(state: DungeonRunResponse): Promise<void> {
     const next = await loadFloor(state.seed, state.currentFloor);
+    if (disposed) return;
     run.value = state;
     loaded.value = next;
+    openedChestIds.value = [];
     revealed.value = new Uint8Array(next.floor.width * next.floor.height);
     visitedRoomIds.value = [];
     placeHero(state.hero);
+    observeConfirmedChest(state.hero, state.currentFloor);
 
     if (state.currentFloor + 1 < state.floorCount) {
       prefetchFloor(state.seed, state.currentFloor + 1);
@@ -143,6 +167,7 @@ export function useDungeonExplorer(runId: string) {
     const current = floor.value;
     const state = run.value;
     if (!current || state?.status !== "active") return;
+    if (movementBlocked.value) return;
     if (pendingMoves.value >= MAX_PENDING_MOVES) return;
     if (dyingMobs.value.length > 0) return;
 
@@ -163,7 +188,11 @@ export function useDungeonExplorer(runId: string) {
       // Same rule as the backend: no request for a move it would refuse.
       bump.value = { direction, id: ++bumpCount };
       const isGate = cellAt(current, target.x, target.y) === Cell.Gate;
-      announce(isGate ? "The gate is locked: defeat the boss of this floor first." : "Blocked.");
+      announce(
+        isGate
+          ? "The gate is locked: defeat the boss of this floor first."
+          : "Blocked.",
+      );
       return;
     }
 
@@ -174,9 +203,13 @@ export function useDungeonExplorer(runId: string) {
       return;
     }
 
-    placeHero(target);
     const here = elementsAt(current, target);
-    if (here.length > 0) announce(`On this tile: ${here.map((e) => e.type).join(", ")}.`);
+    const chest = here.find((element) => element.type === "item");
+    const queuedChestKey = chest ? chestKey(state.currentFloor, chest.id) : null;
+    if (queuedChestKey) pendingChestKey.value = queuedChestKey;
+    placeHero(target);
+    if (here.length > 0)
+      announce(`On this tile: ${here.map((e) => e.type).join(", ")}.`);
 
     pendingMoves.value++;
     const moveGeneration = generation;
@@ -184,14 +217,23 @@ export function useDungeonExplorer(runId: string) {
       try {
         if (moveGeneration !== generation) return;
         const updated = await moveHero(runId, direction);
+        if (disposed || moveGeneration !== generation) return;
         run.value = updated;
         const isLastPending = pendingMoves.value === 1;
         if (isLastPending && !samePosition(updated.hero, hero.value)) {
           placeHero(updated.hero);
         }
+        if (chest && samePosition(updated.hero, target)) {
+          beginChestInteraction(chest, updated.currentFloor);
+        } else {
+          observeConfirmedChest(updated.hero, updated.currentFloor);
+        }
       } catch (error) {
         await resynchronise(error);
       } finally {
+        if (queuedChestKey && pendingChestKey.value === queuedChestKey) {
+          pendingChestKey.value = null;
+        }
         pendingMoves.value--;
       }
     });
@@ -213,6 +255,7 @@ export function useDungeonExplorer(runId: string) {
       await queue;
       if (moveGeneration !== generation) return;
       const updated = await moveHero(runId, direction);
+      if (disposed || moveGeneration !== generation) return;
       await enterFloor(updated);
       announce(`Floor ${updated.currentFloor + 1} of ${updated.floorCount}.`);
     } catch (error) {
@@ -237,6 +280,7 @@ export function useDungeonExplorer(runId: string) {
     }
     try {
       const updated = await defeatFloorBoss(runId);
+      if (disposed || moveGeneration !== generation) return;
       run.value = updated;
       announce(
         updated.status === "won"
@@ -252,6 +296,7 @@ export function useDungeonExplorer(runId: string) {
 
   /** The backend refused or the outcome is unknown: its state wins (ADR-FE-008). */
   async function resynchronise(error: unknown): Promise<void> {
+    if (disposed) return;
     generation++;
     errorMessage.value = describe(error);
     try {
@@ -261,6 +306,7 @@ export function useDungeonExplorer(runId: string) {
       } else {
         run.value = authoritative;
         placeHero(authoritative.hero);
+        observeConfirmedChest(authoritative.hero, authoritative.currentFloor);
       }
     } catch (refreshError) {
       errorMessage.value = describe(refreshError);
@@ -271,6 +317,115 @@ export function useDungeonExplorer(runId: string) {
     // Re-announce identical messages: screen readers ignore unchanged text.
     announcement.value = "";
     queueMicrotask(() => (announcement.value = message));
+  }
+
+  /** Starts one idempotent Reward interaction for a confirmed chest position. */
+  function beginChestInteraction(chest: DungeonElement, floorIndex: number): void {
+    const key = chestKey(floorIndex, chest.id);
+    if (
+      disposed ||
+      !Number.isInteger(chest.id) ||
+      chest.id < 0 ||
+      chestLoot.value ||
+      observedChestKey === key
+    )
+      return;
+    observedChestKey = key;
+    const interaction: ChestLootInteraction = {
+      commandId: createIdempotencyKey(),
+      chestElementId: chest.id,
+      floor: floorIndex + 1,
+      status: "loading",
+      result: null,
+      errorMessage: null,
+    };
+    chestLoot.value = interaction;
+    void requestChestLoot(interaction);
+  }
+
+  /** Tracks leaving a chest so stepping back onto it creates a fresh interaction. */
+  function observeConfirmedChest(position: Position, floorIndex: number): void {
+    const current = floor.value;
+    if (!current) return;
+    const chest = elementsAt(current, position).find(
+      (element) => element.type === "item",
+    );
+    if (chest) beginChestInteraction(chest, floorIndex);
+    else observedChestKey = null;
+  }
+
+  /** Sends or retries the active interaction without changing its command id. */
+  async function requestChestLoot(interaction: ChestLootInteraction): Promise<void> {
+    const requestGeneration = ++chestRequestGeneration;
+    chestAbortController?.abort();
+    const controller = new AbortController();
+    chestAbortController = controller;
+    try {
+      const result = await generateChestLoot(
+        {
+          commandId: interaction.commandId,
+          dungeonRunId: runId,
+          chestElementId: interaction.chestElementId,
+          floor: interaction.floor,
+          difficulty: CHEST_LOOT_DIFFICULTY,
+        },
+        controller.signal,
+      );
+      if (!isCurrentChestRequest(interaction, requestGeneration)) return;
+      if (!openedChestIds.value.includes(interaction.chestElementId)) {
+        openedChestIds.value = [...openedChestIds.value, interaction.chestElementId];
+      }
+      chestLoot.value = {
+        ...interaction,
+        status: "success",
+        result,
+        errorMessage: null,
+      };
+      announce(result.alreadyGenerated ? "Chest loot recalled." : "Chest opened.");
+    } catch (error) {
+      if (!isCurrentChestRequest(interaction, requestGeneration)) return;
+      chestLoot.value = {
+        ...interaction,
+        status: "error",
+        result: null,
+        errorMessage: describe(error),
+      };
+    }
+  }
+
+  function isCurrentChestRequest(
+    interaction: ChestLootInteraction,
+    requestGeneration: number,
+  ): boolean {
+    return (
+      !disposed &&
+      requestGeneration === chestRequestGeneration &&
+      chestLoot.value?.commandId === interaction.commandId
+    );
+  }
+
+  function retryChestLoot(): void {
+    const interaction = chestLoot.value;
+    if (!interaction || interaction.status !== "error") return;
+    const loading = { ...interaction, status: "loading" as const, errorMessage: null };
+    chestLoot.value = loading;
+    void requestChestLoot(loading);
+  }
+
+  function closeChestLoot(): void {
+    if (!chestLoot.value) return;
+    chestRequestGeneration++;
+    chestAbortController?.abort();
+    chestAbortController = null;
+    chestLoot.value = null;
+  }
+
+  /** Invalidates every in-flight response when the page is left or changes run. */
+  function dispose(): void {
+    disposed = true;
+    generation++;
+    pendingChestKey.value = null;
+    closeChestLoot();
   }
 
   return {
@@ -284,6 +439,10 @@ export function useDungeonExplorer(runId: string) {
     bump,
     facing,
     pendingMoves,
+    pendingChestKey,
+    movementBlocked,
+    chestLoot,
+    openedChestIds,
     revealed,
     revealVersion,
     visitedRoomIds,
@@ -296,7 +455,14 @@ export function useDungeonExplorer(runId: string) {
     start,
     move,
     fightBoss,
+    retryChestLoot,
+    closeChestLoot,
+    dispose,
   };
+}
+
+function chestKey(floorIndex: number, chestElementId: number): string {
+  return `${floorIndex}:${chestElementId}`;
 }
 
 function samePosition(a: Position, b: Position): boolean {
@@ -306,8 +472,9 @@ function samePosition(a: Position, b: Position): boolean {
 function describeRoom(floor: DecodedFloor, roomId: number): string {
   const room = floor.rooms[roomId]!;
   const count = (type: DungeonElement["type"]) =>
-    floor.elements.filter((element) => element.roomId === roomId && element.type === type)
-      .length;
+    floor.elements.filter(
+      (element) => element.roomId === roomId && element.type === type,
+    ).length;
   const traps = count("trap");
   const details = [
     room.type === "combat" ? `${count("enemy")} enemies` : null,

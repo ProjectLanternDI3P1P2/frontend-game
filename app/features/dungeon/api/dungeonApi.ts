@@ -7,6 +7,8 @@ import type {
   Direction,
   DungeonMapResponse,
   DungeonRunResponse,
+  GenerateChestLootRequest,
+  GenerateChestLootResult,
 } from "../types";
 import { useGateway } from "~/shared/composables/useGateway";
 
@@ -66,5 +68,19 @@ export function fetchDungeonMap(
   return useGateway().get<DungeonMapResponse>(
     `dungeons/${encodeURIComponent(seed)}/map`,
     { query: { floor }, signal },
+  );
+}
+
+/** POST /api/v1/rewards/chest-loot/generate through the Gateway owner prefix. */
+export function generateChestLoot(
+  request: GenerateChestLootRequest,
+  signal?: AbortSignal,
+): Promise<GenerateChestLootResult> {
+  return useGateway().post<GenerateChestLootResult>(
+    "rewards/chest-loot/generate",
+    request,
+    {
+      signal,
+    },
   );
 }
