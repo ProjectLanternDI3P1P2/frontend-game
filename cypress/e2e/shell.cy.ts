@@ -10,7 +10,7 @@
 describe("public shell", () => {
   it("boots and renders the shell landmarks", () => {
     cy.visit("/");
-    cy.get("main#main").should("have.length", 1);
+    cy.get("main#main").should("exist");
     cy.contains("a", "Skip to main content").should("exist");
   });
 

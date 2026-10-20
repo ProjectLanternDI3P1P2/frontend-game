@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { SEEDED_PLAYER_ID } from "~/features/player/seededPlayer";
+
 /**
  * ADR-FE-015 — Landmarks and the skip link live in the layout so every public
  * page inherits them. The public site targets RGAA compliance with no expected
@@ -7,8 +9,8 @@
 const config = useRuntimeConfig();
 const navigationItems = [
   { label: "Home", to: "/home" },
-  { label: "Heroes", to: "/players/00000000-0000-0000-0000-000000000001/heroes" },
-  { label: "Lobby", to: "/players/00000000-0000-0000-0000-000000000001/play" },
+  { label: "Heroes", to: `/players/${SEEDED_PLAYER_ID}/heroes` },
+  { label: "Lobby", to: `/players/${SEEDED_PLAYER_ID}/play` },
   { label: "Dungeon", to: "/dungeon" },
   { label: "Demo", to: "/demo" },
 ];

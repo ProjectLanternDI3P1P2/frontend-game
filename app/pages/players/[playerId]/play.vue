@@ -9,6 +9,7 @@ import {
 import HeroPortraitPlaceholder from "~/features/player/components/HeroPortraitPlaceholder.vue";
 import HeroSelectionModal from "~/features/player/components/HeroSelectionModal.vue";
 import type { HeroSummary } from "~/features/player/types";
+import { formatSeed, missingSeedCharacters, seedError } from "~/features/dungeon/seed";
 import { createIdempotencyKey } from "~/shared/utils/idempotency";
 import { findSelectedHeroId } from "~/features/player/utils/selectedHero";
 
@@ -24,7 +25,9 @@ const creating = ref(false);
 const selectingHero = ref(false);
 const heroPickerOpen = ref(false);
 const error = ref("");
-const replaySeed = ref(typeof route.query.seed === "string" ? route.query.seed : "");
+const replaySeed = ref(
+  formatSeed(typeof route.query.seed === "string" ? route.query.seed : ""),
+);
 let hub: PlayerHubClient | null = null;
 const selectedHero = computed(
   () => heroes.value.find((hero) => hero.id === selectedId.value) ?? null,
@@ -32,6 +35,22 @@ const selectedHero = computed(
 const isJoinScreen = computed(
   () => route.path === `/players/${encodeURIComponent(playerId.value)}/play`,
 );
+const replaySeedInvalid = computed(() => seedError(replaySeed.value));
+const replaySeedMissing = computed(() => missingSeedCharacters(replaySeed.value));
+const hasValidReplaySeed = computed(
+  () => !replaySeedInvalid.value && replaySeedMissing.value === 0,
+);
+const canCreateLobby = computed(
+  () =>
+    Boolean(selectedHero.value) &&
+    !selectedHero.value?.isEngagedInActiveSession &&
+    (!replaySeed.value || hasValidReplaySeed.value),
+);
+
+function typeReplaySeed(event: Event): void {
+  const input = event.target as HTMLInputElement;
+  input.value = replaySeed.value = formatSeed(input.value);
+}
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -46,7 +65,7 @@ async function load(): Promise<void> {
 }
 
 async function createLobby(): Promise<void> {
-  if (!selectedHero.value || selectedHero.value.isEngagedInActiveSession) return;
+  if (!canCreateLobby.value) return;
   creating.value = true;
   error.value = "";
   try {
@@ -59,7 +78,7 @@ async function createLobby(): Promise<void> {
       commandId: createIdempotencyKey(),
       playerId: playerId.value,
       heroId: selectedHero.value.id,
-      dungeonSeed: replaySeed.value.trim() || undefined,
+      dungeonSeed: replaySeed.value || undefined,
     });
     await router.push(
       `/players/${encodeURIComponent(playerId.value)}/play/lobbies/${session.sessionId}`,
@@ -140,17 +159,33 @@ onBeforeUnmount(() => void hub?.disconnect());
               Replay seed <span>(optional)</span>
               <input
                 id="dungeon-seed"
-                v-model="replaySeed"
+                :value="replaySeed"
                 autocomplete="off"
+                autocapitalize="characters"
                 spellcheck="false"
                 placeholder="0KX4-M2T9-QZ7PA"
+                :aria-invalid="Boolean(replaySeedInvalid)"
+                :aria-describedby="replaySeed ? 'dungeon-seed-hint' : undefined"
+                @input="typeReplaySeed"
               />
+              <span
+                v-if="replaySeed"
+                id="dungeon-seed-hint"
+                :class="{ 'join-game__seed-hint--error': replaySeedInvalid }"
+              >
+                {{
+                  replaySeedInvalid ??
+                  (hasValidReplaySeed
+                    ? "Ready to replay."
+                    : `${replaySeedMissing} more character${replaySeedMissing === 1 ? "" : "s"}.`)
+                }}
+              </span>
             </label>
             <UiButton
               :size="ButtonSize.SM"
               :variant="ButtonVariant.PRIMARY"
               :busy="creating"
-              :disabled="!selectedHero || selectedHero.isEngagedInActiveSession"
+              :disabled="!canCreateLobby"
               @click="createLobby"
               >{{ creating ? "Creating…" : "Create lobby" }}</UiButton
             >
@@ -226,6 +261,10 @@ h1 {
 
   span {
     color: var(--color-text-muted);
+  }
+
+  .join-game__seed-hint--error {
+    color: var(--color-danger);
   }
 
   input {
