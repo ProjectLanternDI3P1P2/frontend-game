@@ -9,6 +9,12 @@ import HeroPortraitPlaceholder from "~/features/player/components/HeroPortraitPl
 import HeroSelectionModal from "~/features/player/components/HeroSelectionModal.vue";
 import { usePlayerApi } from "~/features/player/api/playerApi";
 import type { GameSessionSnapshot, HeroSummary } from "~/features/player/types";
+import {
+  CLOSED_LOBBY_REDIRECT_SECONDS,
+  closedLobbyMessage,
+  isClosedLobby,
+  joinGamePath,
+} from "~/features/player/lobbyClosure";
 import { createIdempotencyKey } from "~/shared/utils/idempotency";
 
 definePageMeta({ layout: "player" });
@@ -27,6 +33,22 @@ const heroes = ref<HeroSummary[]>([]);
 const isCreator = computed(() => session.value?.creatorPlayerId === playerId.value);
 const lobbyCode = computed(() => sessionId.value.slice(0, 8).toUpperCase());
 let hub: PlayerHubClient | null = null;
+
+/** Closed lobby (e.g. its hero was deleted): explain, then go back to "Join a game". */
+const isClosed = computed(() => isClosedLobby(session.value));
+const redirectIn = ref(CLOSED_LOBBY_REDIRECT_SECONDS);
+let redirectTimer: ReturnType<typeof setInterval> | undefined;
+watch(isClosed, (closed) => {
+  if (!closed || redirectTimer) return;
+  heroPickerOpen.value = false;
+  redirectIn.value = CLOSED_LOBBY_REDIRECT_SECONDS;
+  redirectTimer = setInterval(() => {
+    redirectIn.value -= 1;
+    if (redirectIn.value > 0) return;
+    clearInterval(redirectTimer);
+    void router.replace(joinGamePath(playerId.value));
+  }, 1000);
+});
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -70,7 +92,10 @@ async function changeHero(hero: HeroSummary): Promise<void> {
     }));
     heroPickerOpen.value = false;
   } catch (cause) {
-    error.value = cause instanceof PlayerHubError ? cause.message : "Unable to change the lobby hero.";
+    error.value =
+      cause instanceof PlayerHubError
+        ? cause.message
+        : "Unable to change the lobby hero.";
     await load();
   } finally {
     selectingHero.value = false;
@@ -102,112 +127,126 @@ async function start(): Promise<void> {
   }
 }
 onMounted(load);
-onBeforeUnmount(() => void hub?.disconnect());
+onBeforeUnmount(() => {
+  clearInterval(redirectTimer);
+  void hub?.disconnect();
+});
 </script>
 
 <template>
   <div>
     <main id="main" class="lobby-page">
-    <NuxtLink
-      :to="`/players/${encodeURIComponent(playerId)}/play`"
-      class="lobby-page__back"
-      >← Join a game</NuxtLink
-    >
-    <p v-if="loading" class="lobby-page__notice">Loading lobby…</p>
-    <p v-else-if="error" class="lobby-page__notice" role="alert">{{ error }}</p>
-    <template v-else-if="session">
-      <header class="lobby-page__header">
-        <div>
-          <p class="lobby-page__eyebrow">Lobby · you are the creator</p>
-          <h1>{{ session.members[0]?.name }}’s game</h1>
-        </div>
-        <div class="lobby-page__connection">
-          <span
-            >Lobby code <strong>{{ lobbyCode }}</strong></span
+      <NuxtLink
+        :to="`/players/${encodeURIComponent(playerId)}/play`"
+        class="lobby-page__back"
+        >← Join a game</NuxtLink
+      >
+      <p v-if="loading" class="lobby-page__notice">Loading lobby…</p>
+      <p v-else-if="error" class="lobby-page__notice" role="alert">{{ error }}</p>
+      <section
+        v-else-if="session && isClosed"
+        class="lobby-page__closed"
+        role="alert"
+        aria-labelledby="lobby-closed-title"
+      >
+        <p class="lobby-page__eyebrow">Lobby closed</p>
+        <h1 id="lobby-closed-title">This lobby is closed</h1>
+        <p>{{ closedLobbyMessage(session) }}</p>
+        <p class="lobby-page__hint" aria-live="polite">
+          Back to “Join a game” in {{ redirectIn }} s.
+        </p>
+        <NuxtLink :to="joinGamePath(playerId)">
+          <UiButton :size="ButtonSize.SM" :variant="ButtonVariant.PRIMARY"
+            >Join a game now</UiButton
           >
-          <span class="lobby-page__connected">● Real-time · connected</span>
-        </div>
-      </header>
-      <section class="lobby-page__layout">
-        <div class="lobby-page__roster">
-          <p class="lobby-page__eyebrow">Team</p>
-          <h2>{{ session.members.length }} / 1 player</h2>
-          <article
-            v-for="member in session.members"
-            :key="member.id"
-            class="lobby-page__member"
-          >
-            <HeroPortraitPlaceholder
-              :class-code="member.classCode"
-              :label="`${member.name} portrait`"
-            />
-            <div>
-              <strong>{{ member.name }}</strong>
-              <p>{{ member.classCode }} · level {{ member.level }}</p>
-              <span v-if="member.id === session.members[0]?.id">Lobby creator</span>
-            </div>
-          </article>
-          <article v-for="slot in 3" :key="slot" class="lobby-page__slot">
-            <span aria-hidden="true">○</span>
-            <div>
-              <strong>Open slot</strong>
-              <p>Waiting for a player…</p>
-            </div>
-          </article>
-        </div>
-        <div class="lobby-page__side">
-          <aside class="lobby-page__hero">
-            <p class="lobby-page__eyebrow">Your hero</p>
-            <HeroPortraitPlaceholder
-              :class-code="session.members[0]?.classCode ?? 'mage'"
-              :label="`${session.members[0]?.name} portrait`"
-            />
-            <h2>{{ session.members[0]?.name }}</h2>
-            <p>
-              {{ session.members[0]?.classCode }} · level
-              {{ session.members[0]?.level }}
-            </p>
-            <UiButton
-              :size="ButtonSize.SM"
-              :variant="ButtonVariant.GHOST"
-              :disabled="!isCreator || session.state !== 'Lobby'"
-              @click="heroPickerOpen = true"
-              >Change hero</UiButton
-            >
-          </aside>
-          <aside class="lobby-page__actions">
-            <p class="lobby-page__eyebrow">Start</p>
-            <h2>
-              {{ session.state === "Lobby" ? "Ready for a solo run" : "Run launched" }}
-            </h2>
-            <p v-if="session.state === 'Lobby'">
-              ✓ Your hero is ready<br />✓ Solo roster is complete
-            </p>
-            <p v-else>The dungeon run is being prepared.</p>
-            <p v-if="session.dungeonSeed">
-              Replay seed: <code>{{ session.dungeonSeed }}</code>
-            </p>
-            <UiButton
-              :size="ButtonSize.SM"
-              :variant="ButtonVariant.PRIMARY"
-              :busy="starting"
-              :disabled="!isCreator || session.state !== 'Lobby'"
-              @click="start"
-              >{{ starting ? "Starting…" : "Start game" }}</UiButton
-            >
-            <NuxtLink
-              v-if="session.state === 'Active' && session.dungeonRunId"
-              :to="`/dungeon/${encodeURIComponent(session.dungeonRunId)}?playerId=${encodeURIComponent(playerId)}`"
-              class="lobby-page__continue"
-              >Continue dungeon</NuxtLink
-            >
-            <p v-if="!isCreator" class="lobby-page__hint">
-              Only the creator can launch this run.
-            </p>
-          </aside>
-        </div>
+        </NuxtLink>
       </section>
-    </template>
+      <template v-else-if="session">
+        <header class="lobby-page__header">
+          <div>
+            <p class="lobby-page__eyebrow">Lobby · you are the creator</p>
+            <h1>{{ session.members[0]?.name }}’s game</h1>
+          </div>
+          <div class="lobby-page__connection">
+            <span
+              >Lobby code <strong>{{ lobbyCode }}</strong></span
+            >
+            <span class="lobby-page__connected">● Real-time · connected</span>
+          </div>
+        </header>
+        <section class="lobby-page__layout">
+          <div class="lobby-page__roster">
+            <p class="lobby-page__eyebrow">Team</p>
+            <h2>{{ session.members.length }} / 1 player</h2>
+            <article
+              v-for="member in session.members"
+              :key="member.id"
+              class="lobby-page__member"
+            >
+              <HeroPortraitPlaceholder
+                :class-code="member.classCode"
+                :label="`${member.name} portrait`"
+              />
+              <div>
+                <strong>{{ member.name }}</strong>
+                <p>{{ member.classCode }} · level {{ member.level }}</p>
+                <span v-if="member.id === session.members[0]?.id">Lobby creator</span>
+              </div>
+            </article>
+            <article v-for="slot in 3" :key="slot" class="lobby-page__slot">
+              <span aria-hidden="true">○</span>
+              <div>
+                <strong>Open slot</strong>
+                <p>Waiting for a player…</p>
+              </div>
+            </article>
+          </div>
+          <div class="lobby-page__side">
+            <aside class="lobby-page__hero">
+              <p class="lobby-page__eyebrow">Your hero</p>
+              <HeroPortraitPlaceholder
+                :class-code="session.members[0]?.classCode ?? 'mage'"
+                :label="`${session.members[0]?.name} portrait`"
+              />
+              <h2>{{ session.members[0]?.name }}</h2>
+              <p>
+                {{ session.members[0]?.classCode }} · level
+                {{ session.members[0]?.level }}
+              </p>
+              <UiButton
+                :size="ButtonSize.SM"
+                :variant="ButtonVariant.GHOST"
+                :disabled="!isCreator || session.state !== 'Lobby'"
+                @click="heroPickerOpen = true"
+                >Change hero</UiButton
+              >
+            </aside>
+            <aside class="lobby-page__actions">
+              <p class="lobby-page__eyebrow">Start</p>
+              <h2>
+                {{
+                  session.state === "Lobby" ? "Ready for a solo run" : "Run launched"
+                }}
+              </h2>
+              <p v-if="session.state === 'Lobby'">
+                ✓ Your hero is ready<br />✓ Solo roster is complete
+              </p>
+              <p v-else>The dungeon run is being prepared.</p>
+              <UiButton
+                :size="ButtonSize.SM"
+                :variant="ButtonVariant.PRIMARY"
+                :busy="starting"
+                :disabled="!isCreator || session.state !== 'Lobby'"
+                @click="start"
+                >{{ starting ? "Starting…" : "Start game" }}</UiButton
+              >
+              <p v-if="!isCreator" class="lobby-page__hint">
+                Only the creator can launch this run.
+              </p>
+            </aside>
+          </div>
+        </section>
+      </template>
     </main>
     <HeroSelectionModal
       v-model="heroPickerOpen"
@@ -225,6 +264,23 @@ onBeforeUnmount(() => void hub?.disconnect());
   margin: auto;
   padding-block: var(--space-6);
   color: var(--color-text-primary);
+}
+.lobby-page__closed {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  border: 1px solid var(--color-border-subtle);
+  border-left: var(--space-1) solid var(--color-danger);
+  padding: var(--space-5);
+  background: var(--color-surface-raised);
+}
+.lobby-page__closed h1,
+.lobby-page__closed p {
+  margin: 0;
+}
+.lobby-page__closed a {
+  text-decoration: none;
 }
 .lobby-page__back {
   color: var(--color-text-highlight);
