@@ -5,6 +5,10 @@
  * kept close to the Player capability rather than placed in a global API package.
  */
 
+import type { HeroAppearance } from "./appearance";
+
+export type { HeroAppearance } from "./appearance";
+
 export type HeroClassCode = "warrior" | "shaman" | "mage";
 
 export const HERO_ROSTER_CAPACITY = 10;
@@ -25,12 +29,15 @@ export interface HeroSummary {
   isEngagedInActiveSession: boolean;
   isSelected: boolean;
   createdAt?: string;
+  appearance?: HeroAppearance;
 }
 
 export interface CreateHeroRequest {
   name: string;
   classCode: HeroClassCode;
   idempotencyKey: string;
+  /** Optional: the backend applies the default appearance when omitted. */
+  appearance?: HeroAppearance;
 }
 
 export interface CreateHeroResponse {
@@ -42,6 +49,7 @@ export interface CreateHeroResponse {
   createdAt: string;
   unlockedSkillCodes: string[];
   alreadyExists: boolean;
+  appearance?: HeroAppearance;
 }
 
 export interface HeroAttributes {
@@ -66,6 +74,7 @@ export interface HeroSheet {
   attributes: HeroAttributes;
   maximumHealth: number;
   abilities: HeroAbility[];
+  appearance?: HeroAppearance;
 }
 
 export type GameSessionState = "Lobby" | "Active" | "Failed" | "Pending";

@@ -5,6 +5,11 @@ import { createIdempotencyKey } from "~/shared/utils/idempotency";
 import { usePlayerApi } from "~/features/player/api/playerApi";
 import HeroClassSelectionCard from "~/features/player/components/HeroClassSelectionCard.vue";
 import HeroCreationPreview from "~/features/player/components/HeroCreationPreview.vue";
+import HeroAppearancePicker from "~/features/player/components/HeroAppearancePicker.vue";
+import {
+  DEFAULT_HERO_APPEARANCE,
+  type HeroAppearance,
+} from "~/features/player/appearance";
 import PlayerValidatedInput, {
   type TextValidationRule,
 } from "~/features/player/components/PlayerValidatedInput.vue";
@@ -40,6 +45,7 @@ const heroes = ref<HeroSummary[]>([]);
 const heroClasses = ref<HeroClassOption[]>([]);
 const name = ref("");
 const classCode = ref<HeroClassCode | null>(null);
+const appearance = ref<HeroAppearance>({ ...DEFAULT_HERO_APPEARANCE });
 const nameValid = ref(false);
 const nameServerError = ref("");
 const error = ref("");
@@ -93,6 +99,12 @@ function updateName(value: string) {
   nameServerError.value = "";
 }
 
+function updateAppearance(value: HeroAppearance) {
+  appearance.value = value;
+  // A new look is a new request: never replay a key recorded with another appearance.
+  idempotencyKey = null;
+}
+
 function cancel() {
   router.back();
 }
@@ -113,6 +125,7 @@ async function submit() {
       name: name.value.trim(),
       classCode: classCode.value,
       idempotencyKey,
+      appearance: appearance.value,
     });
     await router.push(
       `/players/${encodeURIComponent(playerId.value)}/heroes/${hero.id}/created`,
@@ -190,9 +203,19 @@ onMounted(load);
               :key="heroClass.code"
               :hero-class="heroClass"
               :selected="classCode === heroClass.code"
+              :appearance="appearance"
               @select="classCode = heroClass.code"
             />
           </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>3 · Appearance</legend>
+          <HeroAppearancePicker
+            :model-value="appearance"
+            :class-code="classCode"
+            @update:model-value="updateAppearance"
+          />
         </fieldset>
 
         <button class="visually-hidden" :type="ButtonType.SUBMIT">Confirm</button>
@@ -201,6 +224,7 @@ onMounted(load);
       <HeroCreationPreview
         :name="name"
         :hero-class="selectedClass"
+        :appearance="appearance"
         :can-confirm="canSubmit"
         :busy="submitting"
         @cancel="cancel"
