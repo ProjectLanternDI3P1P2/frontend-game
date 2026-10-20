@@ -1,12 +1,22 @@
 /**
- * The hero, drawn as a Mana Seed paper doll (`app/assets/heroes/mana-seed/`): a body, then
- * an outfit, hair, maybe a hat, a weapon and a shield, each on a sheet of its own. Every
- * sheet has the same layout, so the layers play the same frames and move as one.
+ * The hero, drawn as a Mana Seed paper doll: a body, then an outfit, hair, maybe a hat, a
+ * weapon and a shield, each on a sheet of its own, which the Player feature's catalogue
+ * (`features/player/appearance.ts`) gives by their codes. Every sheet has the same layout,
+ * so the layers play the same frames and move as one.
  *
  * Until the hero is received from the Player service, its look is drawn at random for each
  * run (`heroAppearanceOf`): a new dungeon, a new hero; the same run, the same hero on every
  * floor and after a reload. Data only: the viewport stacks the layers.
  */
+import {
+  HERO_CATALOGUE,
+  HERO_SLOTS,
+  heroSheetUrl,
+  type HeroPage,
+  type HeroPiece,
+  type HeroSlot,
+  type HeroStyles,
+} from "~/features/player/appearance";
 import type { Direction } from "../types";
 import type { AnimatedSprite } from "./sprites";
 
@@ -16,13 +26,11 @@ import type { AnimatedSprite } from "./sprites";
  */
 export const HERO_SHEET = { width: 512, height: 512, cell: 64 } as const;
 
-export type HeroSlot = "body" | "outfit" | "hair" | "hat" | "weapon" | "shield";
+/** The art's page the hero is drawn from: on guard and moving, a weapon in one hand. */
+export const HERO_PAGE: HeroPage = "pONE2";
 
-/** A piece of the art: its code (`humn`, `fstr`, `sw01`…) and its colour (v01, v02…). */
-export interface HeroPiece {
-  style: string;
-  variant: number;
-}
+/** What each slot can wear in the dungeon: every piece the page has. */
+export const HERO_WARDROBE = HERO_CATALOGUE[HERO_PAGE] as Record<HeroSlot, HeroStyles>;
 
 export interface HeroAppearance {
   body: HeroPiece;
@@ -34,21 +42,6 @@ export interface HeroAppearance {
   shield: HeroPiece;
 }
 
-/** What each slot can wear: the art's layer code, its pieces, and how many colours each has. */
-export const HERO_WARDROBE: Record<
-  HeroSlot,
-  { layer: string; styles: readonly string[]; variants: number }
-> = {
-  body: { layer: "0bas", styles: ["humn"], variants: 10 },
-  outfit: { layer: "1out", styles: ["fstr", "pfpn"], variants: 5 },
-  hair: { layer: "4har", styles: ["bob1", "dap1"], variants: 13 },
-  hat: { layer: "5hat", styles: ["pfht", "pnty"], variants: 5 },
-  weapon: { layer: "6tla", styles: ["sw01", "ax01", "mc01"], variants: 5 },
-  shield: { layer: "7tlb", styles: ["sh01", "sh02", "sh03"], variants: 5 },
-};
-
-const HERO_SLOTS = Object.keys(HERO_WARDROBE) as HeroSlot[];
-
 /** One hero in two wears a hat. */
 const HAT_CHANCE = 0.5;
 
@@ -57,11 +50,9 @@ export function randomHeroAppearance(
   random: () => number = Math.random,
 ): HeroAppearance {
   const pick = (slot: HeroSlot): HeroPiece => {
-    const { styles, variants } = HERO_WARDROBE[slot];
-    return {
-      style: styles[Math.floor(random() * styles.length)]!,
-      variant: 1 + Math.floor(random() * variants),
-    };
+    const styles = Object.keys(HERO_WARDROBE[slot]);
+    const style = styles[Math.floor(random() * styles.length)]!;
+    return { style, variant: 1 + Math.floor(random() * HERO_WARDROBE[slot][style]!) };
   };
   return {
     body: pick("body"),
@@ -95,13 +86,6 @@ function seededRandom(text: string): () => number {
   };
 }
 
-/** The sheet of a piece, relative to `app/assets/heroes/mana-seed/`, in the art's own names. */
-export function heroSheetPath(slot: HeroSlot, { style, variant }: HeroPiece): string {
-  const { layer } = HERO_WARDROBE[slot];
-  const name = `char_a_pONE2_${layer}_${style}_v${String(variant).padStart(2, "0")}.webp`;
-  return slot === "body" ? name : `${layer}/${name}`;
-}
-
 /** The rows of the sheets. */
 const FACING_ROWS: Record<Direction, number> = { south: 0, north: 1, east: 2, west: 3 };
 
@@ -120,6 +104,7 @@ const LAYER_ORDER: Record<Direction, readonly HeroSlot[]> = {
 
 export interface HeroLayer {
   slot: HeroSlot;
+  /** The URL of its sheet. */
   sheet: string;
   /** 0 at the back. */
   depth: number;
@@ -142,7 +127,7 @@ export function heroLayers(appearance: HeroAppearance, facing: Direction): HeroL
     return [
       {
         slot,
-        sheet: heroSheetPath(slot, piece),
+        sheet: heroSheetUrl(HERO_PAGE, slot, piece),
         depth: LAYER_ORDER[facing].indexOf(slot),
       },
     ];

@@ -61,8 +61,7 @@ the game session and requests the run (ADR-GLOB-011). Only
 | `tiles/tileset.ts`                  | Sprite sheet geometry, themes. Data only.                              |
 | `tiles/atlas.generated.ts`          | Layout of the atlas, written by `npm run assets:dungeon`. Do not edit. |
 | `tiles/sprites.ts`                  | Animated sprites of the elements and boss gate. Data only.             |
-| `tiles/hero.ts`                     | The hero's paper doll: wardrobe, random look, layers by facing. Pure.  |
-| `tiles/heroSheets.ts`               | URLs of the hero's sheets, bundled by Vite.                            |
+| `tiles/hero.ts`                     | The hero's paper doll: random look, layers by facing. Its sheets come from `features/player/appearance.ts`. |
 | `tiles/autotile.ts`                 | Chooses the sprites of each tile from its neighbours. Deterministic.   |
 | `composables/useDungeonFloor.ts`    | Immutable per-seed floor cache.                                        |
 | `composables/useDungeonExplorer.ts` | Run state, predicted moves, fog, announcements.                        |
@@ -71,7 +70,7 @@ the game session and requests the run (ADR-GLOB-011). Only
 | `components/DungeonMinimap.vue`     | Room-level map, Isaac-style.                                           |
 | `components/DungeonControls.vue`    | On-screen directional pad.                                             |
 | `app/assets/dongeon/`               | Room kits (`kit/`), the atlases built from them, props and objects.    |
-| `app/assets/heroes/mana-seed/`      | The hero's layers (Mana Seed Character Base demo, sword and shield).   |
+| `app/assets/heroes/mana-seed/`      | The hero's sheets, one folder per layer; owned by the Player feature's catalogue. |
 | `scripts/dungeon-atlas/`            | Builds the atlases from the kits (`npm run assets:dungeon`).           |
 
 ### How walls are drawn
@@ -199,7 +198,7 @@ HUD, the minimap and the actions float over the board.
 | Unit  | `tests/dungeonMap.spec.ts`         | Decoding of real backend payloads, contract drift detection, walkability rule.  |
 | Unit  | `tests/autotile.spec.ts`           | Deterministic visuals, a rim above every face, walls two tiles high, closed corners, nothing below south walls, hangings on tall walls only, torches by the gate, pools and their banks, tombs, rooms dressed for their kind. |
 | Unit  | `tests/sprites.spec.ts`            | Animated sprites: chests only for items, the boss, the doors.                  |
-| Unit  | `tests/hero.spec.ts`               | One look per run, a sheet for every piece, layer order by facing, rows and feet. |
+| Unit  | `tests/hero.spec.ts`               | One look per run, pieces from the catalogue only, layer order by facing, rows and feet. |
 | Unit  | `tests/dungeonRules.spec.ts`       | Key mapping, camera clamping, fog of war (void under the walls included).       |
 | Unit  | `tests/useDungeonExplorer.spec.ts` | Predicted moves in order, no request into a wall or a locked gate, boss fight opens the gate, resync on refusal, one fetch per floor. |
 

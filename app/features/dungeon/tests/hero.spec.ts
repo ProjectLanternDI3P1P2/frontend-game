@@ -1,16 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { HERO_SLOTS, heroSheetUrl } from "~/features/player/appearance";
 import {
+  HERO_PAGE,
   HERO_SHEET,
   HERO_WARDROBE,
   heroAppearanceOf,
   heroLayers,
-  heroSheetPath,
   heroSprite,
   randomHeroAppearance,
   type HeroAppearance,
-  type HeroSlot,
 } from "../tiles/hero";
-import { heroSheetUrl } from "../tiles/heroSheets";
 import type { Direction } from "../types";
 
 const FACINGS: Direction[] = ["south", "north", "east", "west"];
@@ -35,30 +34,18 @@ describe("hero", () => {
     expect(looks.size).toBeGreaterThan(15);
   });
 
-  it("only picks pieces and colours the art has, and every one of them has a sheet", () => {
-    for (const [slot, { styles, variants }] of Object.entries(HERO_WARDROBE)) {
-      for (const style of styles) {
-        for (let variant = 1; variant <= variants; variant++) {
-          expect(() =>
-            heroSheetUrl(heroSheetPath(slot as HeroSlot, { style, variant })),
-          ).not.toThrow();
-        }
+  it("dresses every slot from the catalogue, and only picks pieces and colours it has", () => {
+    for (const slot of HERO_SLOTS) expect(HERO_WARDROBE[slot]).toBeDefined();
+    for (const look of [randomHeroAppearance(lowest), randomHeroAppearance(() => 0.9999)]) {
+      for (const slot of HERO_SLOTS) {
+        const piece = look[slot];
+        if (piece) expect(() => heroSheetUrl(HERO_PAGE, slot, piece)).not.toThrow();
       }
     }
     // Never the v00 palette template.
     expect(randomHeroAppearance(lowest).body.variant).toBe(1);
-    expect(randomHeroAppearance(() => 0.9999).hair.variant).toBe(
-      HERO_WARDROBE.hair.variants,
-    );
-  });
-
-  it("names the sheets as the art does", () => {
-    expect(heroSheetPath("body", { style: "humn", variant: 3 })).toBe(
-      "char_a_pONE2_0bas_humn_v03.webp",
-    );
-    expect(heroSheetPath("weapon", { style: "sw01", variant: 5 })).toBe(
-      "6tla/char_a_pONE2_6tla_sw01_v05.webp",
-    );
+    const lastHair = randomHeroAppearance(() => 0.9999).hair;
+    expect(lastHair.variant).toBe(HERO_WARDROBE.hair[lastHair.style]);
   });
 
   it("leaves some heroes bare-headed", () => {

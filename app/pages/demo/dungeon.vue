@@ -16,14 +16,13 @@ import MOB_SRC from "~/assets/dongeon/placeholder_mob.png";
 import DungeonSpriteSwatch from "~/features/dungeon/components/DungeonSpriteSwatch.vue";
 import { RIM_KEYS } from "~/features/dungeon/tiles/atlas.generated";
 import {
+  HERO_PAGE,
   HERO_SHEET,
   HERO_WARDROBE,
-  heroSheetPath,
   heroSprite,
   type HeroPose,
-  type HeroSlot,
 } from "~/features/dungeon/tiles/hero";
-import { heroSheetUrl } from "~/features/dungeon/tiles/heroSheets";
+import { HERO_SLOTS, heroSheetPath, heroSheetUrl } from "~/features/player/appearance";
 import {
   BOSS,
   ENEMY,
@@ -83,7 +82,8 @@ const sheetSrc = (sheet: SheetName) => (sheet === "atlas" ? ATLASES[theme.value]
 // --- Hero and mobs ------------------------------------------------------------------------
 
 /** The hero's body (the bottom layer of its paper doll), in its first skin tone. */
-const HERO_BODY_SRC = heroSheetUrl(heroSheetPath("body", { style: "humn", variant: 1 }));
+const HERO_BODY = { style: "humn", variant: 1 };
+const HERO_BODY_SRC = heroSheetUrl(HERO_PAGE, "body", HERO_BODY);
 
 const FACINGS: readonly Direction[] = ["south", "north", "east", "west"];
 
@@ -93,10 +93,10 @@ const HERO_POSES = (["idle", "move"] as const satisfies readonly HeroPose[]).fla
 );
 
 /** Each piece of the wardrobe, in its first colour, standing on guard facing south. */
-const HERO_PIECES = (Object.keys(HERO_WARDROBE) as HeroSlot[]).flatMap((slot) =>
-  HERO_WARDROBE[slot].styles.map((style) => ({
+const HERO_PIECES = HERO_SLOTS.flatMap((slot) =>
+  Object.keys(HERO_WARDROBE[slot]).map((style) => ({
     label: `${slot} ${style}`,
-    src: heroSheetUrl(heroSheetPath(slot, { style, variant: 1 })),
+    src: heroSheetUrl(HERO_PAGE, slot, { style, variant: 1 }),
     sprite: heroSprite("idle", "south"),
   })),
 );
@@ -191,7 +191,7 @@ const RAW_SHEETS = computed(() => [
   {
     title: "Hero body (Mana Seed)",
     src: HERO_BODY_SRC,
-    file: `heroes/mana-seed/${heroSheetPath("body", { style: "humn", variant: 1 })}`,
+    file: `heroes/mana-seed/${heroSheetPath(HERO_PAGE, "body", HERO_BODY)}`,
   },
 ]);
 </script>

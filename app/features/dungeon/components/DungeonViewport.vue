@@ -18,7 +18,6 @@ import { gateOf, revealedTeleports } from "../dungeonMap";
 import { MOB_DEATH_MS, MOVE_COOLDOWN_MS, cameraOrigin, type Viewport } from "../dungeonRules";
 import { MAX_LAYERS } from "../tiles/autotile";
 import { HERO_SHEET, heroLayers, heroSprite, type HeroAppearance } from "../tiles/hero";
-import { heroSheetUrl } from "../tiles/heroSheets";
 import {
   BOSS,
   ENEMY,
@@ -213,7 +212,7 @@ const heroStyle = computed(() =>
 const heroLayerStyles = computed(() =>
   heroLayers(props.appearance, props.facing).map(({ slot, sheet, depth }) => ({
     key: slot,
-    style: `background-image:url("${heroSheetUrl(sheet)}");z-index:${depth}`,
+    style: `background-image:url("${sheet}");z-index:${depth}`,
   })),
 );
 

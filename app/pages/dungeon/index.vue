@@ -39,6 +39,10 @@ function typeSeed(event: Event) {
  * character as they made it (look, colours, hair, class, items…), to be drawn in the
  * dungeon. Until then, the hero of a run is drawn at random from its id
  * (`heroAppearanceOf` in `tiles/hero.ts`).
+ *
+ * TODO(player): the hero is chosen in the Player service; draw it from what the run
+ * receives (its appearance codes, read through `features/player/appearance.ts`) instead of
+ * `heroAppearanceOf`.
  */
 async function explore(replayedSeed?: string) {
   const runId = await start(replayedSeed);
