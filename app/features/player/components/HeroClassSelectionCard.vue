@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import type { HeroAppearance } from "../appearance";
 import type { HeroClassOption } from "../types";
 import HeroPortraitPlaceholder from "./HeroPortraitPlaceholder.vue";
 
 defineProps<{
   heroClass: HeroClassOption;
   selected: boolean;
+  appearance?: HeroAppearance | null;
 }>();
 
 defineEmits<{ select: [] }>();
@@ -24,7 +26,8 @@ defineEmits<{ select: [] }>();
     }}</span>
     <HeroPortraitPlaceholder
       :class-code="heroClass.code"
-      :label="`${heroClass.label} placeholder`"
+      :appearance="appearance"
+      :label="`${heroClass.label} portrait`"
     />
     <strong>{{ heroClass.label }}</strong>
     <span>{{ heroClass.description }}</span>

@@ -1,21 +1,25 @@
 <script setup lang="ts">
+import type { HeroAppearance } from "../appearance";
 import type { HeroClassCode } from "../types";
+import HeroSprite from "./HeroSprite.vue";
 
+/**
+ * Framed hero portrait. Kept under its historical name so every screen picks up the sprite;
+ * without an appearance it draws the default look with the class headwear.
+ */
 withDefaults(
   defineProps<{
     classCode: HeroClassCode;
+    appearance?: Partial<HeroAppearance> | null;
     label?: string;
   }>(),
-  { label: "Hero portrait placeholder" },
+  { appearance: null, label: "Hero portrait" },
 );
 </script>
 
 <template>
-  <span class="hero-portrait" :class="`hero-portrait--${classCode}`" aria-hidden="true">
-    <span class="hero-portrait__sprite">
-      <span class="hero-portrait__head" />
-      <span class="hero-portrait__body" />
-    </span>
+  <span class="hero-portrait" :class="`hero-portrait--${classCode}`">
+    <HeroSprite :class-code="classCode" :appearance="appearance" />
     <span class="visually-hidden">{{ label }}</span>
   </span>
 </template>
@@ -28,53 +32,5 @@ withDefaults(
   place-items: center;
   border: 1px solid var(--color-border-subtle);
   background: var(--color-surface-base);
-
-  &__sprite {
-    position: relative;
-    display: grid;
-    width: 1.5rem;
-    height: 2rem;
-    place-items: center;
-    filter: drop-shadow(0 2px 0 var(--color-surface-base));
-  }
-
-  &__head,
-  &__body {
-    display: block;
-    border: 2px solid var(--color-surface-base);
-  }
-
-  &__head {
-    position: absolute;
-    top: 0;
-    width: 0.85rem;
-    height: 0.85rem;
-    background: var(--color-text-muted);
-  }
-
-  &__body {
-    position: absolute;
-    bottom: 0;
-    width: 1.35rem;
-    height: 1.15rem;
-    background: var(--color-arcane);
-    box-shadow:
-      -0.2rem 0.8rem 0 -0.05rem var(--color-arcane),
-      0.2rem 0.8rem 0 -0.05rem var(--color-arcane);
-  }
-
-  &--warrior &__body {
-    background: var(--color-accent);
-    box-shadow:
-      -0.2rem 0.8rem 0 -0.05rem var(--color-accent),
-      0.2rem 0.8rem 0 -0.05rem var(--color-accent);
-  }
-
-  &--shaman &__body {
-    background: var(--color-success);
-    box-shadow:
-      -0.2rem 0.8rem 0 -0.05rem var(--color-success),
-      0.2rem 0.8rem 0 -0.05rem var(--color-success);
-  }
 }
 </style>

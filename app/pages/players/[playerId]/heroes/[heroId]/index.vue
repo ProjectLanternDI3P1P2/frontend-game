@@ -4,7 +4,7 @@ import { NoticeTone } from "~/shared/ui/UiNotice.vue";
 import { useToast } from "~/shared/composables/useToast";
 import { GatewayError } from "~/shared/utils/gateway";
 import { usePlayerApi } from "~/features/player/api/playerApi";
-import HeroPortraitPlaceholder from "~/features/player/components/HeroPortraitPlaceholder.vue";
+import HeroSprite from "~/features/player/components/HeroSprite.vue";
 import HeroDeletionModal from "~/features/player/components/HeroDeletionModal.vue";
 import { useHeroDeletion } from "~/features/player/composables/useHeroDeletion";
 import type { HeroClassOption, HeroSheet, HeroSummary } from "~/features/player/types";
@@ -174,9 +174,11 @@ onMounted(load);
           <p v-if="isSelected" class="hero-detail__state">Selected</p>
           <p v-else-if="isInActiveSession" class="hero-detail__state">In session</p>
           <div class="hero-detail__portrait">
-            <HeroPortraitPlaceholder
+            <HeroSprite
               :class-code="hero.classCode"
-              :label="hero.name + ' placeholder portrait'"
+              :appearance="hero.appearance"
+              :scale="4"
+              :label="hero.name + ' portrait'"
             />
           </div>
           <h2>{{ hero.name }}</h2>
@@ -417,18 +419,10 @@ onMounted(load);
 
   &__portrait {
     display: grid;
-    min-height: 10rem;
+    min-height: 12rem;
     place-items: center;
+    padding: var(--space-3);
     background: var(--color-surface-overlay);
-  }
-
-  &__portrait :deep(.hero-portrait) {
-    width: 7rem;
-    height: 7rem;
-  }
-
-  &__portrait :deep(.hero-portrait__sprite) {
-    transform: scale(2);
   }
 
   &__identity h2 {

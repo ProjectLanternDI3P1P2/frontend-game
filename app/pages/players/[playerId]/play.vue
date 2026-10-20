@@ -81,7 +81,8 @@ async function selectHero(hero: HeroSummary): Promise<void> {
     selectedId.value = hero.id;
     heroPickerOpen.value = false;
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : "Unable to select this hero.";
+    error.value =
+      cause instanceof Error ? cause.message : "Unable to select this hero.";
   } finally {
     selectingHero.value = false;
   }
@@ -94,7 +95,7 @@ onBeforeUnmount(() => void hub?.disconnect());
 <template>
   <div>
     <NuxtPage v-if="!isJoinScreen" />
-    <main v-else id="main" class="join-game">
+        <main v-else id="main" class="join-game">
     <header>
       <p class="join-game__eyebrow">Play a game</p>
       <h1>Join a game</h1>
@@ -107,6 +108,7 @@ onBeforeUnmount(() => void hub?.disconnect());
         <template v-if="selectedHero">
           <HeroPortraitPlaceholder
             :class-code="selectedHero.classCode"
+            :appearance="selectedHero.appearance"
             :label="`${selectedHero.name} portrait`"
           />
           <h2>{{ selectedHero.name }}</h2>

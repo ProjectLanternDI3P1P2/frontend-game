@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ButtonSize, ButtonVariant } from "~/shared/ui/UiButton.vue";
+import type { HeroAppearance } from "../appearance";
 import type { HeroClassOption } from "../types";
-import HeroPortraitPlaceholder from "./HeroPortraitPlaceholder.vue";
+import HeroSprite from "./HeroSprite.vue";
 
 defineProps<{
   name: string;
   heroClass: HeroClassOption | null;
+  appearance?: HeroAppearance | null;
   canConfirm: boolean;
   busy: boolean;
 }>();
@@ -17,12 +19,13 @@ defineEmits<{ cancel: []; confirm: [] }>();
   <aside class="hero-creation-preview" aria-label="Hero preview">
     <p class="hero-creation-preview__eyebrow">Preview</p>
     <div class="hero-creation-preview__portrait">
-      <HeroPortraitPlaceholder
-        v-if="heroClass"
-        :class-code="heroClass.code"
-        :label="`${heroClass.label} placeholder`"
+      <HeroSprite
+        :class-code="heroClass?.code ?? null"
+        :appearance="appearance"
+        :scale="4"
+        animated
+        :label="`${name.trim() || 'Hero'} preview`"
       />
-      <span v-else aria-hidden="true">?</span>
     </div>
     <h2>{{ name.trim() || "Choose a name" }}</h2>
     <p class="hero-creation-preview__class">
@@ -75,8 +78,9 @@ defineEmits<{ cancel: []; confirm: [] }>();
 
   &__portrait {
     display: grid;
-    min-height: 8rem;
+    min-height: 12rem;
     place-items: center;
+    padding: var(--space-3);
     background: var(--color-surface-overlay);
     color: var(--color-text-muted);
     font-size: var(--font-size-xl);
