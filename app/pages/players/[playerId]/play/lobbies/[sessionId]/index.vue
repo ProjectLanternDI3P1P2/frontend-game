@@ -39,13 +39,19 @@ const isClosed = computed(() => isClosedLobby(session.value));
 const redirectIn = ref(CLOSED_LOBBY_REDIRECT_SECONDS);
 let redirectTimer: ReturnType<typeof setInterval> | undefined;
 watch(isClosed, (closed) => {
-  if (!closed || redirectTimer) return;
+  if (!closed) {
+    clearInterval(redirectTimer);
+    redirectTimer = undefined;
+    return;
+  }
+  if (redirectTimer) return;
   heroPickerOpen.value = false;
   redirectIn.value = CLOSED_LOBBY_REDIRECT_SECONDS;
   redirectTimer = setInterval(() => {
     redirectIn.value -= 1;
     if (redirectIn.value > 0) return;
     clearInterval(redirectTimer);
+    redirectTimer = undefined;
     void router.replace(joinGamePath(playerId.value));
   }, 1000);
 });
