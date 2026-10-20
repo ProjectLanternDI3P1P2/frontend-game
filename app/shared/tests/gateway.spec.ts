@@ -115,6 +115,7 @@ describe("createGatewayClient", () => {
 
     await expect(client.post("players/id/heroes")).rejects.toMatchObject({
       code: "VALIDATION_ERROR",
+      message: "Hero name is required.",
       details: { errors: { name: ["Hero name is required."] } },
       status: 422,
     });
