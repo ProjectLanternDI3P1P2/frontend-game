@@ -25,6 +25,28 @@ export interface HeroSummary {
   isEngagedInActiveSession: boolean;
   isSelected: boolean;
   createdAt?: string;
+  /** Open session holding the hero, if any: a lobby can be closed, a running dungeon cannot. */
+  activeSessionId?: string | null;
+  activeSessionState?: string | null;
+}
+
+/** US-PLAYER-10 — steps of the hero deletion dialog (Figma "Heroes / Deletion"). */
+export enum HeroDeletionStep {
+  /** Name confirmation; covers the "Confirmation", "Name typed" and "In progress" mockups. */
+  CONFIRM = "confirm",
+  /** The hero is playing a running dungeon: deletion is refused until the run ends. */
+  BLOCKED = "blocked",
+}
+
+/** US-PLAYER-10 — `DELETE /players/:playerId/heroes/:heroId` (idempotent). */
+export interface DeleteHeroResponse {
+  heroId: string;
+  deleted: true;
+  deletedAt: string;
+  /** True when the hero had already been deleted by an earlier request. */
+  alreadyDeleted: boolean;
+  /** Lobbies closed before the deletion; their members were notified. */
+  closedSessionIds: string[];
 }
 
 export interface CreateHeroRequest {

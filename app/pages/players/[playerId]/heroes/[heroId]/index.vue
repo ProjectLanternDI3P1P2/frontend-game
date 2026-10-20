@@ -5,6 +5,8 @@ import { useToast } from "~/shared/composables/useToast";
 import { GatewayError } from "~/shared/utils/gateway";
 import { usePlayerApi } from "~/features/player/api/playerApi";
 import HeroPortraitPlaceholder from "~/features/player/components/HeroPortraitPlaceholder.vue";
+import HeroDeletionModal from "~/features/player/components/HeroDeletionModal.vue";
+import { HeroDeletionStep } from "~/features/player/types";
 import type { HeroClassOption, HeroSheet, HeroSummary } from "~/features/player/types";
 
 definePageMeta({ layout: "player" });
@@ -17,16 +19,26 @@ const heroesPath = computed(
 );
 const hero = ref<HeroSheet | null>(null);
 const heroSummary = ref<HeroSummary | null>(null);
+const heroCount = ref(0);
 const heroClass = ref<HeroClassOption | null>(null);
 const loading = ref(true);
 const updatingSelection = ref(false);
 const error = ref("");
+const deletionOpen = ref(false);
+const deletionStep = ref(HeroDeletionStep.CONFIRM);
+const deleting = ref(false);
+const deletionError = ref("");
 const { success } = useToast();
 
 const isSelected = computed(() => heroSummary.value?.isSelected ?? false);
 const isInActiveSession = computed(
   () => heroSummary.value?.isEngagedInActiveSession ?? false,
 );
+/** A running dungeon blocks deletion; a lobby is closed first (US-PLAYER-10). */
+const isInRunningSession = computed(
+  () => heroSummary.value?.activeSessionState === "Active",
+);
+const activeSessionId = computed(() => heroSummary.value?.activeSessionId ?? null);
 const heroClassLabel = computed(
   () =>
     heroClass.value?.label ??
@@ -62,6 +74,7 @@ async function refreshHero() {
   ]);
   hero.value = loadedHero;
   heroSummary.value = heroes.find((item) => item.id === loadedHero.id) ?? null;
+  heroCount.value = heroes.length;
   heroClass.value =
     heroClasses.find((item) => item.code === loadedHero.classCode) ?? null;
 }
@@ -105,6 +118,55 @@ async function toggleSelection() {
   } finally {
     updatingSelection.value = false;
   }
+}
+
+function openDeletion() {
+  if (!hero.value) return;
+  deletionError.value = "";
+  deletionStep.value = isInRunningSession.value
+    ? HeroDeletionStep.BLOCKED
+    : HeroDeletionStep.CONFIRM;
+  deletionOpen.value = true;
+}
+
+async function deleteHero() {
+  if (!hero.value) return;
+
+  deleting.value = true;
+  deletionError.value = "";
+  try {
+    await usePlayerApi().deleteHero(playerId.value, hero.value.id);
+    deletionOpen.value = false;
+    success(hero.value.name + " has been deleted. A slot is free again.", {
+      title: "Hero deleted",
+    });
+    await navigateTo(heroesPath.value);
+  } catch (cause) {
+    if (cause instanceof GatewayError && cause.status === 409) {
+      // The hero entered a running dungeon meanwhile: show the blocked state.
+      await refreshHero().catch(() => undefined);
+      deletionStep.value = HeroDeletionStep.BLOCKED;
+    } else {
+      // Deletion is idempotent, so retrying after an uncertain outcome is safe.
+      deletionError.value =
+        cause instanceof GatewayError && !cause.isOutcomeUncertain
+          ? cause.message
+          : "Unable to confirm the deletion. Please try again.";
+    }
+  } finally {
+    deleting.value = false;
+  }
+}
+
+function viewSession() {
+  if (!activeSessionId.value) return;
+  deletionOpen.value = false;
+  const lobbyPath =
+    "/players/" +
+    encodeURIComponent(playerId.value) +
+    "/play/lobbies/" +
+    encodeURIComponent(activeSessionId.value);
+  void navigateTo(isInRunningSession.value ? lobbyPath + "/run" : lobbyPath);
 }
 
 onMounted(load);
@@ -182,6 +244,14 @@ onMounted(load);
             @click="toggleSelection"
             >{{ selectionLabel }}</UiButton
           >
+          <UiButton
+            class="hero-detail__delete"
+            :size="ButtonSize.SM"
+            :variant="ButtonVariant.DANGER"
+            full-width
+            @click="openDeletion"
+            >Delete this hero</UiButton
+          >
         </aside>
 
         <div class="hero-detail__panels">
@@ -237,6 +307,20 @@ onMounted(load);
           </section>
         </div>
       </div>
+
+      <HeroDeletionModal
+        v-model="deletionOpen"
+        :step="deletionStep"
+        :hero-name="hero.name"
+        :hero-class-label="heroClassLabel"
+        :hero-count="heroCount"
+        :closes-lobby="isInActiveSession && !isInRunningSession"
+        :session-id="activeSessionId"
+        :deleting="deleting"
+        :error="deletionError"
+        @confirm="deleteHero"
+        @view-session="viewSession"
+      />
     </template>
   </main>
 </template>
@@ -352,6 +436,12 @@ onMounted(load);
 
   &__identity--in-session {
     border-color: var(--color-accent);
+  }
+
+  // Figma: muted destructive outline under the selection button.
+  &__delete {
+    border-color: var(--color-danger);
+    background-color: color-mix(in srgb, var(--color-danger) 20%, transparent);
   }
 
   &__state {
