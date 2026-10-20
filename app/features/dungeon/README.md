@@ -15,21 +15,21 @@ copying `app/features/dungeon/`, `app/pages/dungeon/` and the route rule.
 
 ### Routes
 
-| Route             | Rendering          | Why not static / why not SSR                                               |
-| ----------------- | ------------------ | -------------------------------------------------------------------------- |
-| `/dungeon`        | CSR (`ssr: false`) | Starts a per-player run: nothing to prerender, nothing to index.          |
+| Route             | Rendering          | Why not static / why not SSR                                                |
+| ----------------- | ------------------ | --------------------------------------------------------------------------- |
+| `/dungeon`        | CSR (`ssr: false`) | Starts a per-player run: nothing to prerender, nothing to index.            |
 | `/dungeon/:runId` | CSR (`ssr: false`) | Keyboard-driven game state; a server render would be replaced on hydration. |
 
 ### APIs consumed
 
-| Call               | Gateway route                              | Cached                                  |
-| ------------------ | ------------------------------------------ | --------------------------------------- |
-| `createDungeonRun` | `POST /api/v1/dungeon-runs`                | never                                   |
-| `fetchDungeonRun`  | `GET /api/v1/dungeon-runs/{runId}`         | never: the run is mutable               |
-| `moveHero`         | `POST /api/v1/dungeon-runs/{runId}/moves`  | never                                   |
-| `defeatFloorBoss`  | `POST /api/v1/dungeon-runs/{runId}/boss-defeats` | never                             |
-| `fetchDungeonMap`  | `GET /api/v1/dungeons/{seed}/map?floor=n`  | forever: a floor is immutable per seed  |
-| `generateChestLoot` | `POST /api/v1/rewards/chest-loot/generate` | never: the response is an interaction snapshot |
+| Call                | Gateway route                                      | Cached                                      |
+| ------------------- | -------------------------------------------------- | ------------------------------------------- |
+| `createDungeonRun`  | `POST /api/v1/dungeon-runs`                        | never                                       |
+| `fetchDungeonRun`   | `GET /api/v1/dungeon-runs/{runId}`                 | never: the run is mutable                   |
+| `moveHero`          | SignalR `/hubs/dungeons` → `MoveHero`              | never                                       |
+| `defeatFloorBoss`   | `POST /api/v1/dungeon-runs/{runId}/boss-defeats`   | never                                       |
+| `fetchDungeonMap`   | `GET /api/v1/dungeons/{seed}/map?floor=n`          | forever: a floor is immutable per seed      |
+| `generateChestLoot` | `POST /api/v1/rewards/chest-loot/generate`         | never: the response is an interaction snapshot |
 
 `defeatFloorBoss` is temporary too: it stands in for Combat's fight when the
 hero walks into the boss, and Combat calls it once the fight exists.
@@ -59,16 +59,16 @@ change are ignored.
 
 ### How it stays fast without an engine or a canvas (ADR-FE-005, ADR-FE-006)
 
-| Concern          | Decision                                                                                                                                                  |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Payload          | One text row per tile row plus a sparse element list: ~40 KB per 40-room floor, ~3 KB gzipped, fetched once.                                             |
-| Decoding         | Typed arrays (`Uint8Array` cells, `Int16Array` room index), wrapped in `markRaw`: Vue never walks 17,000 tiles.                                           |
-| Autotiling       | Sprite choice for every tile computed once per floor (~10 ms), as CSS custom properties.                                                                   |
-| DOM size         | Only revealed tiles inside the camera window exist: ~150–400 elements whatever the floor size.                                                           |
-| Moving           | Tiles are keyed by index in world coordinates: a step adds one row or column and removes one; the camera and tokens move with `transform`.              |
-| Animation        | Torches, the hero, traps and the boss gate are rows of frames played by CSS `steps()`; mobs float with a CSS animation; nothing runs in JavaScript per frame. Disabled under `prefers-reduced-motion`. |
-| Latency          | Moves are predicted with the backend's own walkability rule and confirmed in order; a refusal or a network error re-reads the run (ADR-FE-008).           |
-| Next floor       | Prefetched as soon as a floor loads, so going through the gate is instant.                                                                               |
+| Concern    | Decision                                                                                                                                                                                               |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Payload    | One text row per tile row plus a sparse element list: ~40 KB per 40-room floor, ~3 KB gzipped, fetched once.                                                                                           |
+| Decoding   | Typed arrays (`Uint8Array` cells, `Int16Array` room index), wrapped in `markRaw`: Vue never walks 17,000 tiles.                                                                                        |
+| Autotiling | Sprite choice for every tile computed once per floor (~10 ms), as CSS custom properties.                                                                                                               |
+| DOM size   | Only revealed tiles inside the camera window exist: ~150–400 elements whatever the floor size.                                                                                                         |
+| Moving     | Tiles are keyed by index in world coordinates: a step adds one row or column and removes one; the camera and tokens move with `transform`.                                                             |
+| Animation  | Torches, the hero, traps and the boss gate are rows of frames played by CSS `steps()`; mobs float with a CSS animation; nothing runs in JavaScript per frame. Disabled under `prefers-reduced-motion`. |
+| Latency    | Moves are predicted with the backend's own walkability rule and confirmed in order; a refusal or a network error re-reads the run (ADR-FE-008).                                                        |
+| Next floor | Prefetched as soon as a floor loads, so going through the gate is instant.                                                                                                                             |
 
 ### Files
 
@@ -194,15 +194,15 @@ HUD, the minimap and the actions float over the board.
 
 ### Test coverage
 
-| Level | File                               | What it proves                                                                  |
-| ----- | ---------------------------------- | ------------------------------------------------------------------------------- |
-| Unit  | `tests/dungeonMap.spec.ts`         | Decoding of real backend payloads, contract drift detection, walkability rule.  |
+| Level | File                               | What it proves                                                                                                                                                                                                                |
+| ----- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit  | `tests/dungeonMap.spec.ts`         | Decoding of real backend payloads, contract drift detection, walkability rule.                                                                                                                                                |
 | Unit  | `tests/autotile.spec.ts`           | Deterministic visuals, a rim above every face, walls two tiles high, closed corners, nothing below south walls, hangings on tall walls only, torches by the gate, pools and their banks, tombs, rooms dressed for their kind. |
-| Unit  | `tests/sprites.spec.ts`            | Animated sprites: chests only for items, the hero's rows, the boss, the doors. |
-| Unit  | `tests/dungeonRules.spec.ts`       | Key mapping, camera clamping, fog of war (void under the walls included).       |
-| Unit  | `tests/useDungeonExplorer.spec.ts` | Predicted moves in order, no request into a wall or a locked gate, boss fight opens the gate, resync on refusal, one fetch per floor. |
-| Unit  | `tests/ChestLootModal.spec.ts`     | Loading, error and retry, saved loot, and close behavior.                       |
-| Unit  | `tests/useDungeonExplorer.spec.ts` | Confirmed chest movement, blocked interaction, one generation call, stable retry command, close/resume, and late-response handling. |
+| Unit  | `tests/sprites.spec.ts`            | Animated sprites: chests only for items, the hero's rows, the boss, the doors.                                                                                                                                                |
+| Unit  | `tests/dungeonRules.spec.ts`       | Key mapping, camera clamping, fog of war (void under the walls included).                                                                                                                                                     |
+| Unit  | `tests/dungeonApi.spec.ts`         | Confirmed movement uses the Dungeon Hub while chest generation stays on the Reward HTTP route.                                                                                                                               |
+| Unit  | `tests/useDungeonExplorer.spec.ts` | Predicted Hub moves in order; chest interaction after confirmation; stable retry command; close/resume; late-response handling; resync on refusal.                                                                           |
+| Unit  | `tests/ChestLootModal.spec.ts`     | Loading, error and retry, saved loot, and close behavior.                                                                                                                                                                     |
 
 The fixtures in `tests/fixtures/` were produced by the Dungeon service's query
 handlers: regenerate them when the contract changes.
