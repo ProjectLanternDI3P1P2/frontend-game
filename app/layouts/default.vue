@@ -1,96 +1,22 @@
 <script setup lang="ts">
+import AppShell from "~/components/AppShell.vue";
 import { useAuth } from "~/features/auth/composables/useAuth";
-import { ButtonSize, ButtonVariant } from "~/shared/ui/UiButton.vue";
 
 /**
  * ADR-FE-015 — Landmarks and the skip link live in the layout so every public
  * page inherits them. The public site targets RGAA compliance with no expected
  * exception: nothing here is a gameplay constraint.
  */
-const config = useRuntimeConfig();
-const { isAuthenticated, user, logout } = useAuth();
-const router = useRouter();
-
-const openAuth = async () => {
-  await router.push("/auth");
-};
-const authenticatedNavigationItems = [
-  { label: "Home", to: "/home" },
-  { label: "Heroes", to: "/players/me/heroes" },
-  { label: "Lobby", to: "/players/play" },
-  { label: "Dungeon", to: "/dungeon" },
-];
-const publicNavigationItems = [
-  { label: "Demo", to: "/demo" },
-];
-const navigationItems = computed(() =>
-  isAuthenticated.value
-    ? [...authenticatedNavigationItems, ...publicNavigationItems]
-    : publicNavigationItems,
+const route = useRoute();
+const { isAuthenticated } = useAuth();
+const keycloakReady = useState("lantern.keycloak.ready", () => false);
+const shouldHoldRootContent = computed(
+  () => route.path === "/" && (!keycloakReady.value || !isAuthenticated.value),
 );
-const brandTo = computed(() => (isAuthenticated.value ? "/home" : "/auth"));
 </script>
 
 <template>
-  <div class="site-shell">
-    <a class="skip-link" href="#main">Skip to main content</a>
-
-    <UiTopNavigation brand="Project Lantern" :brand-to="brandTo" :items="navigationItems">
-      <template #actions>
-        <span v-if="isAuthenticated" class="site-shell__identity">
-          {{ user?.username }}
-        </span>
-        <UiButton
-          :variant="isAuthenticated ? ButtonVariant.GHOST : ButtonVariant.PRIMARY"
-          :size="ButtonSize.SM"
-          @click="isAuthenticated ? logout() : openAuth()"
-        >
-          {{ isAuthenticated ? "Sign out" : "Sign in" }}
-        </UiButton>
-      </template>
-    </UiTopNavigation>
-
-    <div class="site-shell__main layout-container">
-      <slot />
-    </div>
-
-    <footer class="site-shell__footer">
-      <div class="layout-container">
-        <p>Redwood Games — Project Lantern</p>
-        <!-- Build identity, so a deployed page can be traced to a commit. -->
-        <p class="site-shell__build">
-          Build {{ config.public.appVersion }} ({{ config.public.commitSha }})
-        </p>
-      </div>
-    </footer>
-  </div>
+  <AppShell :hold-content="shouldHoldRootContent">
+    <slot />
+  </AppShell>
 </template>
-
-<style scoped lang="scss">
-.site-shell {
-  display: flex;
-  flex-direction: column;
-  min-block-size: 100vh;
-
-  &__main {
-    flex: 1;
-    padding-block: var(--space-7);
-  }
-
-  &__footer {
-    border-block-start: 1px solid var(--color-border-subtle);
-    padding-block: var(--space-5);
-    color: var(--color-text-muted);
-    font-size: var(--font-size-sm);
-  }
-
-  &__build {
-    font-family: var(--font-family-mono);
-  }
-
-  &__identity {
-    color: var(--color-text-muted);
-    font-size: var(--font-size-sm);
-  }
-}
-</style>
