@@ -18,7 +18,6 @@
     --color-accent: #e0b457;
     --color-accent-strong: #a97f24;
     --color-danger: #d1495b;
-    --color-arcane: #7b6cf6;
     --color-focus-ring: #e0b457;
     --font-family-body: "Segoe UI", system-ui, -apple-system, sans-serif;
     --font-family-display: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
@@ -32,7 +31,7 @@ $secondary-color: var(--color-text-muted);
 $gold-color: var(--color-accent);
 $error-color: var(--color-danger);
 $dark-gold-color: var(--color-accent-strong);
-$light-purple-color: var(--color-arcane);
+$light-purple-color: var(--color-text-muted);
 $dark-purple-color: var(--color-surface-base);
 $border-color: var(--color-border-subtle);
 $background-color-page: var(--color-surface-base);
@@ -62,7 +61,16 @@ body {
     font-family: var(--font-family-body);
 }
 
+button,
+input,
+select,
+textarea {
+    font-family: var(--font-family-body);
+}
+
 .auth {
+    position: relative;
+    isolation: isolate;
     width: 100%;
     min-height: 100dvh;
     display: flex;
@@ -70,10 +78,34 @@ body {
     justify-content: center;
     gap: 4rem;
     background: $background-color-page;
+    overflow: hidden;
+
+    &::before {
+        position: absolute;
+        z-index: 1;
+        inset: 0;
+        background:
+            linear-gradient(90deg, rgb(11 11 16 / 82%), rgb(11 11 16 / 64%)),
+            linear-gradient(180deg, rgb(11 11 16 / 34%), rgb(11 11 16 / 76%));
+        content: "";
+    }
+
+    &__dungeon-background {
+        position: absolute;
+        z-index: 0;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+        opacity: .72;
+        pointer-events: none;
+    }
 
     &__side {
         display: flex;
         flex-direction: column;
+        z-index: 2;
 
         &--left {
             text-align: start;
@@ -137,22 +169,8 @@ body {
     &__gallery-sprite {
         width: 4rem;
         height: 5rem;
-        background-position: -2rem -1rem;
-        background-repeat: no-repeat;
-        background-size: 64rem 64rem;
+        display: block;
         image-rendering: pixelated;
-    }
-
-    &__gallery-item--warrior .auth__gallery-sprite {
-        background-image: url("../img/hero-warrior-hair.webp"), url("../img/hero-outfit.webp"), url("../img/hero-body.webp");
-    }
-
-    &__gallery-item--shaman .auth__gallery-sprite {
-        background-image: url("../img/hero-shaman-hat.webp"), url("../img/hero-outfit.webp"), url("../img/hero-body.webp");
-    }
-
-    &__gallery-item--mage .auth__gallery-sprite {
-        background-image: url("../img/hero-mage-hat.webp"), url("../img/hero-outfit.webp"), url("../img/hero-body.webp");
     }
 
     &__gallery-label {
@@ -162,6 +180,13 @@ body {
         letter-spacing: .08em;
         text-transform: uppercase;
     }
+}
+
+// registrationLayout emits this sibling next to the left branding panel.
+// Keep the whole Keycloak card above the decorative video and its contrast veil.
+.auth > .login-pf-page {
+    position: relative;
+    z-index: 2;
 }
 
 // ------------------------------------------------------------
@@ -286,8 +311,11 @@ body {
         margin: 0 0 1rem;
         text-align: left;
         color: $primary-color;
+        font-family: var(--font-family-display);
         font-size: $font-size-xl;
         font-weight: $font-weight-bold;
+        letter-spacing: 0.035em;
+        line-height: 1.2;
     }
 
     &__description {
@@ -517,6 +545,16 @@ body {
     .login-pf-page .card-pf {
         width: auto;
         max-width: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .auth {
+        background: $background-color-page url("../video/dungeon-party-loop-poster.webp") center / cover;
+
+        &__dungeon-background {
+            display: none;
+        }
     }
 }
 

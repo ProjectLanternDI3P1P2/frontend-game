@@ -13,7 +13,6 @@
   --color-accent: #e0b457;
   --color-accent-strong: #a97f24;
   --color-danger: #d1495b;
-  --color-arcane: #7b6cf6;
   --color-focus-ring: #e0b457;
   --font-family-body: "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-family-display: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
@@ -29,7 +28,16 @@ body {
   font-family: var(--font-family-body);
 }
 
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-family-body);
+}
+
 .auth {
+  position: relative;
+  isolation: isolate;
   width: 100%;
   min-height: 100dvh;
   display: flex;
@@ -37,10 +45,30 @@ body {
   justify-content: center;
   gap: 4rem;
   background: var(--color-surface-base);
+  overflow: hidden;
+}
+.auth::before {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(11, 11, 16, 0.82), rgba(11, 11, 16, 0.64)), linear-gradient(180deg, rgba(11, 11, 16, 0.34), rgba(11, 11, 16, 0.76));
+  content: "";
+}
+.auth__dungeon-background {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.72;
+  pointer-events: none;
 }
 .auth__side {
   display: flex;
   flex-direction: column;
+  z-index: 2;
 }
 .auth__side--left {
   text-align: start;
@@ -65,7 +93,7 @@ body {
   font-weight: 600;
 }
 .auth__caption {
-  color: var(--color-arcane);
+  color: var(--color-text-muted);
   font-size: 0.75rem;
   font-weight: 400;
   font-family: var(--font-family-body);
@@ -95,19 +123,8 @@ body {
 .auth__gallery-sprite {
   width: 4rem;
   height: 5rem;
-  background-position: -2rem -1rem;
-  background-repeat: no-repeat;
-  background-size: 64rem 64rem;
+  display: block;
   image-rendering: pixelated;
-}
-.auth__gallery-item--warrior .auth__gallery-sprite {
-  background-image: url("../img/hero-warrior-hair.webp"), url("../img/hero-outfit.webp"), url("../img/hero-body.webp");
-}
-.auth__gallery-item--shaman .auth__gallery-sprite {
-  background-image: url("../img/hero-shaman-hat.webp"), url("../img/hero-outfit.webp"), url("../img/hero-body.webp");
-}
-.auth__gallery-item--mage .auth__gallery-sprite {
-  background-image: url("../img/hero-mage-hat.webp"), url("../img/hero-outfit.webp"), url("../img/hero-body.webp");
 }
 .auth__gallery-label {
   color: var(--color-text-muted);
@@ -115,6 +132,11 @@ body {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.auth > .login-pf-page {
+  position: relative;
+  z-index: 2;
 }
 
 .login-pf-page .card-pf {
@@ -161,7 +183,7 @@ body {
   background: var(--color-surface-overlay);
 }
 .auth-form input:not([type=hidden]):not([type=checkbox]):not([type=submit])::placeholder {
-  color: var(--color-arcane);
+  color: var(--color-text-muted);
   opacity: 1;
 }
 .auth-form input:not([type=hidden]):not([type=checkbox]):not([type=submit]):focus {
@@ -219,8 +241,11 @@ body {
   margin: 0 0 1rem;
   text-align: left;
   color: var(--color-text-primary);
+  font-family: var(--font-family-display);
   font-size: 1.75rem;
   font-weight: 700;
+  letter-spacing: 0.035em;
+  line-height: 1.2;
 }
 .auth-form__description {
   color: var(--color-text-muted);
@@ -358,7 +383,7 @@ body {
   text-decoration: none;
 }
 .auth-form__security-note {
-  color: var(--color-arcane);
+  color: var(--color-text-muted);
   font-size: 0.75rem;
   font-weight: 400;
 }
@@ -418,6 +443,14 @@ body {
     max-width: none;
   }
 }
+@media (prefers-reduced-motion: reduce) {
+  .auth {
+    background: var(--color-surface-base) url("../video/dungeon-party-loop-poster.webp") center/cover;
+  }
+  .auth__dungeon-background {
+    display: none;
+  }
+}
 #kc-info {
   position: relative;
   top: -1rem;
@@ -450,7 +483,7 @@ body {
 .subtitle-form {
   margin-top: 2rem;
   text-align: left;
-  color: var(--color-arcane);
+  color: var(--color-text-muted);
   font-size: 0.75rem;
   font-weight: 400;
 }
@@ -475,7 +508,7 @@ body {
   font-weight: 600;
 }
 .register__footer h5 {
-  color: var(--color-arcane);
+  color: var(--color-text-muted);
   font-size: 0.75rem;
   font-weight: 400;
 }

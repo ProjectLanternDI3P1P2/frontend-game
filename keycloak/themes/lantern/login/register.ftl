@@ -4,21 +4,24 @@
 
 
 <div class="auth">
+	<video class="auth__dungeon-background" autoplay muted loop playsinline poster="${url.resourcesPath}/video/dungeon-party-loop-poster.webp" aria-hidden="true">
+		<source src="${url.resourcesPath}/video/dungeon-party-loop.webm" type="video/webm" />
+	</video>
 	<div class="auth__side auth__side--left">
 		<p class="auth__eyebrow">LANTERN · SECURE ACCESS</p>
 		<h1 class="auth__title">LANTERN</h1>
 		<h3 class="auth__tagline">Build your party, descend into the dungeon, return a legend.</h3>
 		<div class="auth__gallery">
-			<div class="auth__gallery-item auth__gallery-item--warrior">
-				<span class="auth__gallery-sprite" role="img" aria-label="Warrior"></span>
+			<div class="auth__gallery-item">
+				<img class="auth__gallery-sprite" src="${url.resourcesPath}/img/class-warrior.webp" alt="Warrior" />
 				<span class="auth__gallery-label">Warrior</span>
 			</div>
-			<div class="auth__gallery-item auth__gallery-item--shaman">
-				<span class="auth__gallery-sprite" role="img" aria-label="Shaman"></span>
+			<div class="auth__gallery-item">
+				<img class="auth__gallery-sprite" src="${url.resourcesPath}/img/class-shaman.webp" alt="Shaman" />
 				<span class="auth__gallery-label">Shaman</span>
 			</div>
-			<div class="auth__gallery-item auth__gallery-item--mage">
-				<span class="auth__gallery-sprite" role="img" aria-label="Mage"></span>
+			<div class="auth__gallery-item">
+				<img class="auth__gallery-sprite" src="${url.resourcesPath}/img/class-mage.webp" alt="Mage" />
 				<span class="auth__gallery-label">Mage</span>
 			</div>
 		</div>
