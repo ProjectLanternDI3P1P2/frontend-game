@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/ProjectLanternDI3P1P2/frontend-game/compare/v0.2.1...v0.2.2) (2026-10-21)
+
+
+### Fixed
+
+* ci ([8a77f1a](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/8a77f1a7e8f10e1877851c01ae4d447af6886482))
+
 ## [0.2.1](https://github.com/ProjectLanternDI3P1P2/frontend-game/compare/v0.2.0...v0.2.1) (2026-10-21)
 
 
