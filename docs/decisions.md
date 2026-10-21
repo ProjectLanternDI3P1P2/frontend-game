@@ -4,6 +4,13 @@
 
 <!-- Le plus récent en haut. Format : voir le skill decision-log. -->
 
+## D16 - 2026-10-21 - Tiroir des faits : piège à focus local
+
+Décision : `RankingFactsDrawer.vue` implémente lui-même le piège à focus et le retour du focus au bouton d'ouverture. Le détail utilise `h3` (« Hero · <name> ») et `h4` (« Last 4 runs »), ce qui suppose un `h2` de F02 au-dessus.
+Pourquoi : `UiModal` (`app/shared`, en lecture seule pour ce lot) gère Échap mais pas le focus.
+Écarté : modifier `UiModal` (zone partagée, à proposer dans une fiche dédiée).
+Source : rapport F03
+
 ## D15 - 2026-10-21 - Synchronisation URL du classement
 
 Décision : clés d'URL `class`, `period`, `search`, `sort`, `page` ; `parseRankingQuery` est tolérante (casse, espaces, valeurs invalides ramenées au défaut, recherche limitée à 64 caractères, `mock` ignoré) ; `toRouteQuery` n'écrit que les valeurs différentes du défaut ; taille de page fixe à 10.
