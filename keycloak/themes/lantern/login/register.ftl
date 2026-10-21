@@ -9,17 +9,17 @@
 		<h1 class="auth__title">LANTERN</h1>
 		<h3 class="auth__tagline">Build your party, descend into the dungeon, return a legend.</h3>
 		<div class="auth__gallery">
-			<div class="auth__gallery-item">
-				<img src="${url.resourcesPath}/img/hero1.png" alt="Lantern dungeon" class="auth__gallery-image" />
+			<div class="auth__gallery-item auth__gallery-item--warrior">
+				<span class="auth__gallery-sprite" role="img" aria-label="Warrior"></span>
+				<span class="auth__gallery-label">Warrior</span>
 			</div>
-			<div class="auth__gallery-item">
-				<img src="${url.resourcesPath}/img/hero4.png" alt="Lantern dungeon" class="auth__gallery-image" />
+			<div class="auth__gallery-item auth__gallery-item--shaman">
+				<span class="auth__gallery-sprite" role="img" aria-label="Shaman"></span>
+				<span class="auth__gallery-label">Shaman</span>
 			</div>
-			<div class="auth__gallery-item">
-				<img src="${url.resourcesPath}/img/hero2.png" alt="Lantern dungeon" class="auth__gallery-image" />
-			</div>
-			<div class="auth__gallery-item">
-				<img src="${url.resourcesPath}/img/hero3.png" alt="Lantern dungeon" class="auth__gallery-image" />
+			<div class="auth__gallery-item auth__gallery-item--mage">
+				<span class="auth__gallery-sprite" role="img" aria-label="Mage"></span>
+				<span class="auth__gallery-label">Mage</span>
 			</div>
 		</div>
 		<h5 class="auth__caption">Keycloak theme customized for Lantern</h5>

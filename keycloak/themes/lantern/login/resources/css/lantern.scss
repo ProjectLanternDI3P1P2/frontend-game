@@ -2,21 +2,43 @@
 // Project Lantern — Keycloak login theme
 // ============================================================
 
-// Colors
-$primary-color: #EDE4D3;
-$secondary-color: #C9BCA3;
-$gold-color: #C9A227;
-$error-color: #A32B3F;
-$dark-gold-color: #2E2410;
-$light-purple-color: #6B6478;
-$dark-purple-color: #16141D;
-$border-color: #383343;
+// Same semantic tokens as app/assets/styles/_tokens.scss. The Keycloak theme
+// is standalone, so these values are intentionally duplicated here.
+:root {
+    --color-surface-base: #0b0b10;
+    --color-surface-raised: #28221d;
+    --color-surface-overlay: #3b3026;
+    --color-border-subtle: #594735;
+    --color-border-strong: #756550;
+    --color-border-accent: #a97f24;
+    --color-text-primary: #f4efe4;
+    --color-text-muted: #a89d84;
+    --color-text-inverse: #0b0b10;
+    --color-text-highlight: #e0b457;
+    --color-accent: #e0b457;
+    --color-accent-strong: #a97f24;
+    --color-danger: #d1495b;
+    --color-arcane: #7b6cf6;
+    --color-focus-ring: #e0b457;
+    --font-family-body: "Segoe UI", system-ui, -apple-system, sans-serif;
+    --font-family-display: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --radius-sm: 2px;
+    --radius-md: 6px;
+    --shadow-gold: 0 0 0 1px rgb(224 180 87 / 20%), 0 8px 20px rgb(0 0 0 / 38%);
+}
 
-// Background
-$background-color-page: #14121A;
-$background-color-card: #1C1924;
-$background-color-input: #26222F;
-$background-color-active-button: #957926;
+$primary-color: var(--color-text-primary);
+$secondary-color: var(--color-text-muted);
+$gold-color: var(--color-accent);
+$error-color: var(--color-danger);
+$dark-gold-color: var(--color-accent-strong);
+$light-purple-color: var(--color-arcane);
+$dark-purple-color: var(--color-surface-base);
+$border-color: var(--color-border-subtle);
+$background-color-page: var(--color-surface-base);
+$background-color-card: var(--color-surface-raised);
+$background-color-input: var(--color-surface-overlay);
+$background-color-active-button: var(--color-accent-strong);
 
 // font-size
 $font-size-xs: 0.75rem;
@@ -37,7 +59,7 @@ body {
     margin: 0;
     padding: 0;
     background: $background-color-page;
-    font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    font-family: var(--font-family-body);
 }
 
 .auth {
@@ -45,7 +67,8 @@ body {
     min-height: 100dvh;
     display: flex;
     align-items: center;
-    justify-content: space-evenly;
+    justify-content: center;
+    gap: 4rem;
     background: $background-color-page;
 
     &__side {
@@ -69,6 +92,8 @@ body {
         color: $primary-color;
         font-size: $font-size-2xl;
         font-weight: $font-weight-bold;
+        font-family: var(--font-family-display);
+        letter-spacing: 0.035em;
     }
 
     &__tagline {
@@ -81,7 +106,7 @@ body {
         color: $light-purple-color;
         font-size: $font-size-xs;
         font-weight: $font-weight-regular;
-        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+        font-family: var(--font-family-body);
     }
 
     &__gallery {
@@ -92,26 +117,50 @@ body {
     }
 
     &__gallery-item {
-        width: 100px;
-        height: 100px;
+        width: 6.5rem;
+        min-height: 7.75rem;
         border: 1px solid $border-color;
-        border-radius: 4px;
+        border-radius: var(--radius-md);
         display: flex;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
         background: $background-color-card;
         overflow: hidden;
-        cursor: pointer;
+        box-shadow: var(--shadow-gold);
 
         &:hover {
             border-color: $gold-color;
         }
     }
 
-    &__gallery-image {
-        width: 80%;
-        height: 80%;
-        object-fit: cover;
+    &__gallery-sprite {
+        width: 4rem;
+        height: 5rem;
+        background-position: -2rem -1rem;
+        background-repeat: no-repeat;
+        background-size: 64rem 64rem;
+        image-rendering: pixelated;
+    }
+
+    &__gallery-item--warrior .auth__gallery-sprite {
+        background-image: url("../img/hero-warrior-hair.webp"), url("../img/hero-outfit.webp"), url("../img/hero-body.webp");
+    }
+
+    &__gallery-item--shaman .auth__gallery-sprite {
+        background-image: url("../img/hero-shaman-hat.webp"), url("../img/hero-outfit.webp"), url("../img/hero-body.webp");
+    }
+
+    &__gallery-item--mage .auth__gallery-sprite {
+        background-image: url("../img/hero-mage-hat.webp"), url("../img/hero-outfit.webp"), url("../img/hero-body.webp");
+    }
+
+    &__gallery-label {
+        color: $secondary-color;
+        font-size: $font-size-xs;
+        font-weight: $font-weight-bold;
+        letter-spacing: .08em;
+        text-transform: uppercase;
     }
 }
 
@@ -123,8 +172,9 @@ body {
     max-width: 40rem;
     padding: 2rem;
     border: 1px solid $border-color;
-    border-radius: 4px;
+    border-radius: var(--radius-md);
     background: $background-color-card;
+    box-shadow: var(--shadow-gold);
 }
 
 #kc-header {
@@ -155,7 +205,7 @@ body {
         width: 100%;
         padding: 1rem;
         border: 1px solid $border-color;
-        border-radius: 4px;
+        border-radius: var(--radius-md);
         font-size: $font-size-sm;
         font-weight: $font-weight-regular;
         color: $primary-color;
@@ -357,7 +407,7 @@ body {
             }
 
             &:focus-visible {
-                outline: 2px solid $gold-color;
+            outline: 2px solid var(--color-focus-ring);
                 outline-offset: 2px;
             }
 
@@ -449,6 +499,24 @@ body {
             color: $error-color;
             font-size: $font-size-xs;
         }
+    }
+}
+
+@media (max-width: 52rem) {
+    .auth {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 1.5rem;
+        padding: 2rem 1rem;
+
+        &__gallery {
+            flex-wrap: wrap;
+        }
+    }
+
+    .login-pf-page .card-pf {
+        width: auto;
+        max-width: none;
     }
 }
 
