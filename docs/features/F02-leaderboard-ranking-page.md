@@ -276,6 +276,14 @@ Les autres méthodes (détail, faits, public) sont cohérentes avec le classemen
 - **Tests** : critères dans `app/features/leaderboard/tests/<Id>AcceptanceTest.spec.ts`. Contrôles de fin : `npm run lint`, `npm run typecheck`, `npm run test:unit`.
 - **Branche de base du lot** : `feature/leaderboard-hero-statistics`. Jamais de push.
 
+## Points laissés par F00 (à traiter dans F02)
+
+- `useLeaderboard.ts` : le watcher `deep: true` relance `load` à chaque réévaluation (par exemple quand seul `?mock=` change). Comparer une clé sérialisée de la requête.
+- `useLeaderboard.ts` : le statut `EMPTY` confond « personne n'est classé » et « aucun résultat pour ces filtres ou cette recherche ». Distinguer les deux (message « No hero matches your filters » avec « Clear filters »).
+- `LeaderboardTable.vue` : `aria-current` peut porter sur plusieurs lignes (D9 : badge « You » sur chacun de mes héros ; réserver `aria-current="true"` à la ligne ciblée par « Jump to my rank »). Le `tabindex="-1"` est inutile.
+- `F01AcceptanceTest.spec.ts` n'est pas au format Prettier (bloc CA5, déjà le cas avant F00). F02 peut le laisser reformater par lint-staged, sans changer le fond des tests CA1 à CA6.
+- Le rang ne se renumérote pas avec les filtres (D14). Exports disponibles : `RANKING_PAGE_SIZE`, `DEFAULT_RANKING_STATE`, `RankingUrlState`, `RANKING_QUERY_KEYS` (D15).
+
 ## Questions ouvertes
 
 Aucune.

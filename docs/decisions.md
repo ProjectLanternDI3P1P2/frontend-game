@@ -4,6 +4,20 @@
 
 <!-- Le plus récent en haut. Format : voir le skill decision-log. -->
 
+## D15 - 2026-10-21 - Synchronisation URL du classement
+
+Décision : clés d'URL `class`, `period`, `search`, `sort`, `page` ; `parseRankingQuery` est tolérante (casse, espaces, valeurs invalides ramenées au défaut, recherche limitée à 64 caractères, `mock` ignoré) ; `toRouteQuery` n'écrit que les valeurs différentes du défaut ; taille de page fixe à 10.
+Pourquoi : liens partageables propres et robustes.
+Écarté : Aucun
+Source : rapport F00
+
+## D14 - 2026-10-21 - Sens du rang et population simulée
+
+Décision : le rang est la position par XP sur la période choisie, toutes classes confondues ; filtre de classe, recherche et tri ne renumérotent pas ; `totalXp` est l'XP de la période. Les données simulées comptent 220 héros « depuis toujours », dont 120 dans la saison (en saison, mon Warrior est 2e et mon Shaman 7e).
+Pourquoi : un rang stable quel que soit le filtre ; le Mage peut être 210e tout en étant absent de la saison.
+Écarté : renuméroter selon les filtres (rang trompeur).
+Source : rapport F00
+
 ## D13 - 2026-10-21 - Lot leaderboard : périmètre strict et découpage
 
 Décision : uniquement les pages leaderboard (`/leaderboard`, `/rankings`), aucune autre page modifiée. Le lot est découpé en F00 (contrat, clients, mocks, règles) puis F02 (page classement), F03 (détail et faits) et F04 (page publique) en parallèle, sur la base `feature/leaderboard-hero-statistics`.
