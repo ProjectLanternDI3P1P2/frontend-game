@@ -1,5 +1,5 @@
 import { mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import LeaderboardTable from "../components/LeaderboardTable.vue";
 import { buildLeaderboardView } from "../leaderboardRules";
 import { entry, leaderboard, ME } from "./fixtures/leaderboardFixtures";
@@ -15,6 +15,12 @@ function mountTable(meRank: number) {
     attachTo: document.body,
   });
 }
+
+const originalScrollIntoView = Element.prototype.scrollIntoView;
+
+afterEach(() => {
+  Element.prototype.scrollIntoView = originalScrollIntoView;
+});
 
 describe("LeaderboardTable", () => {
   it("renders a semantic table of rank, player and score", () => {

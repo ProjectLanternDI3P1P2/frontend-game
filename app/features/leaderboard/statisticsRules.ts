@@ -39,14 +39,23 @@ export function groupHeroStatistics(
   })).filter((group) => group.statistics.length > 0);
 }
 
+/** The consolidation date, or null when absent or not a valid date. */
+export function parseConsolidationDate(
+  consolidatedAt: string | null | undefined,
+): Date | null {
+  if (!consolidatedAt) return null;
+  const date = new Date(consolidatedAt);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 /** "Updated 3 min ago" from the consolidation date, relative to `now`. */
 export function formatConsolidationAge(
   consolidatedAt: string | null | undefined,
   now: Date = new Date(),
 ): string {
-  if (!consolidatedAt) return "Not consolidated yet";
-  const time = Date.parse(consolidatedAt);
-  if (Number.isNaN(time)) return "Not consolidated yet";
+  const date = parseConsolidationDate(consolidatedAt);
+  if (!date) return "Not consolidated yet";
+  const time = date.getTime();
 
   const elapsed = Math.max(0, now.getTime() - time);
   if (elapsed < MINUTE) return "Updated just now";

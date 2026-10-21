@@ -4,16 +4,21 @@
  * mention while a new consolidation runs (CA4). Never an error state.
  */
 import { computed } from "vue";
+import { parseConsolidationDate } from "../statisticsRules";
 import type { ConsolidationInfo } from "../types";
 
 const props = defineProps<{ consolidation: ConsolidationInfo }>();
 
+/** Null for an absent or invalid date: then no `<time>` is rendered. */
+const consolidationDate = computed(() =>
+  parseConsolidationDate(props.consolidation.consolidatedAt),
+);
 const absoluteDate = computed(() =>
-  props.consolidation.consolidatedAt
+  consolidationDate.value
     ? new Intl.DateTimeFormat("en-GB", {
         dateStyle: "medium",
         timeStyle: "short",
-      }).format(new Date(props.consolidation.consolidatedAt))
+      }).format(consolidationDate.value)
     : "",
 );
 </script>
@@ -21,9 +26,9 @@ const absoluteDate = computed(() =>
 <template>
   <p class="consolidation-status">
     <time
-      v-if="consolidation.consolidatedAt"
+      v-if="consolidationDate"
       class="consolidation-status__age"
-      :datetime="consolidation.consolidatedAt"
+      :datetime="consolidation.consolidatedAt ?? undefined"
       :title="absoluteDate"
       >{{ consolidation.label }}</time
     >

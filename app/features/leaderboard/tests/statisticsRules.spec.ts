@@ -4,6 +4,7 @@ import {
   formatConsolidationAge,
   formatCount,
   groupHeroStatistics,
+  parseConsolidationDate,
 } from "../statisticsRules";
 import { StatisticCategory } from "../types";
 
@@ -81,6 +82,17 @@ describe("formatConsolidationAge", () => {
     ["2026-10-18T11:00:00Z", "Updated 3 days ago"],
   ])("%s → %s", (consolidatedAt, label) => {
     expect(formatConsolidationAge(consolidatedAt, NOW)).toBe(label);
+  });
+});
+
+describe("parseConsolidationDate", () => {
+  it("returns a date only for a valid ISO value", () => {
+    expect(parseConsolidationDate("2026-10-21T11:57:00Z")?.toISOString()).toBe(
+      "2026-10-21T11:57:00.000Z",
+    );
+    expect(parseConsolidationDate("not a date")).toBeNull();
+    expect(parseConsolidationDate("")).toBeNull();
+    expect(parseConsolidationDate(null)).toBeNull();
   });
 });
 

@@ -63,6 +63,7 @@ describe("useLeaderboard", () => {
 
     await state.load();
     expect(state.status.value).toBe(LoadStatus.ERROR);
+    expect(state.hasData.value).toBe(false);
     expect(state.errorMessage.value).not.toBe("");
 
     await state.retry();

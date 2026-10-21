@@ -40,7 +40,8 @@ const heroPath = computed(
     <LeaderboardLoadState
       :loading="status === LoadStatus.LOADING"
       loading-label="Loading statistics…"
-      :error="status === LoadStatus.ERROR ? errorMessage : ''"
+      :failed="status === LoadStatus.ERROR"
+      :error="errorMessage"
       error-title="Statistics could not be loaded"
       @retry="retry"
     />

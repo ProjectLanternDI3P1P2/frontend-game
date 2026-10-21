@@ -12,20 +12,9 @@ import {
 } from "vue";
 import { useLeaderboardApi } from "../api/leaderboardSource";
 import { formatConsolidationAge, groupHeroStatistics } from "../statisticsRules";
-import {
-  LoadStatus,
-  type ConsolidationInfo,
-  type LeaderboardApi,
-  type StatisticGroup,
-} from "../types";
+import { LoadStatus, type ConsolidationInfo, type StatisticGroup } from "../types";
 import { describeLoadError } from "./loadError";
-
-export interface LoaderOptions {
-  api?: LeaderboardApi;
-  now?: () => Date;
-  /** Load on mount (default when called from a component). */
-  immediate?: boolean;
-}
+import type { LoaderOptions } from "./loaderOptions";
 
 export function useHeroStatistics(
   playerId: MaybeRefOrGetter<string>,

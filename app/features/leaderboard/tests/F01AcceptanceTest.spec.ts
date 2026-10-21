@@ -165,6 +165,35 @@ function liveRegion(wrapper: VueWrapper) {
   return wrapper.find('[aria-live="polite"]');
 }
 
+/** The live region must stay in the DOM and be exposed (never display:none). */
+function expectExposedLiveRegion(wrapper: VueWrapper) {
+  const regions = wrapper.findAll('[aria-live="polite"]');
+  expect(regions, "exactly one polite live region").toHaveLength(1);
+  const el = regions[0]!.element as HTMLElement;
+  expect(el.style.display).not.toBe("none");
+  expect(el.hidden).toBe(false);
+  expect(el.closest("[aria-hidden='true'], [hidden]")).toBeNull();
+  return el;
+}
+
+/** Visible text of the alert, minus its title: the explicit reason. */
+function alertText(wrapper: VueWrapper): string {
+  return wrapper.get('[role="alert"]').text().replace(/\s+/g, " ").trim();
+}
+
+const BLANK_ERRORS: Array<[string, unknown]> = [
+  ["empty message", new GatewayError(500, { code: "X", message: "" })],
+  ["whitespace-only message", new GatewayError(502, { code: "X", message: "  \n\t " })],
+  [
+    "missing message",
+    new GatewayError(500, { code: "X" } as unknown as { code: string; message: string }),
+  ],
+  ["status 0 (network) without message", new GatewayError(0, { code: "", message: "" })],
+  ["rejection with undefined", undefined],
+  ["rejection with a bare string", "boom"],
+  ["Error with empty message", new Error("")],
+];
+
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
@@ -482,6 +511,87 @@ describe("F01", () => {
       expect(liveRegion(wrapper).text()).toMatch(/loading/i);
       pending.resolve(statsResponse());
       await flushPromises();
+    });
+  });
+
+  describe("CA5 — edge cases (blank errors, live region always exposed)", () => {
+    it.each(BLANK_ERRORS)(
+      "CA5: %s → explicit role=alert with a readable reason, and Retry",
+      async (_label, failure) => {
+        const api = apiStub({ getHeroStatistics: vi.fn().mockRejectedValue(failure) });
+        const wrapper = mountPage(StatisticsPage, api);
+        await flushPromises();
+
+        expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+        const text = alertText(wrapper);
+        expect(text).toMatch(/could not be loaded/i);
+        // the reason paragraph itself is not blank
+        const reason = wrapper.get('[role="alert"]').findAll("p").map((p) => p.text());
+        expect(reason.some((t) => t.trim().length > 10)).toBe(true);
+        expect(text).not.toMatch(/undefined|null|\[object|boom|at \w+ \(/i);
+        expect(button(wrapper, /^retry$/i)).toBeDefined();
+      },
+    );
+
+    it("CA5: Retry after a whitespace-only error announces loading, then shows figures", async () => {
+      const pending = deferred<HeroStatisticsResponse>();
+      const api = apiStub({
+        getHeroStatistics: vi
+          .fn()
+          .mockRejectedValueOnce(new GatewayError(500, { code: "X", message: "   " }))
+          .mockReturnValueOnce(pending.promise),
+      });
+      const wrapper = mountPage(StatisticsPage, api);
+      await flushPromises();
+      const before = expectExposedLiveRegion(wrapper);
+
+      await button(wrapper, /^retry$/i)!.trigger("click");
+      await nextTick();
+      const during = expectExposedLiveRegion(wrapper);
+      expect(during).toBe(before); // same node, so the change is announced
+      expect(during.textContent).toMatch(/loading/i);
+      expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+
+      pending.resolve(statsResponse());
+      await flushPromises();
+      expect(api.getHeroStatistics).toHaveBeenCalledTimes(2);
+      expect(wrapper.findAll(".ui-stat")).toHaveLength(STATISTICS_CATALOGUE.length);
+      expect(expectExposedLiveRegion(wrapper).textContent).not.toMatch(/loading/i);
+    });
+
+    it("CA5: the live region exists before, during and after loading (ready and error)", async () => {
+      const pending = deferred<HeroStatisticsResponse>();
+      const api = apiStub({
+        getHeroStatistics: vi
+          .fn()
+          .mockReturnValueOnce(pending.promise)
+          .mockRejectedValueOnce(new GatewayError(500, { code: "X", message: "" })),
+      });
+      const wrapper = mountPage(StatisticsPage, api);
+      await nextTick();
+      const node = expectExposedLiveRegion(wrapper);
+      pending.resolve(statsResponse());
+      await flushPromises();
+      expect(expectExposedLiveRegion(wrapper)).toBe(node);
+
+      route.params.heroId = "hero-2";
+      await flushPromises();
+      if (wrapper.find('[role="alert"]').exists()) {
+        expect(expectExposedLiveRegion(wrapper)).toBeTruthy();
+      }
+    });
+
+    it("CA5: the live region template has no v-if/v-show and is not display:none in CSS", () => {
+      const source = readFileSync(
+        join(FEATURE_DIR, "components/LeaderboardLoadState.vue"),
+        "utf8",
+      );
+      const tag = source.match(/<[a-z]+[^>]*aria-live="polite"[^>]*>/s)?.[0] ?? "";
+      expect(tag).not.toBe("");
+      expect(tag).not.toMatch(/v-if|v-show|v-else|\s:?hidden[\s=>]/);
+      const base = readFileSync(join(ROOT, "app/assets/styles/_base.scss"), "utf8");
+      const vh = base.split(".visually-hidden")[1]?.split("}")[0] ?? "";
+      expect(vh).not.toMatch(/display:\s*none|visibility:\s*hidden/);
     });
   });
 
@@ -870,6 +980,95 @@ describe("F01", () => {
 
       expect(wrapper.find('[role="alert"]').exists()).toBe(true);
       expect(button(wrapper, /^retry$/i)).toBeDefined();
+    });
+  });
+
+  describe("CA10 — edge cases (blank errors, live region always exposed)", () => {
+    it.each(BLANK_ERRORS)(
+      "CA10: %s → explicit role=alert with a readable reason, and Retry",
+      async (_label, failure) => {
+        const api = apiStub({ getLeaderboard: vi.fn().mockRejectedValue(failure) });
+        const wrapper = mountPage(LeaderboardPage, api);
+        await flushPromises();
+
+        expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+        const text = alertText(wrapper);
+        expect(text).toMatch(/could not be loaded/i);
+        const reason = wrapper.get('[role="alert"]').findAll("p").map((p) => p.text());
+        expect(reason.some((t) => t.trim().length > 10)).toBe(true);
+        expect(text).not.toMatch(/undefined|null|\[object|boom|at \w+ \(/i);
+        expect(wrapper.find("table").exists()).toBe(false);
+        expect(button(wrapper, /^retry$/i)).toBeDefined();
+      },
+    );
+
+    it("CA10: a failing Refresh with a blank message shows the alert and Retry", async () => {
+      const api = apiStub({
+        getLeaderboard: vi
+          .fn()
+          .mockResolvedValueOnce(board())
+          .mockRejectedValueOnce(new GatewayError(500, { code: "X", message: " " }))
+          .mockResolvedValueOnce(board()),
+      });
+      const wrapper = mountPage(LeaderboardPage, api);
+      await flushPromises();
+      await button(wrapper, /^refresh$/i)!.trigger("click");
+      await flushPromises();
+
+      expect(alertText(wrapper)).toMatch(/could not be loaded/i);
+      await button(wrapper, /^retry$/i)!.trigger("click");
+      await flushPromises();
+      expect(api.getLeaderboard).toHaveBeenCalledTimes(3);
+      expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+      expect(wrapper.findAll("tbody tr")).toHaveLength(50);
+    });
+
+    it("CA10: Retry after a whitespace-only error announces loading, then shows the ranking", async () => {
+      const pending = deferred<LeaderboardResponse>();
+      const api = apiStub({
+        getLeaderboard: vi
+          .fn()
+          .mockRejectedValueOnce(new GatewayError(500, { code: "X", message: "\t" }))
+          .mockReturnValueOnce(pending.promise),
+      });
+      const wrapper = mountPage(LeaderboardPage, api);
+      await flushPromises();
+      const before = expectExposedLiveRegion(wrapper);
+
+      await button(wrapper, /^retry$/i)!.trigger("click");
+      await nextTick();
+      const during = expectExposedLiveRegion(wrapper);
+      expect(during).toBe(before);
+      expect(during.textContent).toMatch(/loading/i);
+
+      pending.resolve(board());
+      await flushPromises();
+      expect(wrapper.findAll("tbody tr")).toHaveLength(50);
+      expect(expectExposedLiveRegion(wrapper).textContent).not.toMatch(/loading/i);
+    });
+
+    it("CA10: the live region stays exposed in ready, empty and error states", async () => {
+      const api = apiStub({
+        getLeaderboard: vi
+          .fn()
+          .mockResolvedValueOnce(board())
+          .mockResolvedValueOnce({ consolidatedAt: null, entries: [], me: null })
+          .mockRejectedValueOnce(new GatewayError(500, { code: "X", message: "" })),
+      });
+      const wrapper = mountPage(LeaderboardPage, api);
+      await flushPromises();
+      const node = expectExposedLiveRegion(wrapper);
+      expect(node.textContent?.trim()).toBe("");
+
+      await button(wrapper, /^refresh$/i)!.trigger("click");
+      await flushPromises();
+      expect(wrapper.text()).toMatch(/no player/i);
+      expect(expectExposedLiveRegion(wrapper)).toBe(node);
+
+      await button(wrapper, /^refresh$/i)!.trigger("click");
+      await flushPromises();
+      expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+      expect(expectExposedLiveRegion(wrapper)).toBe(node);
     });
   });
 

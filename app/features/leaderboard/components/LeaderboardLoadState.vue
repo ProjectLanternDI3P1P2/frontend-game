@@ -9,7 +9,8 @@ import UiNotice, { NoticeTone } from "~/shared/ui/UiNotice.vue";
 defineProps<{
   loading: boolean;
   loadingLabel: string;
-  /** Empty when there is no error. */
+  /** The alert and Retry show whenever this is true, whatever the message. */
+  failed: boolean;
   error: string;
   errorTitle: string;
 }>();
@@ -19,10 +20,15 @@ defineEmits<{ retry: [] }>();
 
 <template>
   <div class="leaderboard-load-state">
-    <p class="leaderboard-load-state__live" aria-live="polite">
+    <!-- Always in the accessibility tree, so that changes are announced. -->
+    <p
+      class="leaderboard-load-state__live"
+      :class="{ 'visually-hidden': !loading }"
+      aria-live="polite"
+    >
       <template v-if="loading">{{ loadingLabel }}</template>
     </p>
-    <UiNotice v-if="error" :tone="NoticeTone.DANGER" :title="errorTitle">
+    <UiNotice v-if="failed" :tone="NoticeTone.DANGER" :title="errorTitle">
       <p class="leaderboard-load-state__message">{{ error }}</p>
       <UiButton
         :size="ButtonSize.SM"
@@ -42,10 +48,6 @@ defineEmits<{ retry: [] }>();
   &__live {
     margin: 0;
     color: var(--color-text-muted);
-
-    &:empty {
-      display: none;
-    }
   }
 
   &__message {

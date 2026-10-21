@@ -16,7 +16,7 @@ import { buildLeaderboardView } from "../leaderboardRules";
 import { formatConsolidationAge } from "../statisticsRules";
 import { LoadStatus, type ConsolidationInfo, type LeaderboardView } from "../types";
 import { describeLoadError } from "./loadError";
-import type { LoaderOptions } from "./useHeroStatistics";
+import type { LoaderOptions } from "./loaderOptions";
 
 export function useLeaderboard(
   currentPlayerId: MaybeRefOrGetter<string>,
@@ -81,6 +81,7 @@ export function useLeaderboard(
     consolidation,
     errorMessage,
     refreshing,
+    hasData,
     load,
     refresh: load,
     retry: load,

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { GENERIC_LOAD_ERROR } from "../composables/loadError";
 import { useHeroStatistics } from "../composables/useHeroStatistics";
 import { LoadStatus } from "../types";
 import { GatewayError } from "~/shared/utils/gateway";
@@ -79,6 +80,19 @@ describe("useHeroStatistics", () => {
     expect(api.getHeroStatistics).toHaveBeenCalledTimes(2);
     expect(state.status.value).toBe(LoadStatus.READY);
     expect(state.errorMessage.value).toBe("");
+  });
+
+  it("never leaves the error message empty, even for a Gateway error without one", async () => {
+    const api = apiStub({
+      getHeroStatistics: vi
+        .fn()
+        .mockRejectedValue(new GatewayError(500, { code: "X", message: "  " })),
+    });
+    const state = useHeroStatistics("p", "h", { api });
+    await state.load();
+
+    expect(state.status.value).toBe(LoadStatus.ERROR);
+    expect(state.errorMessage.value).toBe(GENERIC_LOAD_ERROR);
   });
 
   it("ignores the answer of a superseded request", async () => {

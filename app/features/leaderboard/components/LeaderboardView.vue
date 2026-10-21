@@ -3,7 +3,6 @@
  * Leaderboard screen (CA7–CA10). Data comes through `useLeaderboard`, which
  * goes through `api/`; this view never knows whether it is simulated.
  */
-import { computed } from "vue";
 import UiButton, { ButtonSize, ButtonVariant } from "~/shared/ui/UiButton.vue";
 import { useLeaderboard } from "../composables/useLeaderboard";
 import { LoadStatus } from "../types";
@@ -13,12 +12,16 @@ import LeaderboardTable from "./LeaderboardTable.vue";
 
 const props = defineProps<{ currentPlayerId: string }>();
 
-const { status, view, consolidation, errorMessage, refreshing, refresh, retry } =
-  useLeaderboard(() => props.currentPlayerId);
-
-const hasData = computed(
-  () => status.value === LoadStatus.READY || status.value === LoadStatus.EMPTY,
-);
+const {
+  status,
+  view,
+  consolidation,
+  errorMessage,
+  refreshing,
+  hasData,
+  refresh,
+  retry,
+} = useLeaderboard(() => props.currentPlayerId);
 </script>
 
 <template>
@@ -45,7 +48,8 @@ const hasData = computed(
     <LeaderboardLoadState
       :loading="status === LoadStatus.LOADING || refreshing"
       :loading-label="refreshing ? 'Refreshing leaderboard…' : 'Loading leaderboard…'"
-      :error="status === LoadStatus.ERROR ? errorMessage : ''"
+      :failed="status === LoadStatus.ERROR"
+      :error="errorMessage"
       error-title="The leaderboard could not be loaded"
       @retry="retry"
     />

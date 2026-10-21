@@ -6,6 +6,7 @@ import HeroStatisticsView from "../components/HeroStatisticsView.vue";
 import LeaderboardView from "../components/LeaderboardView.vue";
 import { STATISTICS_CATALOGUE } from "../statisticsCatalogue";
 import { MockScenario, type LeaderboardApi } from "../types";
+import { GatewayError } from "~/shared/utils/gateway";
 
 const stubs = {
   NuxtLink: { props: ["to"], template: '<a :href="to"><slot /></a>' },
@@ -92,6 +93,23 @@ describe("HeroStatisticsView", () => {
       .find((b) => b.text() === "Retry")!
       .trigger("click");
     expect(spy).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("LeaderboardLoadState", () => {
+  it("keeps the live region in the tree and shows Retry for an empty Gateway message", async () => {
+    const api = createSimulatedLeaderboardApi({ delayMs: 0 });
+    vi.spyOn(api, "getLeaderboard").mockRejectedValue(
+      new GatewayError(500, { code: "X", message: "" }),
+    );
+    const wrapper = mountWith(LeaderboardView, { currentPlayerId: "me" }, api);
+    await settle();
+
+    const live = wrapper.get('[aria-live="polite"]');
+    expect(live.isVisible()).toBe(true);
+    expect(live.classes()).toContain("visually-hidden");
+    expect(wrapper.get('[role="alert"]').text()).toContain("Check your connection");
+    expect(wrapper.findAll("button").some((b) => b.text() === "Retry")).toBe(true);
   });
 });
 
