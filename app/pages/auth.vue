@@ -25,10 +25,9 @@ const redirectUri = () => `${window.location.origin}${redirectPath()}`;
 <template>
   <section class="auth-page" aria-labelledby="auth-title">
     <p class="auth-page__eyebrow">Project Lantern</p>
-    <h1 id="auth-title">Connectez-vous pour accéder au jeu</h1>
+    <h1 id="auth-title">Sign in to access the game</h1>
     <p class="auth-page__intro">
-      Retrouvez vos héros, vos explorations et vos parties en vous connectant à votre
-      compte.
+      Return to your heroes, explorations, and games by signing in to your account.
     </p>
 
     <div class="auth-page__actions">
@@ -38,7 +37,7 @@ const redirectUri = () => `${window.location.origin}${redirectPath()}`;
         full-width
         @click="login(redirectUri())"
       >
-        Se connecter
+        Sign in
       </UiButton>
       <UiButton
         :size="ButtonSize.LG"
@@ -46,7 +45,7 @@ const redirectUri = () => `${window.location.origin}${redirectPath()}`;
         full-width
         @click="register(redirectUri())"
       >
-        Créer un compte
+        Create an account
       </UiButton>
     </div>
   </section>
