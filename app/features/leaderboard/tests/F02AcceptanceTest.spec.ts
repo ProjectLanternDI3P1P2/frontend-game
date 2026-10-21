@@ -1069,6 +1069,23 @@ describe("F02", () => {
       expect(footLabels(wrapper)).toEqual(["7", "58", "210"]);
     });
 
+    it("CA6: sorted by Level, pinned heroes split on the page's rank range, no separator", async () => {
+      route.query = { sort: "level" };
+      const wrapper = mountPage();
+      await settle();
+
+      const ranks = wrapper.findAll("tbody tr").map((row) => Number(rankOf(row)));
+      const min = Math.min(...ranks);
+      const max = Math.max(...ranks);
+      expect(wrapper.find("tfoot").exists()).toBe(true);
+      const labels = footLabels(wrapper);
+      // Ranks are not contiguous on a re-sorted page: no "positions between".
+      expect(labels.some((label) => /between/.test(label))).toBe(false);
+      const pinned = labels.map(Number);
+      expect(pinned).toEqual([...pinned].sort((a, b) => a - b));
+      expect(pinned.every((rank) => rank < min || rank > max)).toBe(true);
+    });
+
     it("CA6: with a class filter, the separator still precedes my hero below the page", async () => {
       route.query = { class: "shaman" };
       const wrapper = mountPage();
@@ -1087,7 +1104,14 @@ describe("F02", () => {
 
       expect(wrapper.text()).toContain("No ranked run in Season 4 yet");
       expect(wrapper.get('a[href="/dungeon"]').text()).toBe("Enter a dungeon");
-      expect(button(wrapper, "Season 3 final board")).toBeDefined();
+      // All time already holds past seasons: the action is shown, disabled, explained.
+      const previous = button(wrapper, "Season 3 final board")!;
+      expect(previous).toBeDefined();
+      expect(previous.attributes("disabled")).toBeDefined();
+      const hint = previous.attributes("aria-describedby")!;
+      expect(document.getElementById(hint)?.textContent).toContain(
+        "Already showing the all-time board",
+      );
     });
 
     it("CA10: ?mock=empty, period Season: the previous season action switches the period", async () => {
@@ -1331,6 +1355,149 @@ describe("F02", () => {
       const previous = button(wrapper, "Season 3 final board")!;
       expect(previous.attributes("type")).toBe("button");
       expect(previous.attributes("disabled")).toBeUndefined();
+    });
+  });
+
+  describe("Pass 3 (tester): CA6 other sorts, CA10 empty season", () => {
+    function mountFromUrl() {
+      const wrapper = mount(LeaderboardPage, {
+        attachTo: document.body,
+        global: { stubs },
+      });
+      mounted.push(wrapper);
+      return wrapper;
+    }
+
+    async function settleSimulated(): Promise<void> {
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      await settle();
+    }
+
+    function pinnedRanks(wrapper: VueWrapper): number[] {
+      const foot = wrapper.find("tfoot");
+      if (!foot.exists()) return [];
+      return foot
+        .findAll("tr")
+        .filter((row) => !/positions? between/.test(row.text()))
+        .map((row) => Number(rankOf(row)));
+    }
+
+    for (const sort of [
+      RankingSort.LEVEL,
+      RankingSort.WIN_RATE,
+      RankingSort.LAST_ACTIVITY,
+    ]) {
+      it(`CA6: sorted by ${sort}, on every page: no separator, pinned = my heroes off the page, by rank`, async () => {
+        const me = await myHeroes();
+        const myIds = new Set(me.map((hero) => hero.heroId));
+        route.query = { sort };
+        const wrapper = mountPage();
+        await settle();
+        for (let page = 1; page <= 22; page += 1) {
+          route.query = page === 1 ? { sort } : { sort, page: String(page) };
+          await settle();
+          const rows = wrapper.findAll("tbody tr");
+          expect(rows.length, `${sort} page ${page}`).toBeGreaterThan(0);
+          expect(wrapper.text(), `${sort} page ${page}`).not.toMatch(/between rank/);
+          const onPage = rows.map((row) => Number(rankOf(row)));
+          const myOnPage = me.filter((hero) => onPage.includes(hero.rank));
+          const expected = me
+            .filter((hero) => !onPage.includes(hero.rank))
+            .map((hero) => hero.rank)
+            .sort((a, b) => a - b);
+          expect(pinnedRanks(wrapper), `${sort} page ${page}`).toEqual(expected);
+          // My heroes on the page are highlighted in the body, not pinned.
+          const youRows = rows.filter((row) => row.text().includes("You"));
+          expect(youRows.length, `${sort} page ${page}`).toBe(myOnPage.length);
+          expect(myIds.size).toBe(me.length);
+        }
+      });
+    }
+
+    it("CA6: switching the sort from Level back to Total XP brings the separator back", async () => {
+      route.query = { sort: RankingSort.LEVEL };
+      const wrapper = mountPage();
+      await settle();
+      expect(wrapper.text()).not.toMatch(/between rank/);
+      route.query = {};
+      await settle();
+      expect(wrapper.text()).toMatch(/\d+ positions? between rank 10 and yours/);
+    });
+
+    it("CA10: ?mock=empty&period=season: enabled action, click shows All time, then disabled and explained", async () => {
+      route.query = { mock: "empty", period: "season" };
+      const wrapper = mountFromUrl();
+      await settleSimulated();
+
+      expect(wrapper.text()).toContain("No ranked run in Season 4 yet");
+      expect(wrapper.get('a[href="/dungeon"]').text()).toBe("Enter a dungeon");
+      const previous = button(wrapper, "Season 3 final board")!;
+      expect(previous).toBeDefined();
+      expect(previous.attributes("disabled")).toBeUndefined();
+      expect(wrapper.find("#ranking-empty-previous-hint").exists()).toBe(false);
+
+      await previous.trigger("click");
+      await settleSimulated();
+      expect(route.query).toEqual({ mock: "empty" });
+      const after = button(wrapper, "Season 3 final board")!;
+      expect(after).toBeDefined();
+      expect(after.attributes("disabled")).toBeDefined();
+      expect(
+        document.getElementById(after.attributes("aria-describedby")!)?.textContent,
+      ).toContain("Already showing the all-time board");
+    });
+
+    it("CA10: ?mock=empty&period=week: the action is offered and switches to All time", async () => {
+      route.query = { mock: "empty", period: "week" };
+      const wrapper = mountFromUrl();
+      await settleSimulated();
+
+      const previous = button(wrapper, "Season 3 final board")!;
+      expect(previous).toBeDefined();
+      expect(previous.attributes("disabled")).toBeUndefined();
+      await previous.trigger("click");
+      expect(route.query).toEqual({ mock: "empty" });
+    });
+
+    it("CA10: ?mock=empty (All time): the disabled action is inert and the hint is unique", async () => {
+      route.query = { mock: "empty" };
+      const wrapper = mountFromUrl();
+      await settleSimulated();
+
+      const previous = button(wrapper, "Season 3 final board")!;
+      expect((previous.element as HTMLButtonElement).disabled).toBe(true);
+      navigate.mockClear();
+      await previous.trigger("click");
+      await settleSimulated();
+      expect(navigate).not.toHaveBeenCalled();
+      expect(route.query).toEqual({ mock: "empty" });
+      expect(document.querySelectorAll("#ranking-empty-previous-hint")).toHaveLength(1);
+      expect(wrapper.findAll("h1")).toHaveLength(1);
+    });
+
+    it("CA10: without a previous season, no previous-season action nor hint", async () => {
+      const api = apiStub({
+        getRanking: vi.fn().mockResolvedValue(
+          ranking({
+            entries: [],
+            me: [],
+            totalCount: 0,
+            season: {
+              seasonId: "season-1",
+              label: "Season 1",
+              previousSeasonId: null,
+            } as never,
+          }),
+        ),
+      });
+      const wrapper = mountPage(api);
+      await settle();
+
+      expect(wrapper.text()).toContain("No ranked run in Season 1 yet");
+      expect(wrapper.findAll("button").some((b) => /final board/.test(b.text()))).toBe(
+        false,
+      );
+      expect(wrapper.find("#ranking-empty-previous-hint").exists()).toBe(false);
     });
   });
 });

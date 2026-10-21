@@ -2,7 +2,9 @@
 /**
  * Nobody ranked yet, typically a new season (CA10): "No ranked run in
  * <season> yet", a link to the dungeon and, when there is a previous season,
- * an action that switches to its final board.
+ * an action that switches to its final board. The contract cannot ask for a
+ * past season, so the action shows All time (which holds past seasons); when
+ * All time is already shown, the button stays visible but disabled.
  */
 import UiButton, { ButtonSize, ButtonVariant } from "~/shared/ui/UiButton.vue";
 import { noRankedRunLabel, previousSeasonLabel } from "../rankingViewRules";
@@ -10,8 +12,8 @@ import type { RankingSeason } from "../types";
 
 const props = defineProps<{
   season: RankingSeason | null;
-  /** False when the previous season's board cannot be shown from here. */
-  canShowPrevious: boolean;
+  /** True when All time, which holds the previous season, is already shown. */
+  alreadyAllTime: boolean;
 }>();
 
 defineEmits<{ previous: [] }>();
@@ -28,12 +30,21 @@ defineEmits<{ previous: [] }>();
     <div class="ranking-empty__actions">
       <NuxtLink to="/dungeon" class="ranking-empty__link">Enter a dungeon</NuxtLink>
       <UiButton
-        v-if="canShowPrevious && season?.previousSeasonId"
+        v-if="season?.previousSeasonId"
+        :disabled="alreadyAllTime"
+        :aria-describedby="alreadyAllTime ? 'ranking-empty-previous-hint' : undefined"
         :size="ButtonSize.SM"
         :variant="ButtonVariant.SECONDARY"
         @click="$emit('previous')"
         >{{ previousSeasonLabel(season.previousSeasonId) }} final board</UiButton
       >
+      <p
+        v-if="season?.previousSeasonId && alreadyAllTime"
+        id="ranking-empty-previous-hint"
+        class="ranking-empty__hint"
+      >
+        Already showing the all-time board
+      </p>
     </div>
   </section>
 </template>
@@ -63,6 +74,11 @@ defineEmits<{ previous: [] }>();
     flex-wrap: wrap;
     justify-content: center;
     gap: var(--space-3);
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: var(--font-size-sm);
   }
 
   &__link {

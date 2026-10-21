@@ -37,36 +37,47 @@ const props = withDefaults(
     targetHeroId?: string | null;
     expandedHeroId?: string | null;
     now?: Date;
+    /** False when the sort is not Total XP: no separator between pinned heroes. */
+    separated?: boolean;
   }>(),
-  { pinned: () => [], targetHeroId: null, expandedHeroId: null, now: () => new Date() },
+  {
+    separated: true,
+    pinned: () => [],
+    targetHeroId: null,
+    expandedHeroId: null,
+    now: () => new Date(),
+  },
 );
 
 defineEmits<{ toggle: [heroId: string] }>();
 
 const root = ref<HTMLElement | null>(null);
 
-/** My pinned heroes ranked above the page: shown first, without a separator. */
-const above = computed(() => {
-  const first = props.entries[0];
-  return first ? props.pinned.filter((entry) => entry.rank < first.rank) : [];
+/** Lowest and highest rank on the page: any sort may reorder the lines. */
+const pageRanks = computed(() => {
+  if (!props.entries.length) return null;
+  const ranks = props.entries.map((entry) => entry.rank);
+  return { min: Math.min(...ranks), max: Math.max(...ranks) };
 });
 
-/** My pinned heroes ranked below the page, by rank. */
-const below = computed(() => {
-  const first = props.entries[0];
-  return first
-    ? props.pinned.filter((entry) => entry.rank >= first.rank)
-    : props.pinned;
+/** Pinned heroes ranked above the page come first, those below after them. */
+const splitIndex = computed(() => {
+  const range = pageRanks.value;
+  return range ? props.pinned.filter((entry) => entry.rank < range.min).length : 0;
 });
 
-/** "<N> positions between rank <X> and yours": X ends the page, yours is `below[0]`. */
+/**
+ * "<N> positions between rank <X> and yours": X is the last rank of the page,
+ * yours the first pinned hero below it. Only in Total XP order, where the
+ * page ranks are contiguous.
+ */
 const separator = computed(() => {
-  const last = props.entries.at(-1);
-  const first = below.value[0];
-  if (!first || !last) return "";
-  const between = positionsBetween(last.rank, first.rank);
+  const range = pageRanks.value;
+  const first = props.pinned[splitIndex.value];
+  if (!props.separated || !range || !first) return "";
+  const between = positionsBetween(range.max, first.rank);
   if (between === 0) return "";
-  return `${between} ${between === 1 ? "position" : "positions"} between rank ${last.rank} and yours`;
+  return `${between} ${between === 1 ? "position" : "positions"} between rank ${range.max} and yours`;
 });
 
 function prefersReducedMotion(): boolean {
@@ -130,33 +141,24 @@ defineExpose({ focusHero });
         />
       </tbody>
       <tfoot v-if="pinned.length" class="leaderboard-table__pinned">
-        <RankingRow
-          v-for="entry in above"
-          :key="entry.heroId"
-          :entry="entry"
-          :current-player-id="currentPlayerId"
-          :mine="true"
-          :current="entry.heroId === targetHeroId"
-          :expanded="entry.heroId === expandedHeroId"
-          :columns="COLUMNS.length"
-          :now="now"
-          @toggle="$emit('toggle', $event)"
-        />
-        <tr v-if="separator" class="leaderboard-table__separator">
-          <td :colspan="COLUMNS.length">{{ separator }}</td>
-        </tr>
-        <RankingRow
-          v-for="entry in below"
-          :key="entry.heroId"
-          :entry="entry"
-          :current-player-id="currentPlayerId"
-          :mine="true"
-          :current="entry.heroId === targetHeroId"
-          :expanded="entry.heroId === expandedHeroId"
-          :columns="COLUMNS.length"
-          :now="now"
-          @toggle="$emit('toggle', $event)"
-        />
+        <template v-for="(entry, index) in pinned" :key="entry.heroId">
+          <tr
+            v-if="separator && index === splitIndex"
+            class="leaderboard-table__separator"
+          >
+            <td :colspan="COLUMNS.length">{{ separator }}</td>
+          </tr>
+          <RankingRow
+            :entry="entry"
+            :current-player-id="currentPlayerId"
+            :mine="true"
+            :current="entry.heroId === targetHeroId"
+            :expanded="entry.heroId === expandedHeroId"
+            :columns="COLUMNS.length"
+            :now="now"
+            @toggle="$emit('toggle', $event)"
+          />
+        </template>
       </tfoot>
     </table>
   </div>

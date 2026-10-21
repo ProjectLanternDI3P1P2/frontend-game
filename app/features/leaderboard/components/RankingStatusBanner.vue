@@ -45,15 +45,16 @@ const progress = computed(() =>
         <dd class="ranking-status__value">
           About {{ formatLag(detail.lagSeconds) }} behind<template
             v-if="typeof detail.pendingCount === 'number'"
-            >, {{ detail.pendingCount }} results pending</template
-          >. Lines marked « XP pending » may still move.
+            >, {{ detail.pendingCount }}
+            {{ detail.pendingCount === 1 ? "result" : "results" }} pending</template
+          >. Lines marked "XP pending" may still move.
           <template v-if="detail.reason">{{ detail.reason }}</template>
         </dd>
       </div>
       <div class="ranking-status__column">
         <dt class="ranking-status__term">What you can do</dt>
         <dd class="ranking-status__value">
-          Your runs are safe. Use « Refresh view » in a few minutes.
+          Your runs are safe. Use "Refresh view" in a few minutes.
         </dd>
       </div>
     </dl>

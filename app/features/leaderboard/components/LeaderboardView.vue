@@ -282,7 +282,7 @@ watch(
         <RankingEmptyState
           v-else-if="status === LoadStatus.EMPTY"
           :season="ranking?.season ?? null"
-          :can-show-previous="query.period !== RankingPeriod.ALL_TIME"
+          :already-all-time="query.period === RankingPeriod.ALL_TIME"
           @previous="showPreviousSeason"
         />
         <RankingSkeleton v-else-if="status === LoadStatus.LOADING" />
@@ -315,6 +315,7 @@ watch(
             :target-hero-id="targetHeroId"
             :expanded-hero-id="expandedHeroId"
             :now="now"
+            :separated="query.sort === RankingSort.TOTAL_XP"
             @toggle="toggle"
           />
           <RankingPagination
