@@ -1,7 +1,8 @@
 import Keycloak from "keycloak-js";
+import { withoutKeycloakCallbackFragment } from "~/features/auth/keycloakCallbackUrl";
 import { restoreKeycloakSession } from "~/features/auth/keycloakSession";
 
-export default defineNuxtPlugin(async () => {
+export default defineNuxtPlugin(async (nuxtApp) => {
   const config = useRuntimeConfig();
   const storageKey = "lantern.keycloak.tokens";
   const tokens = readPersistedTokens(storageKey);
@@ -31,6 +32,14 @@ export default defineNuxtPlugin(async () => {
       }),
     () => localStorage.removeItem(storageKey),
   );
+  // Nuxt restores the initial route while hydrating. Cleaning before this hook
+  // would be overwritten with the OAuth fragment captured by the router.
+  nuxtApp.hook("app:mounted", () => {
+    const cleanUrl = withoutKeycloakCallbackFragment(new URL(window.location.href));
+    if (cleanUrl) {
+      window.history.replaceState(window.history.state, "", cleanUrl);
+    }
+  });
 
   const persistTokens = () => {
     if (!keycloak.token || !keycloak.refreshToken) return;

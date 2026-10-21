@@ -14,20 +14,28 @@ const router = useRouter();
 const openAuth = async () => {
   await router.push("/auth");
 };
-const navigationItems = [
+const authenticatedNavigationItems = [
   { label: "Home", to: "/home" },
   { label: "Heroes", to: "/players/me/heroes" },
   { label: "Lobby", to: "/players/play" },
   { label: "Dungeon", to: "/dungeon" },
+];
+const publicNavigationItems = [
   { label: "Demo", to: "/demo" },
 ];
+const navigationItems = computed(() =>
+  isAuthenticated.value
+    ? [...authenticatedNavigationItems, ...publicNavigationItems]
+    : publicNavigationItems,
+);
+const brandTo = computed(() => (isAuthenticated.value ? "/home" : "/auth"));
 </script>
 
 <template>
   <div class="site-shell">
     <a class="skip-link" href="#main">Skip to main content</a>
 
-    <UiTopNavigation brand="Project Lantern" brand-to="/home" :items="navigationItems">
+    <UiTopNavigation brand="Project Lantern" :brand-to="brandTo" :items="navigationItems">
       <template #actions>
         <span v-if="isAuthenticated" class="site-shell__identity">
           {{ user?.username }}
