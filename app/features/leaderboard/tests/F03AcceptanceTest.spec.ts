@@ -4,7 +4,12 @@ import { defineComponent, onErrorCaptured } from "vue";
 import { LEADERBOARD_API_KEY } from "../api/leaderboardSource";
 import { createSimulatedLeaderboardApi } from "../api/simulatedLeaderboardApi";
 import RankingRowDetail from "../components/RankingRowDetail.vue";
-import { MockScenario, type LeaderboardApi } from "../types";
+import {
+  MockScenario,
+  RankingPeriod,
+  RankingSort,
+  type LeaderboardApi,
+} from "../types";
 import { apiStub } from "./fixtures/leaderboardFixtures";
 import { heroDetail, heroFacts } from "./fixtures/rankingDetailFixtures";
 
@@ -251,9 +256,9 @@ describe("F03", () => {
     const top = await api.getRanking({
       playerId: "me",
       heroClass: null,
-      period: "all-time" as never,
+      period: RankingPeriod.ALL_TIME,
       search: "",
-      sort: "total-xp" as never,
+      sort: RankingSort.TOTAL_XP,
       page: 1,
       pageSize: 10,
     });
@@ -448,6 +453,89 @@ describe("F03", () => {
       }
     });
 
+    it("CA5: while reopening, the drawer is announced busy and the summary is hidden", async () => {
+      let resolveSecond: (value: unknown) => void = () => {};
+      const getRankingHeroFacts = vi
+        .fn()
+        .mockResolvedValueOnce(heroFacts())
+        .mockImplementationOnce(
+          () => new Promise((resolve) => (resolveSecond = resolve)),
+        );
+      const wrapper = mountDetail(readyApi({ getRankingHeroFacts }));
+      await flushPromises();
+      await factsButton(wrapper).trigger("click");
+      await flushPromises();
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      await flushPromises();
+      await factsButton(wrapper).trigger("click");
+      await flushPromises();
+      try {
+        const drawer = dialog()!;
+        expect(drawer.querySelector("[aria-busy='true']")).not.toBeNull();
+        expect(drawer.textContent).not.toContain("XP from facts");
+        expect(drawer.textContent).not.toContain("hero-1:v42");
+      } finally {
+        resolveSecond(heroFacts());
+        await flushPromises();
+      }
+      expect(dialog()!.querySelector("[aria-busy='true']")).toBeNull();
+      expect(dialog()!.textContent).toContain("XP from facts");
+      wrapper.unmount();
+    });
+
+    it("CA6: reopening after a success then failing shows only the alert, not the old facts", async () => {
+      const getRankingHeroFacts = vi
+        .fn()
+        .mockResolvedValueOnce(heroFacts())
+        .mockRejectedValueOnce(new Error("boom"))
+        .mockResolvedValue(heroFacts());
+      const wrapper = mountDetail(readyApi({ getRankingHeroFacts }));
+      await flushPromises();
+      await factsButton(wrapper).trigger("click");
+      await flushPromises();
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      await flushPromises();
+      await factsButton(wrapper).trigger("click");
+      await flushPromises();
+      const drawer = dialog()!;
+      const alert = drawer.querySelector('[role="alert"]')!;
+      expect(alert.textContent).toContain("Retry");
+      expect(drawer.textContent).not.toContain("Duplicate fact");
+      expect(drawer.textContent).not.toContain("XP from facts");
+      (alert.querySelector("button") as HTMLButtonElement).click();
+      await flushPromises();
+      expect(dialog()!.querySelector('[role="alert"]')).toBeNull();
+      expect(dialog()!.textContent).toContain("Duplicate fact");
+      wrapper.unmount();
+    });
+
+    it("CA5: an answer arriving after closing does not leak into the next opening", async () => {
+      let resolveFirst: (value: unknown) => void = () => {};
+      let resolveSecond: (value: unknown) => void = () => {};
+      const getRankingHeroFacts = vi
+        .fn()
+        .mockImplementationOnce(() => new Promise((r) => (resolveFirst = r)))
+        .mockImplementationOnce(() => new Promise((r) => (resolveSecond = r)));
+      const wrapper = mountDetail(readyApi({ getRankingHeroFacts }));
+      await flushPromises();
+      await factsButton(wrapper).trigger("click");
+      await flushPromises();
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      await flushPromises();
+      await factsButton(wrapper).trigger("click");
+      await flushPromises();
+      resolveFirst(heroFacts());
+      await flushPromises();
+      expect(dialog()!.querySelector('[aria-live="polite"]')?.textContent).toBe(
+        "Loading facts…",
+      );
+      expect(dialog()!.textContent).not.toContain("Duplicate fact");
+      resolveSecond(heroFacts({ facts: [] }));
+      await flushPromises();
+      expect(dialog()!.textContent).toContain("No fact yet");
+      wrapper.unmount();
+    });
+
     it("CA5: on simulated data, pending and rejected facts are labelled in text", async () => {
       const api = createSimulatedLeaderboardApi({
         scenario: MockScenario.LAGGING,
@@ -456,9 +544,9 @@ describe("F03", () => {
       const top = await api.getRanking({
         playerId: "me",
         heroClass: null,
-        period: "all-time" as never,
+        period: RankingPeriod.ALL_TIME,
         search: "",
-        sort: "total-xp" as never,
+        sort: RankingSort.TOTAL_XP,
         page: 1,
         pageSize: 10,
       });

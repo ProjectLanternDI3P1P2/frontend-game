@@ -102,7 +102,11 @@ onBeforeUnmount(() => {
       >{{ TITLE }}</UiButton
     >
     <UiModal v-model="open" :title="TITLE" :size="ModalSize.LG">
-      <div ref="content" class="ranking-facts__content">
+      <div
+        ref="content"
+        class="ranking-facts__content"
+        :aria-busy="status === LoadStatus.LOADING"
+      >
         <LeaderboardLoadState
           :loading="status === LoadStatus.LOADING"
           loading-label="Loading facts…"
@@ -112,7 +116,7 @@ onBeforeUnmount(() => {
           @retry="retry"
         />
 
-        <template v-if="facts">
+        <template v-if="facts && status !== LoadStatus.LOADING">
           <dl class="ranking-facts__summary">
             <div class="ranking-facts__summary-item">
               <dt>XP from facts</dt>

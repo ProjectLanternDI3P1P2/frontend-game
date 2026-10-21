@@ -37,6 +37,8 @@ export function useRankingHeroFacts(
     controller = current;
     status.value = LoadStatus.LOADING;
     errorMessage.value = "";
+    // Never show the previous reading as current while re-reading.
+    facts.value = null;
 
     try {
       const response = await api.getRankingHeroFacts(toValue(heroId), current.signal);

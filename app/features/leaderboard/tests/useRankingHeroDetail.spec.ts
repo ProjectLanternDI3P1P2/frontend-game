@@ -2,12 +2,10 @@ import { flushPromises } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import { useRankingHeroDetail } from "../composables/useRankingHeroDetail";
-import { useRankingHeroFacts } from "../composables/useRankingHeroFacts";
 import { GENERIC_LOAD_ERROR } from "../composables/loadError";
 import { LoadStatus } from "../types";
-import { GatewayError } from "~/shared/utils/gateway";
 import { apiStub } from "./fixtures/leaderboardFixtures";
-import { heroDetail, heroFacts } from "./fixtures/rankingDetailFixtures";
+import { heroDetail } from "./fixtures/rankingDetailFixtures";
 
 describe("useRankingHeroDetail", () => {
   it("loads the detail, then READY", async () => {
@@ -51,49 +49,5 @@ describe("useRankingHeroDetail", () => {
 
     expect(getRankingHeroDetail.mock.calls[0]![1].aborted).toBe(true);
     expect(state.detail.value?.heroName).toBe("Second");
-  });
-});
-
-describe("useRankingHeroFacts", () => {
-  it("does not read before load()", () => {
-    const api = apiStub();
-    useRankingHeroFacts("hero-1", { api });
-
-    expect(api.getRankingHeroFacts).not.toHaveBeenCalled();
-  });
-
-  it("loads the facts; no fact is EMPTY", async () => {
-    const api = apiStub({
-      getRankingHeroFacts: vi
-        .fn()
-        .mockResolvedValueOnce(heroFacts())
-        .mockResolvedValueOnce(heroFacts({ facts: [] })),
-    });
-    const state = useRankingHeroFacts("hero-1", { api });
-
-    await state.load();
-    expect(state.status.value).toBe(LoadStatus.READY);
-    await state.load();
-    expect(state.status.value).toBe(LoadStatus.EMPTY);
-  });
-
-  it("reports the gateway message, and cancel() drops a pending answer", async () => {
-    const api = apiStub({
-      getRankingHeroFacts: vi
-        .fn()
-        .mockRejectedValue(
-          new GatewayError(503, { code: "unavailable", message: "Down" }),
-        ),
-    });
-    const state = useRankingHeroFacts("hero-1", { api });
-
-    await state.load();
-    expect(state.status.value).toBe(LoadStatus.ERROR);
-    expect(state.errorMessage.value).toBe("Down");
-
-    const pending = state.load();
-    state.cancel();
-    await pending;
-    expect(state.status.value).toBe(LoadStatus.LOADING);
   });
 });

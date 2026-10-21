@@ -1,6 +1,7 @@
 /**
  * Pure display rules of the expanded ranking row and its facts drawer (F03).
  */
+import { formatCount } from "./statisticsRules";
 import { FactStatus, RunOutcome } from "./types";
 
 /** Outcome as text, never only as a colour (RGAA). */
@@ -19,11 +20,9 @@ export const FACT_STATUS_LABELS: Record<FactStatus, string> = {
 
 export const NO_RUN_YET = "No run yet";
 
-const NUMBER_FORMAT = new Intl.NumberFormat("en-US");
-
-/** 1234 → "1,234"; anything not a number → "0". */
+/** 1234 → "1,234" (same locale as the statistics); not a number → "0". */
 export function formatNumber(value: number): string {
-  return NUMBER_FORMAT.format(Number.isFinite(value) ? value : 0);
+  return formatCount(Number.isFinite(value) ? value : 0);
 }
 
 /** Progress inside the level, clamped to 0..100 (whole percent). */

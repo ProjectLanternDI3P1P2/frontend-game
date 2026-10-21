@@ -4,7 +4,7 @@
  * public profile and the facts behind the row. Its own loading and error states
  * never affect the rest of the ranking. Contract (F00): these props, no emit.
  */
-import { computed } from "vue";
+import { computed, useId } from "vue";
 import { useRankingHeroDetail } from "../composables/useRankingHeroDetail";
 import { formatRelativeTime, HERO_CLASS_LABELS } from "../leaderboardRules";
 import {
@@ -32,6 +32,7 @@ const { status, detail, errorMessage, retry } = useRankingHeroDetail(
 );
 
 const now = () => new Date();
+const runsHeadingId = `ranking-row-detail-runs-${useId()}`;
 
 const OUTCOME_TONES: Record<RunOutcome, BadgeTone> = {
   [RunOutcome.VICTORY]: BadgeTone.SUCCESS,
@@ -99,10 +100,8 @@ const runs = computed(() => (detail.value?.lastRuns ?? []).slice(0, 4));
       </div>
 
       <div class="ranking-row-detail__body">
-        <section class="ranking-row-detail__runs" :aria-labelledby="`runs-${heroId}`">
-          <h4 :id="`runs-${heroId}`" class="ranking-row-detail__subtitle">
-            Last 4 runs
-          </h4>
+        <section class="ranking-row-detail__runs" :aria-labelledby="runsHeadingId">
+          <h4 :id="runsHeadingId" class="ranking-row-detail__subtitle">Last 4 runs</h4>
           <p v-if="runs.length === 0" class="ranking-row-detail__empty">
             {{ NO_RUN_YET }}
           </p>
@@ -256,11 +255,6 @@ const runs = computed(() => (detail.value?.lastRuns ?? []).slice(0, 4));
 
   &__link {
     color: var(--color-accent);
-
-    &:focus-visible {
-      outline: 2px solid var(--color-accent);
-      outline-offset: var(--space-1);
-    }
   }
 }
 </style>
