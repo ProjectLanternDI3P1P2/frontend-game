@@ -33,6 +33,12 @@ export default defineNuxtConfig({
     "/dungeon": { ssr: false },
     "/dungeon/**": { ssr: false },
 
+    // Leaderboard and hero statistics: personal, frequently re-consolidated
+    // data with no SEO value, and the coming Keycloak session is client-side
+    // (decision D2). Justified in docs/rendering-modes.md.
+    "/leaderboard": { ssr: false },
+    "/players/*/heroes/*/statistics": { ssr: false },
+
     // A route that genuinely needs a request-time render is declared here, one
     // entry per route, and justified in docs/rendering-modes.md. Two shapes are
     // allowed:

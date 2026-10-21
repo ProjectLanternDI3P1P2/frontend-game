@@ -12,6 +12,7 @@ const navigationItems = [
   { label: "Heroes", to: `/players/${SEEDED_PLAYER_ID}/heroes` },
   { label: "Lobby", to: `/players/${SEEDED_PLAYER_ID}/play` },
   { label: "Dungeon", to: "/dungeon" },
+  { label: "Leaderboard", to: "/leaderboard" },
   { label: "Demo", to: "/demo" },
 ];
 </script>
