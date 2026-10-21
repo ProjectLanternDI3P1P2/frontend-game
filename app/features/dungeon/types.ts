@@ -24,6 +24,9 @@ export type CellTypeName =
 
 export type ElementTypeName = "enemy" | "boss" | "item" | "trap";
 
+/** How an enemy silhouette moves; the pack it stands for is Combat's. */
+export type EnemyKindName = "zombie" | "mage" | "goblin" | "bat";
+
 export type RoomTypeName =
   | "start"
   | "combat"
@@ -47,6 +50,8 @@ export interface DungeonElement {
   x: number;
   y: number;
   roomId: number;
+  /** Movement kind of an enemy silhouette; null for any other element. */
+  kind: EnemyKindName | null;
 }
 
 export interface DungeonRoom {
@@ -86,6 +91,18 @@ export interface DungeonMapResponse {
   elements: DungeonElement[];
 }
 
+/** A living mob of the current floor, where it stands this turn. */
+export interface MobState {
+  /** The id of the enemy element it spawned from. */
+  id: number;
+  kind: EnemyKindName;
+  x: number;
+  y: number;
+  aggro: boolean;
+  /** Where a mage will land on its next action. */
+  nextTeleport: Position | null;
+}
+
 /** GET /api/v1/dungeon-runs/{runId}, also returned by every run action. */
 export interface DungeonRunResponse {
   id: string;
@@ -101,6 +118,16 @@ export interface DungeonRunResponse {
   floorBossDefeated: boolean;
   currentRoomId: number | null;
   elementsHere: DungeonElement[];
+  mobs: MobState[];
+  /** Mobs that died on this turn, on the tile they fell on. */
+  killedMobs: MobState[];
+  /** Rooms of the current floor the party has discovered: their mobs know it is here. */
+  discoveredRoomIds: number[];
+  /**
+   * Tiles of the current floor the hero has stood on, as a base64 bitset
+   * (`decodeVisitedTiles`): the fog of war is rebuilt from it after a reload.
+   */
+  visitedTiles: string;
   startedAt: string;
 }
 

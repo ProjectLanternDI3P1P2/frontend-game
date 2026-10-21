@@ -1,14 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  BOSS,
-  ENEMY,
-  HERO_SHEET,
-  gateSprite,
-  heroFacesWest,
-  heroSprite,
-  itemSprite,
-  spriteStyle,
-} from "../tiles/sprites";
+import { mobClassName, BOSS, ENEMY, gateSprite, itemSprite, spriteStyle } from "../tiles/sprites";
 
 describe("sprites", () => {
   it("only uses chests for items", () => {
@@ -33,33 +24,6 @@ describe("sprites", () => {
     expect(BOSS.dx + (BOSS.w * BOSS.scale!) / 2).toBe(8);
   });
 
-  it("idles on the spot and runs between tiles, on two rows of the sheet", () => {
-    const idle = heroSprite("idle");
-    const run = heroSprite("run");
-    expect(idle.y).not.toBe(run.y);
-    expect([idle.frames, run.frames]).toEqual([6, 8]);
-    for (const pose of [idle, run]) {
-      // Every frame stays inside the sheet.
-      expect(pose.x + pose.pitch * (pose.frames - 1) + pose.w).toBeLessThanOrEqual(HERO_SHEET.width);
-      expect(pose.y + pose.h).toBeLessThanOrEqual(HERO_SHEET.height);
-    }
-  });
-
-  it("stands the hero on its tile, centred so that it can be mirrored in place", () => {
-    const hero = heroSprite("idle");
-    // The middle of the window, where the hero is drawn, is the middle of the tile.
-    expect(hero.dx + hero.w / 2).toBe(8);
-    // Its feet (y = 34 in a cell) are near the bottom of the tile.
-    expect(hero.dy + 34).toBe(14);
-  });
-
-  it("mirrors the hero to face west, and keeps its side when going north or south", () => {
-    expect(heroFacesWest("west", false)).toBe(true);
-    expect(heroFacesWest("east", true)).toBe(false);
-    expect(heroFacesWest("north", true)).toBe(true);
-    expect(heroFacesWest("south", false)).toBe(false);
-  });
-
   it("draws the boss larger than the other enemies", () => {
     expect(BOSS.scale).toBeGreaterThan(1);
   });
@@ -72,5 +36,15 @@ describe("sprites", () => {
     const style = spriteStyle(ENEMY, { x: 4, y: 9 });
     expect(style).toContain("--x:4;--y:9;");
     expect(style).toMatch(/^(--[a-z]+:-?[\d.]+s?;?)+$/);
+  });
+});
+
+describe("mobClassName", () => {
+  it("lights up a mob once it is in aggro", () => {
+    const mob = { id: 4, kind: "bat", x: 1, y: 2, aggro: false, nextTeleport: null } as const;
+
+    expect(mobClassName(mob)).not.toContain("dungeon-mob--aggro");
+    expect(mobClassName({ ...mob, aggro: true })).toContain("dungeon-mob--aggro");
+    expect(mobClassName(mob)).toContain("dungeon-element--bat");
   });
 });

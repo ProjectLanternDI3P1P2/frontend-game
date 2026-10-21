@@ -1,21 +1,28 @@
 /**
  * The fixtures were produced by the Dungeon service's own query handlers, so
  * these tests also pin the contract between the backend and this client.
+ *
+ * TODO(tech-debt): they predate the current generator and their "kind" fields
+ * were added by hand — regenerate them from seeds whose first floor still shows
+ * every tile the autotile tests need.
  */
 import { describe, expect, it } from "vitest";
 import {
   Cell,
   DungeonContractError,
   cellAt,
+  corridorAt,
   decodeFloor,
+  decodeVisitedTiles,
   elementsAt,
   gateOf,
   goesDown,
   isWalkableAt,
+  revealedTeleports,
   roomAt,
   step,
 } from "../dungeonMap";
-import type { DungeonMapResponse } from "../types";
+import type { DungeonMapResponse, MobState } from "../types";
 import fixture from "./fixtures/map-DGPEAP9GWJKZF-f0.json";
 import multiFloorFixture from "./fixtures/map-DDR55WKRPRVBN-f0.json";
 
@@ -88,6 +95,23 @@ describe("decodeFloor", () => {
   });
 });
 
+describe("decodeVisitedTiles", () => {
+  it("reads one bit per tile, in row order, low bit first", () => {
+    // 3 × 3 floor, its diagonal: tiles 0 and 4 in byte 0, tile 8 in byte 1.
+    const encoded = btoa(String.fromCharCode(0b0001_0001, 0b0000_0001));
+
+    expect(decodeVisitedTiles({ width: 3, height: 3 }, encoded)).toEqual([
+      { x: 0, y: 0 },
+      { x: 1, y: 1 },
+      { x: 2, y: 2 },
+    ]);
+  });
+
+  it("knows no tile of a run that has not moved since the bitset was added", () => {
+    expect(decodeVisitedTiles({ width: 3, height: 3 }, "")).toEqual([]);
+  });
+});
+
 describe("walkability", () => {
   const floor = decodeFloor(map);
 
@@ -117,11 +141,56 @@ describe("walkability", () => {
   });
 });
 
+describe("corridorAt", () => {
+  const floor = decodeFloor(map);
+  const tiles = (keep: (code: number, roomId: number) => boolean) =>
+    [...floor.cells.keys()]
+      .filter((i) => keep(floor.cells[i]!, floor.roomIdByCell[i]!))
+      .map((i) => ({ x: i % floor.width, y: Math.floor(i / floor.width) }));
+
+  it("names the two connected rooms from every corridor tile and door", () => {
+    const corridorTiles = tiles(
+      (code, roomId) => roomId === -1 && (code === Cell.Floor || code === Cell.Door),
+    );
+    expect(corridorTiles.length).toBeGreaterThan(0);
+    for (const tile of corridorTiles) {
+      const [first, second] = corridorAt(floor, tile)!;
+      expect(first).toBeLessThan(second);
+      expect(floor.rooms[first]!.connectedRoomIds).toContain(second);
+    }
+  });
+
+  it("is undefined in a room and on a wall", () => {
+    expect(corridorAt(floor, floor.entrance)).toBeUndefined();
+    expect(corridorAt(floor, tiles((code) => code === Cell.Wall)[0]!)).toBeUndefined();
+  });
+});
+
 describe("step", () => {
   it("moves one tile in the given direction", () => {
     expect(step({ x: 5, y: 5 }, "north")).toEqual({ x: 5, y: 4 });
     expect(step({ x: 5, y: 5 }, "east")).toEqual({ x: 6, y: 5 });
     expect(step({ x: 5, y: 5 }, "south")).toEqual({ x: 5, y: 6 });
     expect(step({ x: 5, y: 5 }, "west")).toEqual({ x: 4, y: 5 });
+  });
+});
+
+describe("revealedTeleports", () => {
+  it("only marks the jumps announced on tiles the party has seen", () => {
+    const width = 4;
+    const revealed = new Uint8Array([1, 1, 0, 0]);
+    const mage = (id: number, x: number): MobState => ({
+      id,
+      kind: "mage",
+      x: 0,
+      y: 0,
+      aggro: true,
+      nextTeleport: { x, y: 0 },
+    });
+    const zombie: MobState = { ...mage(3, 0), kind: "zombie", nextTeleport: null };
+
+    const marks = revealedTeleports([mage(1, 1), mage(2, 3), zombie], revealed, width);
+
+    expect(marks).toEqual([{ id: 1, x: 1, y: 0 }]);
   });
 });

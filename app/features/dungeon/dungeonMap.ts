@@ -12,6 +12,7 @@ import type {
   DungeonElement,
   DungeonMapResponse,
   DungeonRoom,
+  MobState,
   Position,
 } from "./types";
 
@@ -206,6 +207,26 @@ export function isWalkableAt(floor: DecodedFloor, position: Position): boolean {
   return isWalkable(cellAt(floor, position.x, position.y));
 }
 
+/**
+ * The tiles a hero has stood on, from the run's `visitedTiles`: a base64
+ * bitset in row order, tile `i = y * width + x` being bit `i % 8` of byte
+ * `i / 8`. Empty for a run that has not moved since the bitset was added.
+ */
+export function decodeVisitedTiles(
+  floor: Pick<DecodedFloor, "width" | "height">,
+  encoded: string,
+): Position[] {
+  const bytes = atob(encoded);
+  const count = Math.min(bytes.length * 8, floor.width * floor.height);
+  const tiles: Position[] = [];
+  for (let index = 0; index < count; index++) {
+    if (bytes.charCodeAt(index >> 3) & (1 << (index & 7))) {
+      tiles.push({ x: index % floor.width, y: Math.floor(index / floor.width) });
+    }
+  }
+  return tiles;
+}
+
 export function roomAt(
   floor: DecodedFloor,
   position: Position,
@@ -228,6 +249,55 @@ const OFFSETS: Record<Direction, Position> = {
   south: { x: 0, y: 1 },
   west: { x: -1, y: 0 },
 };
+
+/**
+ * The two rooms joined by the corridor at the position, its doors included, lowest id first;
+ * undefined in a room or off the walkable tiles. Corridors are straight and never meet
+ * (FloorBuilder.CarveCorridors), so the walkable tiles outside any room reached from the
+ * position lead to exactly two rooms.
+ */
+export function corridorAt(
+  floor: DecodedFloor,
+  position: Position,
+): readonly [number, number] | undefined {
+  if (!isWalkableAt(floor, position) || roomAt(floor, position)) return undefined;
+
+  const roomIds = new Set<number>();
+  const seen = new Set<number>();
+  const pending = [position];
+  while (pending.length > 0) {
+    const tile = pending.pop()!;
+    const index = tile.y * floor.width + tile.x;
+    if (seen.has(index)) continue;
+    seen.add(index);
+    for (const offset of Object.values(OFFSETS)) {
+      const next = { x: tile.x + offset.x, y: tile.y + offset.y };
+      if (!isWalkableAt(floor, next)) continue;
+      const room = roomAt(floor, next);
+      if (room) roomIds.add(room.id);
+      else pending.push(next);
+    }
+  }
+
+  const [first, second] = [...roomIds].sort((a, b) => a - b);
+  return first === undefined || second === undefined ? undefined : [first, second];
+}
+
+/**
+ * The tiles mages announced they will jump to, only where the party has already looked:
+ * a glow in the dark would give away a mage nobody has seen.
+ */
+export function revealedTeleports(
+  mobs: readonly MobState[],
+  revealed: Uint8Array,
+  width: number,
+): { id: number; x: number; y: number }[] {
+  return mobs.flatMap(({ id, nextTeleport }) =>
+    nextTeleport && revealed[nextTeleport.y * width + nextTeleport.x] === 1
+      ? [{ id, x: nextTeleport.x, y: nextTeleport.y }]
+      : [],
+  );
+}
 
 export function step(position: Position, direction: Direction): Position {
   const offset = OFFSETS[direction];

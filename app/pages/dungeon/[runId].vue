@@ -8,18 +8,23 @@ import DungeonMinimap from "~/features/dungeon/components/DungeonMinimap.vue";
 import DungeonViewport from "~/features/dungeon/components/DungeonViewport.vue";
 import { useBoardViewport } from "~/features/dungeon/composables/useBoardViewport";
 import { useDungeonExplorer } from "~/features/dungeon/composables/useDungeonExplorer";
-import { directionForKey } from "~/features/dungeon/dungeonRules";
+import { MOVE_COOLDOWN_MS, createCooldown, directionForKey } from "~/features/dungeon/dungeonRules";
+import type { Direction } from "~/features/dungeon/types";
 import { ButtonSize, ButtonVariant } from "~/shared/ui/ui.types";
 
 definePageMeta({ layout: "game" });
 useHead({ title: "Exploration" });
 
 const route = useRoute();
+const playerId = computed(() =>
+  typeof route.query.playerId === "string" ? route.query.playerId : null,
+);
 const explorer = useDungeonExplorer(String(route.params.runId));
 const {
   run,
   loaded,
   hero,
+  appearance,
   status,
   errorMessage,
   announcement,
@@ -29,7 +34,10 @@ const {
   revealVersion,
   visitedRoomIds,
   currentRoom,
+  currentCorridor,
   floorBossDefeated,
+  mobs,
+  dyingMobs,
 } = explorer;
 
 const board = ref<HTMLElement | null>(null);
@@ -42,16 +50,26 @@ onMounted(async () => {
   board.value?.focus();
 });
 
+const canMove = createCooldown(MOVE_COOLDOWN_MS);
+
+/** One move per slide, from the keyboard as from the on-screen pad. */
+function move(direction: Direction) {
+  if (canMove()) explorer.move(direction);
+}
+
 function onKeydown(event: KeyboardEvent) {
   const direction = directionForKey(event.code);
   if (!direction) return;
   event.preventDefault();
-  explorer.move(direction);
+  move(direction);
 }
 
 async function copyShareLink() {
   if (!run.value) return;
-  const url = `${window.location.origin}/dungeon?seed=${run.value.seed}`;
+  const path = playerId.value
+    ? `/players/${encodeURIComponent(playerId.value)}/play?seed=${encodeURIComponent(run.value.seed)}`
+    : `/dungeon?seed=${encodeURIComponent(run.value.seed)}`;
+  const url = `${window.location.origin}${path}`;
   await navigator.clipboard.writeText(url);
   copied.value = true;
   setTimeout(() => (copied.value = false), 2000);
@@ -78,11 +96,14 @@ async function copyShareLink() {
           :loaded="loaded"
           :hero="hero"
           :facing="facing"
+          :appearance="appearance"
           :revealed="revealed"
           :reveal-version="revealVersion"
           :bump="bump"
           :viewport="viewport"
           :floor-boss-defeated="floorBossDefeated"
+          :mobs="mobs"
+          :dying-mobs="dyingMobs"
         />
       </div>
 
@@ -113,6 +134,7 @@ async function copyShareLink() {
           :rooms="loaded.floor.rooms"
           :visited-room-ids="visitedRoomIds"
           :current-room-id="currentRoom?.id ?? null"
+          :current-corridor="currentCorridor ?? null"
         />
       </aside>
 
@@ -130,7 +152,7 @@ async function copyShareLink() {
       <DungeonControls
         class="dungeon-page__pad"
         :disabled="run.status !== 'active'"
-        @move="explorer.move"
+        @move="move"
       />
 
       <p id="dungeon-help" class="visually-hidden">

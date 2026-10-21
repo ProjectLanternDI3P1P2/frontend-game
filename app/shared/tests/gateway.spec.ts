@@ -16,8 +16,8 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 describe("buildGatewayUrl", () => {
   it("builds a same-origin relative URL for the local proxy", () => {
-    expect(buildGatewayUrl("/", "v1", "players/player-id/heroes")).toBe(
-      "/api/v1/players/player-id/heroes",
+    expect(buildGatewayUrl("/", "v1", "player/player-id/heroes")).toBe(
+      "/api/player/v1/player-id/heroes",
     );
   });
 
@@ -113,8 +113,9 @@ describe("createGatewayClient", () => {
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
 
-    await expect(client.post("players/id/heroes")).rejects.toMatchObject({
+    await expect(client.post("player/id/heroes")).rejects.toMatchObject({
       code: "VALIDATION_ERROR",
+      message: "Hero name is required.",
       details: { errors: { name: ["Hero name is required."] } },
       status: 422,
     });

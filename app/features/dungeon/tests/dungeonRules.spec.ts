@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { Cell, cellAt, decodeFloor, roomAt } from "../dungeonMap";
-import { cameraOrigin, directionForKey, fitViewport, reveal } from "../dungeonRules";
+import {
+  cameraOrigin,
+  createCooldown,
+  directionForKey,
+  fitViewport,
+  reveal,
+} from "../dungeonRules";
 import type { DungeonMapResponse } from "../types";
 import fixture from "./fixtures/map-DGPEAP9GWJKZF-f0.json";
 
@@ -123,5 +129,19 @@ describe("reveal", () => {
     const revealed = new Uint8Array(floor.width * floor.height);
     reveal(floor, revealed, floor.entrance);
     expect(reveal(floor, revealed, floor.entrance)).toBe(false);
+  });
+});
+
+describe("createCooldown", () => {
+  it("lets the first move through, then drops those that come before the slide ends", () => {
+    let now = 1000;
+    const canMove = createCooldown(200, () => now);
+
+    const accepted = [0, 50, 199, 200, 260, 450].map((at) => {
+      now = 1000 + at;
+      return canMove();
+    });
+
+    expect(accepted).toEqual([true, false, false, true, false, true]);
   });
 });

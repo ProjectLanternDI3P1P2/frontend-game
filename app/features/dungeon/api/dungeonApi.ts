@@ -1,6 +1,8 @@
 /**
- * The dungeon feature's API boundary (ADR-FE-009, ADR-FE-011): the only file
- * of the feature allowed to reach the Gateway.
+ * The dungeon feature's API boundary (ADR-FE-009, ADR-FE-011): with the Hub
+ * adapter it delegates to, the only code of the feature allowed to reach the
+ * Gateway. Maps and run creation go through REST; the run itself goes
+ * through the Dungeon Hub.
  */
 import type {
   CreateDungeonRunRequest,
@@ -9,6 +11,17 @@ import type {
   DungeonRunResponse,
 } from "../types";
 import { useGateway } from "~/shared/composables/useGateway";
+import { DungeonHubClient, dungeonHubUrl } from "./dungeonHub";
+
+/** One WebSocket per tab, opened on the first call and shared by every run. */
+let dungeonHub: DungeonHubClient | null = null;
+
+function useDungeonHub(): DungeonHubClient {
+  dungeonHub ??= new DungeonHubClient(
+    dungeonHubUrl(useRuntimeConfig().public.apiGatewayUrl),
+  );
+  return dungeonHub;
+}
 
 /** POST /api/v1/dungeon-runs — generates a dungeon on a fresh seed. */
 export function createDungeonRun(
@@ -17,29 +30,23 @@ export function createDungeonRun(
   return useGateway().post<DungeonRunResponse>("dungeon-runs", request);
 }
 
-/** GET /api/v1/dungeon-runs/{runId} — the authoritative run state. */
-export function fetchDungeonRun(
-  runId: string,
-  signal?: AbortSignal,
-): Promise<DungeonRunResponse> {
-  return useGateway().get<DungeonRunResponse>(
-    `dungeon-runs/${encodeURIComponent(runId)}`,
-    { signal },
-  );
+/**
+ * `JoinDungeon` on the Dungeon Hub — the authoritative run state, exploration
+ * included, and the run's events from then on. Calling it again resynchronizes.
+ */
+export function joinDungeon(runId: string): Promise<DungeonRunResponse> {
+  return useDungeonHub().joinDungeon(runId);
 }
 
 /**
- * POST /api/v1/dungeon-runs/{runId}/moves — one tile, one turn. Into the open gate, it takes
- * the party down to the next floor. 409 if blocked.
+ * `MoveHero` on the Dungeon Hub — one tile, one turn. Into the open gate, it
+ * takes the party down to the next floor. Rejects when the backend refuses it.
  */
 export function moveHero(
   runId: string,
   direction: Direction,
 ): Promise<DungeonRunResponse> {
-  return useGateway().post<DungeonRunResponse>(
-    `dungeon-runs/${encodeURIComponent(runId)}/moves`,
-    { direction },
-  );
+  return useDungeonHub().moveHero(runId, direction);
 }
 
 /**
