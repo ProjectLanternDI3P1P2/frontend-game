@@ -234,9 +234,15 @@ const BLANK_ERRORS: Array<[string, unknown]> = [
   ["whitespace-only message", new GatewayError(502, { code: "X", message: "  \n\t " })],
   [
     "missing message",
-    new GatewayError(500, { code: "X" } as unknown as { code: string; message: string }),
+    new GatewayError(500, { code: "X" } as unknown as {
+      code: string;
+      message: string;
+    }),
   ],
-  ["status 0 (network) without message", new GatewayError(0, { code: "", message: "" })],
+  [
+    "status 0 (network) without message",
+    new GatewayError(0, { code: "", message: "" }),
+  ],
   ["rejection with undefined", undefined],
   ["rejection with a bare string", "boom"],
   ["Error with empty message", new Error("")],
@@ -397,8 +403,11 @@ describe("F01", () => {
     });
 
     it("CA2: the feature keeps no client cache (no useFetch/useAsyncData/useState/storage)", () => {
+      // F04 (decision D11): the public, server-rendered rankings read through
+      // `useAsyncData` by design (payload hydration, no client cache).
       const sources = walk(FEATURE_DIR)
         .filter((file) => !file.includes("/tests/") && /\.(ts|vue)$/.test(file))
+        .filter((file) => !file.endsWith("/composables/usePublicRanking.ts"))
         .map((file) => readFileSync(file, "utf8"));
       for (const source of sources) {
         expect(source).not.toMatch(
@@ -574,7 +583,10 @@ describe("F01", () => {
         const text = alertText(wrapper);
         expect(text).toMatch(/could not be loaded/i);
         // the reason paragraph itself is not blank
-        const reason = wrapper.get('[role="alert"]').findAll("p").map((p) => p.text());
+        const reason = wrapper
+          .get('[role="alert"]')
+          .findAll("p")
+          .map((p) => p.text());
         expect(reason.some((t) => t.trim().length > 10)).toBe(true);
         expect(text).not.toMatch(/undefined|null|\[object|boom|at \w+ \(/i);
         expect(button(wrapper, /^retry$/i)).toBeDefined();

@@ -39,6 +39,11 @@ export default defineNuxtConfig({
     "/leaderboard": { ssr: false },
     "/players/*/heroes/*/statistics": { ssr: false },
 
+    // Public rankings: non-personal, indexable showcase whose data may be a
+    // minute old; the shared window bounds the load on the leaderboard
+    // service (decision D11). Justified in docs/rendering-modes.md.
+    "/rankings": { ssr: true, prerender: false, swr: 60 },
+
     // A route that genuinely needs a request-time render is declared here, one
     // entry per route, and justified in docs/rendering-modes.md. Two shapes are
     // allowed:
