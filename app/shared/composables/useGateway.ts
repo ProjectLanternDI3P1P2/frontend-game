@@ -10,5 +10,7 @@ export function useGateway(): GatewayClient {
   return createGatewayClient({
     baseUrl: config.public.apiGatewayUrl,
     apiVersion: config.public.apiVersion,
+    getToken: () =>
+      import.meta.client ? (useNuxtApp().$keycloak.token ?? null) : null,
   });
 }

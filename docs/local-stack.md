@@ -2,7 +2,7 @@
 
 Voir aussi le [contrat de configuration des communications](communications-configuration.md).
 
-Le fichier `compose.yaml` de `frontend-game` lance onze conteneurs : les deux
+Le fichier `compose.yaml` de `frontend-game` lance douze conteneurs : les deux
 fronts Nuxt, Player, Combat, Dungeon, Reward, Leaderboard, Traefik, PostgreSQL
 et RabbitMQ. Il assemble les dépôts indépendants sans déplacer leurs sources.
 
@@ -63,6 +63,13 @@ Les variables `KEYCLOAK_PORT`, `KEYCLOAK_ADMIN` et
 par défaut sont exclusivement locales ; les modifier avant toute exposition de
 la stack. La documentation détaillée est dans
 [`app/features/auth/readme.md`](../app/features/auth/readme.md).
+
+Traefik valide cryptographiquement les access tokens via son plugin JWT. Il
+vérifie la signature RS256 depuis le JWKS Keycloak, l'émetteur et le client
+`lantern-public`, puis transmet les headers d'identité de confiance
+`X-User-Id` et `X-Username` aux APIs. Les headers correspondants fournis par
+un client sont supprimés avant la validation. Le plugin est téléchargé au
+démarrage de Traefik : le premier lancement nécessite donc un accès réseau.
 
 Il n'y a pas de port API supplémentaire dans le Compose complet : les appels
 `http://localhost:3000/api/v1/...` arrivent déjà sur Traefik, qui les envoie au
@@ -253,12 +260,10 @@ API/SignalR ; les deux endpoints frontend `/healthz` ne sont pas disponibles.
 - ADR-GLOB-002, 003, 005 et 010 : RabbitMQ, entrée unique, bases possédées par
   service et transports HTTP/SignalR/gRPC sont représentés dans cette stack.
   ADR-FE-007 : les deux fronts restent des dépôts et images indépendants.
-- ADR-GLOB-004 prévoit Keycloak, validation des jetons et injection d'identité.
-  La stack lance désormais Keycloak pour l'authentification navigateur du front
-  Game. Traefik et les microservices ne valident toutefois pas encore les
-  jetons et n'injectent pas d'identité utilisateur : les endpoints backend
-  exigeant une identité ne deviennent pas accessibles par l'ajout d'en-têtes.
-  La validation à la gateway et HTTPS restent nécessaires avant tout
+- ADR-GLOB-004 est appliqué à la stack locale : Traefik valide les access
+  tokens Keycloak par son plugin JWT et injecte les headers d'identité de
+  confiance. Les microservices ne valident pas le JWT externe.
+  HTTPS et une gestion de secrets adaptée restent nécessaires avant tout
   déploiement partagé ou de production.
 - Les adresses, abonnements et paramètres de résilience décrivent la cible des
   ADR. Les adaptateurs gRPC, consommateurs, outbox et instrumentation encore
