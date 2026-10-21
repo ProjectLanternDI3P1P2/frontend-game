@@ -91,8 +91,8 @@ onMounted(loadHeroes);
 }
 .player-home__heroes {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(9.25rem, 1fr));
+  gap: var(--space-3);
 }
 .player-home__message {
   margin: 0;
