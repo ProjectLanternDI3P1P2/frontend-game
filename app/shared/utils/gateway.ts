@@ -55,6 +55,7 @@ export interface GatewayRequest {
   query?: Record<string, string | number | boolean | undefined>;
   body?: unknown;
   signal?: AbortSignal;
+  cache?: RequestCache;
   /** Overrides the client-level token for a single call. */
   token?: string | null;
 }
@@ -149,6 +150,7 @@ export function createGatewayClient(options: GatewayClientOptions): GatewayClien
           method,
           headers,
           signal: req.signal,
+          ...(req.cache ? { cache: req.cache } : {}),
           body: req.body === undefined ? undefined : JSON.stringify(req.body),
         },
       );

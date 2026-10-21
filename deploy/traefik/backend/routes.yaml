@@ -27,7 +27,7 @@ http:
       middlewares: [remove-external-identity]
       service: combat
     reward-api:
-      rule: PathRegexp(`^/api/v1/heroes/[^/]+/inventory(/|$)`)
+      rule: PathRegexp(`^/api/v1/heroes/[^/]+/inventory(/|$)`) || Path(`/api/v1/marketplace/listings`) || PathPrefix(`/api/v1/marketplace/listings/`)
       priority: 100
       middlewares: [remove-external-identity]
       service: reward
