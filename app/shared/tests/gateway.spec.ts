@@ -96,6 +96,44 @@ describe("createGatewayClient", () => {
     });
   });
 
+  it("notifies the application when the access token is rejected", async () => {
+    const onUnauthorized = vi.fn();
+    const client = createGatewayClient({
+      baseUrl: "http://gw.test",
+      apiVersion: "v1",
+      fetchImpl: vi.fn().mockResolvedValue(jsonResponse({}, 401)) as unknown as typeof fetch,
+      onUnauthorized,
+    });
+
+    await expect(client.get("player/me/heroes")).rejects.toMatchObject({ status: 401 });
+
+    expect(onUnauthorized).toHaveBeenCalledOnce();
+  });
+
+  it("retries once after a successful token refresh", async () => {
+    let token = "expired-token";
+    const onUnauthorized = vi.fn(async () => {
+      token = "fresh-token";
+      return true;
+    });
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({}, 401))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }));
+    const client = createGatewayClient({
+      baseUrl: "http://gw.test",
+      apiVersion: "v1",
+      getToken: () => token,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      onUnauthorized,
+    });
+
+    await expect(client.get("player/me/heroes")).resolves.toEqual({ ok: true });
+
+    expect(onUnauthorized).toHaveBeenCalledWith(false);
+    expect(fetchImpl.mock.calls[1]![1].headers.Authorization).toBe("Bearer fresh-token");
+  });
+
   it("preserves field errors from an ASP.NET validation problem", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       jsonResponse(
