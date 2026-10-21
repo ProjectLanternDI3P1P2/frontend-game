@@ -234,9 +234,15 @@ const BLANK_ERRORS: Array<[string, unknown]> = [
   ["whitespace-only message", new GatewayError(502, { code: "X", message: "  \n\t " })],
   [
     "missing message",
-    new GatewayError(500, { code: "X" } as unknown as { code: string; message: string }),
+    new GatewayError(500, { code: "X" } as unknown as {
+      code: string;
+      message: string;
+    }),
   ],
-  ["status 0 (network) without message", new GatewayError(0, { code: "", message: "" })],
+  [
+    "status 0 (network) without message",
+    new GatewayError(0, { code: "", message: "" }),
+  ],
   ["rejection with undefined", undefined],
   ["rejection with a bare string", "boom"],
   ["Error with empty message", new Error("")],
@@ -574,7 +580,10 @@ describe("F01", () => {
         const text = alertText(wrapper);
         expect(text).toMatch(/could not be loaded/i);
         // the reason paragraph itself is not blank
-        const reason = wrapper.get('[role="alert"]').findAll("p").map((p) => p.text());
+        const reason = wrapper
+          .get('[role="alert"]')
+          .findAll("p")
+          .map((p) => p.text());
         expect(reason.some((t) => t.trim().length > 10)).toBe(true);
         expect(text).not.toMatch(/undefined|null|\[object|boom|at \w+ \(/i);
         expect(button(wrapper, /^retry$/i)).toBeDefined();
@@ -732,7 +741,10 @@ describe("F01", () => {
       await flushPromises();
 
       const headers = wrapper.findAll("table thead th");
-      expect(headers.map((th) => th.text())).toEqual(["Rank", "Hero", "Total XP"]);
+      // F02 (CA2): the full set of columns.
+      expect(headers.map((th) => th.text())).toEqual(
+        expect.arrayContaining(["Rank", "Hero", "Total XP"]),
+      );
       headers.forEach((th) => expect(th.attributes("scope")).toBe("col"));
       const first = wrapper.findAll("table tbody tr")[0]!;
       expect(first.text()).toContain("Hero 1");
@@ -758,7 +770,7 @@ describe("F01", () => {
       const wrapper = mountPage(LeaderboardPage, api);
       await flushPromises();
 
-      const refresh = button(wrapper, /^refresh$/i);
+      const refresh = button(wrapper, /^refresh view$/i);
       expect(refresh, "Refresh button").toBeDefined();
       await refresh!.trigger("click");
       await flushPromises();
@@ -801,7 +813,9 @@ describe("F01", () => {
       });
     }
 
-    it('CA8: only my heroes carry aria-current="true" and a visible "You" badge', async () => {
+    // F02 (F00 hand-off): every hero of mine carries "You"; aria-current is kept
+    // for the line "Jump to my rank" targets, my best-ranked hero (me[0]).
+    it('CA8: my heroes carry a visible "You" badge; aria-current marks my best one', async () => {
       const api = apiStub({
         getRanking: vi.fn().mockResolvedValue(boardWithMineAt(3, 7)),
       });
@@ -809,14 +823,14 @@ describe("F01", () => {
       await flushPromises();
 
       const current = wrapper.findAll('tbody tr[aria-current="true"]');
-      expect(current.map((row) => row.findAll("td, th")[0]!.text())).toEqual([
-        "3",
-        "7",
-      ]);
-      for (const row of current) expect(youBadge(row), "You badge").toBeDefined();
+      expect(current.map((row) => row.findAll("td, th")[0]!.text())).toEqual(["3"]);
+      const mine = wrapper
+        .findAll("tbody tr")
+        .filter((row) => ["3", "7"].includes(row.findAll("td, th")[0]!.text()));
+      for (const row of mine) expect(youBadge(row), "You badge").toBeDefined();
       const others = wrapper
         .findAll("tbody tr")
-        .filter((row) => row.attributes("aria-current") !== "true");
+        .filter((row) => !["3", "7"].includes(row.findAll("td, th")[0]!.text()));
       expect(others).toHaveLength(8);
       expect(others.some((row) => youBadge(row) !== undefined)).toBe(false);
     });
@@ -858,7 +872,7 @@ describe("F01", () => {
       expect(wrapper.find('[role="alert"]').exists()).toBe(false);
       expect(wrapper.find("table").exists()).toBe(false);
       expect(wrapper.text()).toMatch(/no hero|nobody|empty/i);
-      expect(button(wrapper, /^refresh$/i)).toBeDefined();
+      expect(button(wrapper, /^refresh view$/i)).toBeDefined();
     });
 
     it("CA10: null body → treated as empty, not as an error", async () => {
@@ -928,7 +942,7 @@ describe("F01", () => {
       });
       const wrapper = mountPage(LeaderboardPage, api);
       await flushPromises();
-      await button(wrapper, /^refresh$/i)!.trigger("click");
+      await button(wrapper, /^refresh view$/i)!.trigger("click");
       await flushPromises();
 
       expect(wrapper.find('[role="alert"]').exists()).toBe(true);
@@ -968,7 +982,7 @@ describe("F01", () => {
       });
       const wrapper = mountPage(LeaderboardPage, api);
       await flushPromises();
-      await button(wrapper, /^refresh$/i)!.trigger("click");
+      await button(wrapper, /^refresh view$/i)!.trigger("click");
       await flushPromises();
 
       expect(alertText(wrapper)).toMatch(/could not be loaded/i);
@@ -1016,12 +1030,12 @@ describe("F01", () => {
       const node = expectExposedLiveRegion(wrapper);
       expect(node.textContent?.trim()).toBe("");
 
-      await button(wrapper, /^refresh$/i)!.trigger("click");
+      await button(wrapper, /^refresh view$/i)!.trigger("click");
       await flushPromises();
       expect(wrapper.text()).toMatch(/no hero/i);
       expect(expectExposedLiveRegion(wrapper)).toBe(node);
 
-      await button(wrapper, /^refresh$/i)!.trigger("click");
+      await button(wrapper, /^refresh view$/i)!.trigger("click");
       await flushPromises();
       expect(wrapper.find('[role="alert"]').exists()).toBe(true);
       expect(expectExposedLiveRegion(wrapper)).toBe(node);

@@ -1,144 +1,191 @@
 <script setup lang="ts">
 /**
- * One page of the hero ranking in a semantic table (D8). The current player's
- * heroes carry a "You" badge and `aria-current`, never colour alone.
- * F00: minimal columns (Rank, Hero, Total XP); F02 brings the full table.
+ * One page of the hero ranking in a semantic table (CA2, CA6, CA8), then my
+ * heroes absent from the page, pinned in the table foot after a separator.
+ * Only the table scrolls horizontally on a narrow screen.
  */
-import UiBadge, { BadgeSize, BadgeTone } from "~/shared/ui/UiBadge.vue";
-import { formatCount } from "../statisticsRules";
+import { computed, ref } from "vue";
+import { positionsBetween } from "../leaderboardRules";
+import { isMine } from "../rankingViewRules";
 import type { RankingEntry } from "../types";
+import RankingRow from "./RankingRow.vue";
 
-const props = defineProps<{
-  entries: RankingEntry[];
-  currentPlayerId: string;
-}>();
+const COLUMNS = [
+  "Rank",
+  "Trend",
+  "Player",
+  "Hero",
+  "Class",
+  "Level",
+  "Total XP",
+  "Runs",
+  "Win rate",
+  "Last activity",
+] as const;
 
-function isMine(entry: RankingEntry): boolean {
-  return entry.playerId !== null && entry.playerId === props.currentPlayerId;
+const NUMERIC = new Set<string>(["Level", "Total XP", "Runs", "Win rate"]);
+
+const props = withDefaults(
+  defineProps<{
+    entries: RankingEntry[];
+    currentPlayerId: string;
+    caption: string;
+    /** My heroes that are not on the page. */
+    pinned?: RankingEntry[];
+    /** The line "Jump to my rank" targets: the only one with `aria-current`. */
+    targetHeroId?: string | null;
+    expandedHeroId?: string | null;
+    now?: Date;
+  }>(),
+  { pinned: () => [], targetHeroId: null, expandedHeroId: null, now: () => new Date() },
+);
+
+defineEmits<{ toggle: [heroId: string] }>();
+
+const root = ref<HTMLElement | null>(null);
+
+const separator = computed(() => {
+  const last = props.entries.at(-1);
+  // The first of my heroes below the page (one above it needs no gap).
+  const first = last && props.pinned.find((entry) => entry.rank > last.rank);
+  if (!first || !last) return "";
+  const between = positionsBetween(last.rank, first.rank);
+  if (between === 0) return "";
+  return `${between} ${between === 1 ? "position" : "positions"} between rank ${last.rank} and yours`;
+});
+
+function prefersReducedMotion(): boolean {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 }
+
+/** Scrolls to a hero's line and focuses its toggle; false when it is not shown. */
+function focusHero(heroId: string): boolean {
+  const buttons = root.value?.querySelectorAll<HTMLElement>("[data-hero-id]") ?? [];
+  const button = [...buttons].find((element) => element.dataset.heroId === heroId);
+  if (!button) return false;
+  button.scrollIntoView?.({
+    block: "center",
+    behavior: prefersReducedMotion() ? "auto" : "smooth",
+  });
+  button.focus({ preventScroll: true });
+  return true;
+}
+
+defineExpose({ focusHero });
 </script>
 
 <template>
-  <div class="leaderboard-table">
+  <div
+    ref="root"
+    class="leaderboard-table"
+    role="region"
+    :aria-label="caption"
+    tabindex="0"
+  >
     <table class="leaderboard-table__table">
       <caption class="visually-hidden">
-        Hero ranking, by total XP
+        {{
+          caption
+        }}
       </caption>
       <thead>
         <tr>
-          <th scope="col" class="leaderboard-table__rank">Rank</th>
-          <th scope="col">Hero</th>
-          <th scope="col" class="leaderboard-table__xp">Total XP</th>
+          <th
+            v-for="column in COLUMNS"
+            :key="column"
+            scope="col"
+            :class="{ 'leaderboard-table__numeric': NUMERIC.has(column) }"
+          >
+            {{ column }}
+          </th>
         </tr>
       </thead>
       <tbody>
-        <tr
+        <RankingRow
           v-for="entry in entries"
           :key="entry.heroId"
-          class="leaderboard-table__row"
-          :class="{ 'leaderboard-table__row--me': isMine(entry) }"
-          :aria-current="isMine(entry) ? 'true' : undefined"
-          :tabindex="isMine(entry) ? -1 : undefined"
-        >
-          <td class="leaderboard-table__rank">{{ entry.rank }}</td>
-          <th scope="row">
-            <span class="leaderboard-table__hero">
-              <span class="leaderboard-table__name">{{ entry.heroName }}</span>
-              <UiBadge
-                v-if="isMine(entry)"
-                :tone="BadgeTone.SUCCESS"
-                :size="BadgeSize.SM"
-                >You</UiBadge
-              >
-            </span>
-          </th>
-          <td class="leaderboard-table__xp">{{ formatCount(entry.totalXp) }}</td>
-        </tr>
+          :entry="entry"
+          :current-player-id="currentPlayerId"
+          :mine="isMine(entry, currentPlayerId)"
+          :current="entry.heroId === targetHeroId"
+          :expanded="entry.heroId === expandedHeroId"
+          :columns="COLUMNS.length"
+          :now="now"
+          @toggle="$emit('toggle', $event)"
+        />
       </tbody>
+      <tfoot v-if="pinned.length" class="leaderboard-table__pinned">
+        <tr v-if="separator" class="leaderboard-table__separator">
+          <td :colspan="COLUMNS.length">{{ separator }}</td>
+        </tr>
+        <RankingRow
+          v-for="entry in pinned"
+          :key="entry.heroId"
+          :entry="entry"
+          :current-player-id="currentPlayerId"
+          :mine="true"
+          :current="entry.heroId === targetHeroId"
+          :expanded="entry.heroId === expandedHeroId"
+          :columns="COLUMNS.length"
+          :now="now"
+          @toggle="$emit('toggle', $event)"
+        />
+      </tfoot>
     </table>
   </div>
 </template>
 
 <style scoped lang="scss">
 .leaderboard-table {
-  display: grid;
-  gap: var(--space-3);
+  max-inline-size: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--color-border-subtle);
+
+  &:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
 
   &__table {
-    width: 100%;
+    inline-size: 100%;
+    min-inline-size: 56rem;
     border-collapse: collapse;
-    border: 1px solid var(--color-border-subtle);
     background-color: var(--color-surface-raised);
     font-size: var(--font-size-sm);
   }
 
-  th,
-  td {
+  :deep(th),
+  :deep(td) {
     padding: var(--space-2);
     border-block-end: 1px solid var(--color-border-subtle);
-    text-align: start;
     vertical-align: middle;
-
-    &.leaderboard-table__xp {
-      text-align: end;
-    }
   }
 
   thead th {
+    text-align: start;
     color: var(--color-text-muted);
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-bold);
     letter-spacing: 0.08em;
     text-transform: uppercase;
-  }
-
-  &__rank {
-    inline-size: 3.5rem;
-    font-family: var(--font-family-mono);
-    font-variant-numeric: tabular-nums;
-  }
-
-  &__xp {
-    font-family: var(--font-family-mono);
-    font-variant-numeric: tabular-nums;
-    text-align: end;
     white-space: nowrap;
   }
 
-  &__hero {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
+  thead th.leaderboard-table__numeric {
+    text-align: end;
   }
 
-  tbody th {
-    font-weight: inherit;
-  }
-
-  &__name {
-    overflow-wrap: anywhere;
-  }
-
-  &__row--me {
-    background-color: var(--color-surface-overlay);
-    box-shadow: inset var(--space-1) 0 0 var(--color-accent);
-    font-weight: var(--font-weight-bold);
-  }
-
-  &__row:focus {
-    outline: 2px solid var(--color-focus-ring);
-    outline-offset: -2px;
+  &__separator td {
+    color: var(--color-text-muted);
+    font-style: italic;
+    text-align: center;
+    border-block-start: 1px dashed var(--color-border-strong);
   }
 
   @include bp.from("md") {
-    th,
-    td {
+    :deep(th),
+    :deep(td) {
       padding: var(--space-3) var(--space-4);
-    }
-
-    &__table {
-      font-size: var(--font-size-md);
     }
   }
 }
