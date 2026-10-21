@@ -3,7 +3,8 @@
  * One hero of the ranking (CA2, CA6, CA8). A click on the line, or Enter /
  * Space on its toggle button, expands it in place with `RankingRowDetail`;
  * it never opens a profile. My heroes carry a "You" badge; `aria-current`
- * is kept for the line "Jump to my rank" targets.
+ * is kept for the line "Jump to my rank" targets. Lines whose XP is not
+ * consolidated yet carry an "XP pending" badge (CA11).
  */
 import { computed } from "vue";
 import UiBadge, { BadgeSize, BadgeTone } from "~/shared/ui/UiBadge.vue";
@@ -75,7 +76,14 @@ function toggle(): void {
     <th scope="row" class="ranking-row__hero">{{ entry.heroName }}</th>
     <td>{{ HERO_CLASS_LABELS[entry.heroClass] ?? entry.heroClass }}</td>
     <td class="ranking-row__number">{{ entry.level }}</td>
-    <td class="ranking-row__number">{{ formatCount(entry.totalXp) }}</td>
+    <td class="ranking-row__number">
+      <span class="ranking-row__xp">
+        {{ formatCount(entry.totalXp) }}
+        <UiBadge v-if="entry.isPending" :tone="BadgeTone.ARCANE" :size="BadgeSize.SM"
+          >XP pending</UiBadge
+        >
+      </span>
+    </td>
     <td class="ranking-row__number">{{ formatCount(entry.runs) }}</td>
     <td class="ranking-row__number">{{ formatWinRate(entry.winRate) }}</td>
     <td class="ranking-row__activity">
@@ -148,6 +156,14 @@ function toggle(): void {
     font-variant-numeric: tabular-nums;
     text-align: end;
     white-space: nowrap;
+  }
+
+  &__xp {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
   }
 
   &__activity {

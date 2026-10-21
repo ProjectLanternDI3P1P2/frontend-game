@@ -1,6 +1,6 @@
 /**
- * F02 — Page classement /leaderboard complète. Acceptance tests for CA1 to CA9
- * and CA12 (CA10, CA11: next step), and the points F00 left to F02.
+ * F02 — Page classement /leaderboard complète. Acceptance tests for CA1 to
+ * CA13, and the points F00 left to F02.
  */
 import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -360,11 +360,12 @@ describe("F02", () => {
       const wrapper = mountPage();
       await settle();
 
-      const pinned = wrapper
-        .get("tfoot")
-        .findAll("tr")
-        .filter((row) => row.text().includes("You"));
-      expect(pinned.map(rankOf)).toEqual(["7", "58", "210"]);
+      // #7 (above the page) first, then the separator, then #58 and #210.
+      const rows = wrapper.get("tfoot").findAll("tr");
+      const labels = rows.map((row) =>
+        /positions between/.test(row.text()) ? "separator" : rankOf(row),
+      );
+      expect(labels).toEqual(["7", "separator", "58", "210"]);
       expect(wrapper.get("tfoot").text()).toContain(
         "27 positions between rank 30 and yours",
       );
@@ -749,6 +750,201 @@ describe("F02", () => {
     });
   });
 
+  describe("CA10 — page states", () => {
+    it("CA10: loading shows skeleton lines, announced by aria-live", async () => {
+      const api = apiStub({
+        getRanking: vi.fn().mockReturnValue(new Promise(() => {})),
+      });
+      const wrapper = mountPage(api);
+      await flushPromises();
+
+      const skeleton = wrapper.get('[data-testid="ranking-skeleton"]');
+      expect(skeleton.attributes("aria-hidden")).toBe("true");
+      expect(skeleton.findAll(".ranking-skeleton__row")).toHaveLength(10);
+      expect(wrapper.get('[aria-live="polite"]').text()).toMatch(/loading/i);
+      expect(wrapper.find("table").exists()).toBe(false);
+    });
+
+    it("CA10: an error shows role=alert with Retry, which reads again", async () => {
+      const api = simulated(MockScenario.ERROR);
+      const read = vi.spyOn(api, "getRanking");
+      const wrapper = mountPage(api);
+      await settle();
+
+      expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+      expect(wrapper.find('[data-testid="ranking-skeleton"]').exists()).toBe(false);
+      await button(wrapper, "Retry")!.trigger("click");
+      await settle();
+      expect(read).toHaveBeenCalledTimes(2);
+    });
+
+    it("CA10: a new empty season offers Enter a dungeon and the previous season's board", async () => {
+      route.query = { period: "season" };
+      const wrapper = mountPage(simulated(MockScenario.EMPTY));
+      await settle();
+
+      expect(wrapper.text()).toContain("No ranked run in Season 4 yet");
+      expect(wrapper.text()).toMatch(/no hero/i);
+      expect(wrapper.get('a[href="/dungeon"]').text()).toBe("Enter a dungeon");
+      await button(wrapper, "Season 3 final board")!.trigger("click");
+      await settle();
+      expect(route.query.period).toBeUndefined();
+    });
+
+    it("CA10: a class filter without any hero of mine shows a banner with Clear class filter", async () => {
+      const api = apiStub({
+        getRanking: vi
+          .fn()
+          .mockResolvedValue(
+            ranking({ entries: [entry(1, "p-1")], totalCount: 1, me: [] }),
+          ),
+      });
+      route.query = { class: "mage", period: "season" };
+      const wrapper = mountPage(api);
+      await settle();
+
+      expect(wrapper.text()).toContain("You have no Mage hero ranked in Season 3");
+      await button(wrapper, "Clear class filter")!.trigger("click");
+      await settle();
+      expect(route.query.class).toBeUndefined();
+      expect(route.query.period).toBe("season");
+    });
+  });
+
+  describe("CA11 — ranking status", () => {
+    it("CA11: LAGGING shows Ranking is behind in three columns, and XP pending lines", async () => {
+      const wrapper = mountPage(simulated(MockScenario.LAGGING));
+      await settle();
+
+      const banner = wrapper.get('[data-status="lagging"]');
+      expect(banner.text()).toContain("Ranking is behind");
+      expect(banner.findAll("dt").map((dt) => dt.text())).toEqual([
+        "Certain",
+        "Still uncertain",
+        "What you can do",
+      ]);
+      expect(banner.text()).toContain("7 min");
+      expect(banner.find("time[datetime]").exists()).toBe(true);
+      expect(wrapper.get("tbody").text()).toContain("XP pending");
+      expect(wrapper.findAll("tbody tr")).toHaveLength(10);
+    });
+
+    it("CA11: REBUILDING shows a progress bar and « as of »", async () => {
+      const wrapper = mountPage(simulated(MockScenario.REBUILDING));
+      await settle();
+
+      const banner = wrapper.get('[data-status="rebuilding"]');
+      expect(banner.text()).toContain("Ranking is being rebuilt from facts");
+      expect(banner.get("progress").attributes("value")).toBe("62");
+      expect(banner.text()).toMatch(/as of .*UTC/);
+      expect(wrapper.findAll("tbody tr")).toHaveLength(10);
+    });
+
+    it("CA11: FROZEN shows when and why", async () => {
+      const wrapper = mountPage(simulated(MockScenario.FROZEN));
+      await settle();
+
+      const banner = wrapper.get('[data-status="frozen"]');
+      expect(banner.text()).toContain("Ranking is frozen");
+      expect(banner.text()).toMatch(/Frozen since .*UTC/);
+      expect(banner.text()).toContain("rewards are being audited");
+      expect(wrapper.findAll("tbody tr")).toHaveLength(10);
+    });
+
+    it("CA11: LIVE shows no status banner", async () => {
+      const wrapper = mountPage();
+      await settle();
+
+      expect(wrapper.find("[data-status]").exists()).toBe(false);
+    });
+  });
+
+  describe("CA13 — accessibility and mobile", () => {
+    it("CA13: one h1, scope=col headers, a focusable scroll container around the table only", async () => {
+      const wrapper = mountPage();
+      await settle();
+
+      expect(wrapper.findAll("h1")).toHaveLength(1);
+      const headers = wrapper.findAll("thead th");
+      expect(headers.every((th) => th.attributes("scope") === "col")).toBe(true);
+      // The table scrolls inside its own region, keyboard reachable.
+      const region = wrapper.get(".leaderboard-table");
+      expect(region.element.firstElementChild?.tagName).toBe("TABLE");
+      expect(region.attributes("role")).toBe("region");
+      expect(region.attributes("tabindex")).toBe("0");
+      expect(region.attributes("aria-label")).toBeTruthy();
+      // The filters and pagination are outside the scroll container.
+      expect(region.find(".ranking-pagination").exists()).toBe(false);
+      expect(wrapper.find(".ranking-pagination").exists()).toBe(true);
+    });
+
+    it("CA13: my lines and medals never rely on colour alone", async () => {
+      const wrapper = mountPage();
+      await settle();
+
+      const mine = wrapper.findAll("tbody tr.ranking-row--me");
+      expect(mine.length).toBeGreaterThan(0);
+      expect(mine.every((row) => row.text().includes("You"))).toBe(true);
+      expect(wrapper.find('tbody [aria-label="Gold medal"]').exists()).toBe(true);
+    });
+
+    it("CA13: Jump to my rank does not animate the scroll under reduced motion", async () => {
+      vi.stubGlobal("matchMedia", (q: string) => ({ matches: q.includes("reduce") }));
+      route.query = { page: "3" };
+      const scroll = vi.fn();
+      Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+        value: scroll,
+        configurable: true,
+        writable: true,
+      });
+      const wrapper = mountPage();
+      await settle();
+
+      await button(wrapper, "Jump to my rank")!.trigger("click");
+      await settle();
+      expect(scroll).toHaveBeenCalledWith(
+        expect.objectContaining({ behavior: "auto" }),
+      );
+      delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    });
+  });
+
+  describe("Step 1 fixes", () => {
+    it("CA7: a jump whose page fails to load never steals the focus later", async () => {
+      const api = simulated();
+      route.query = { page: "3" };
+      const wrapper = mountPage(api);
+      await settle();
+      vi.spyOn(api, "getRanking").mockRejectedValueOnce(new Error("page down"));
+
+      await button(wrapper, "Jump to my rank")!.trigger("click");
+      await settle();
+      expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+
+      await button(wrapper, "Retry")!.trigger("click");
+      await settle();
+      expect(wrapper.findAll("tbody tr").map(rankOf)).toContain("7");
+      expect((document.activeElement as HTMLElement | null)?.dataset.heroId).toBe(
+        undefined,
+      );
+    });
+
+    it("CA7: a filter changed during the search of my page cancels the jump", async () => {
+      const api = simulated();
+      route.query = { class: "warrior", page: "3" };
+      const wrapper = mountPage(api);
+      await settle();
+
+      await button(wrapper, "Jump to my rank")!.trigger("click");
+      route.query = { class: "shaman" };
+      await settle(6);
+      expect(route.query).toEqual({ class: "shaman" });
+      expect((document.activeElement as HTMLElement | null)?.dataset.heroId).toBe(
+        undefined,
+      );
+    });
+  });
+
   describe("Points left by F00", () => {
     it("F00: a route change that leaves the query unchanged (?mock=) does not read again", async () => {
       const api = simulated();
@@ -788,6 +984,353 @@ describe("F02", () => {
       await settle();
 
       expect(wrapper.find('tr[tabindex="-1"]').exists()).toBe(false);
+    });
+  });
+
+  describe("Pass 2 (tester): CA6 separator, CA10, CA11, CA13 through ?mock=", () => {
+    /** Mounts the page without an injected API: `?mock=` picks the scenario. */
+    function mountFromUrl() {
+      const wrapper = mount(LeaderboardPage, {
+        attachTo: document.body,
+        global: { stubs },
+      });
+      mounted.push(wrapper);
+      return wrapper;
+    }
+
+    /** The simulated delay is about 300 ms. */
+    async function settleSimulated(): Promise<void> {
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      await settle();
+    }
+
+    function footLabels(wrapper: VueWrapper): string[] {
+      return wrapper
+        .get("tfoot")
+        .findAll("tr")
+        .map((row) =>
+          /positions? between/.test(row.text()) ? row.text().trim() : rankOf(row),
+        );
+    }
+
+    it("CA6: on every page, the separator directly precedes the hero it counts to", async () => {
+      const wrapper = mountPage();
+      await settle();
+      for (let page = 1; page <= 22; page += 1) {
+        route.query = page === 1 ? {} : { page: String(page) };
+        await settle();
+        const ranks = wrapper.findAll("tbody tr").map((row) => Number(rankOf(row)));
+        const firstRank = ranks[0]!;
+        const lastRank = ranks.at(-1)!;
+        if (!wrapper.find("tfoot").exists()) continue;
+        const labels = footLabels(wrapper);
+        const index = labels.findIndex((label) => /between/.test(label));
+        const pinned = labels.filter((label) => !/between/.test(label)).map(Number);
+        // Pinned heroes stay in rank order.
+        expect(pinned, `page ${page}`).toEqual([...pinned].sort((a, b) => a - b));
+        if (index === -1) {
+          // No separator only when none of my pinned heroes is below the page
+          // (or the next one directly follows it).
+          expect(
+            pinned.every((rank) => rank < firstRank || rank === lastRank + 1),
+            `page ${page}`,
+          ).toBe(true);
+          continue;
+        }
+        const match = /^(\d+) positions? between rank (\d+) and yours$/.exec(
+          labels[index]!,
+        );
+        expect(match, `page ${page}: ${labels[index]}`).not.toBeNull();
+        const [, n, x] = match!;
+        expect(Number(x), `page ${page}`).toBe(lastRank);
+        const yours = Number(labels[index + 1]);
+        expect(yours - lastRank - 1, `page ${page}`).toBe(Number(n));
+        // Everything before the separator is above the page, everything after below.
+        expect(
+          labels
+            .slice(0, index)
+            .map(Number)
+            .every((r) => r < firstRank),
+        ).toBe(true);
+        expect(
+          labels
+            .slice(index + 1)
+            .map(Number)
+            .every((r) => r > lastRank),
+        ).toBe(true);
+      }
+    });
+
+    it("CA6: on the last page (#211-#220), all my heroes are above: no misleading separator", async () => {
+      route.query = { page: "22" };
+      const wrapper = mountPage();
+      await settle();
+
+      expect(footLabels(wrapper)).toEqual(["7", "58", "210"]);
+    });
+
+    it("CA6: with a class filter, the separator still precedes my hero below the page", async () => {
+      route.query = { class: "shaman" };
+      const wrapper = mountPage();
+      await settle();
+
+      const labels = footLabels(wrapper);
+      const index = labels.findIndex((label) => /between/.test(label));
+      expect(index).toBeGreaterThanOrEqual(0);
+      expect(labels[index + 1]).toBe("58");
+    });
+
+    it("CA10: ?mock=empty, a new season: both actions are offered on opening the page", async () => {
+      route.query = { mock: "empty" };
+      const wrapper = mountFromUrl();
+      await settleSimulated();
+
+      expect(wrapper.text()).toContain("No ranked run in Season 4 yet");
+      expect(wrapper.get('a[href="/dungeon"]').text()).toBe("Enter a dungeon");
+      expect(button(wrapper, "Season 3 final board")).toBeDefined();
+    });
+
+    it("CA10: ?mock=empty, period Season: the previous season action switches the period", async () => {
+      route.query = { mock: "empty", period: "season" };
+      const wrapper = mountFromUrl();
+      await settleSimulated();
+
+      await button(wrapper, "Season 3 final board")!.trigger("click");
+      await settleSimulated();
+      expect(route.query).toEqual({ mock: "empty" });
+      expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    });
+
+    it("CA10: ?mock=error shows role=alert holding Retry, and no table", async () => {
+      route.query = { mock: "error" };
+      const wrapper = mountFromUrl();
+      await settleSimulated();
+
+      const alert = wrapper.get('[role="alert"]');
+      expect(alert.findAll("button").map((b) => b.text())).toContain("Retry");
+      expect(wrapper.find("table").exists()).toBe(false);
+      expect(wrapper.find('[data-testid="ranking-skeleton"]').exists()).toBe(false);
+    });
+
+    it("CA10: while the simulated read runs, skeleton lines and a live announcement show", async () => {
+      route.query = { mock: "played" };
+      const wrapper = mountFromUrl();
+      await flushPromises();
+
+      expect(wrapper.find('[data-testid="ranking-skeleton"]').exists()).toBe(true);
+      const live = wrapper.get('[aria-live="polite"]');
+      expect(live.text()).toMatch(/loading/i);
+      await settleSimulated();
+      expect(wrapper.find('[data-testid="ranking-skeleton"]').exists()).toBe(false);
+      // The live region stays in the tree, so the next loading is announced.
+      expect(wrapper.find('[aria-live="polite"]').exists()).toBe(true);
+      expect(wrapper.findAll("tbody tr")).toHaveLength(10);
+    });
+
+    it("CA10: the live region is in the page before the read starts (announced, not created)", async () => {
+      const wrapper = mountPage(
+        apiStub({ getRanking: vi.fn().mockReturnValue(new Promise(() => {})) }),
+      );
+      expect(wrapper.find('[aria-live="polite"]').exists()).toBe(true);
+    });
+
+    it("CA10: simulated data, Mage over Season 3 (my Mage is absent): banner and Clear class filter", async () => {
+      route.query = { class: "mage", period: "season" };
+      const wrapper = mountPage();
+      await settle();
+
+      expect(wrapper.text()).toContain("You have no Mage hero ranked in Season 3");
+      // The table of other Mages stays readable under the banner.
+      expect(wrapper.findAll("tbody tr").length).toBeGreaterThan(0);
+      await button(wrapper, "Clear class filter")!.trigger("click");
+      await settle();
+
+      expect(route.query).toEqual({ period: "season" });
+      expect(wrapper.text()).not.toContain("You have no");
+      expect(
+        wrapper.findAll("tbody tr.ranking-row--me, tfoot tr.ranking-row--me").length,
+      ).toBeGreaterThan(0);
+    });
+
+    it("CA10: no banner when a class filter still holds one of my heroes", async () => {
+      route.query = { class: "warrior" };
+      const wrapper = mountPage();
+      await settle();
+
+      expect(wrapper.text()).not.toContain("You have no");
+      expect(button(wrapper, "Clear class filter")).toBeUndefined();
+    });
+
+    it("CA10: the week period names the period in the banner", async () => {
+      const api = apiStub({
+        getRanking: vi
+          .fn()
+          .mockResolvedValue(ranking({ entries: [entry(1)], totalCount: 1, me: [] })),
+      });
+      route.query = { class: "shaman", period: "week" };
+      const wrapper = mountPage(api);
+      await settle();
+
+      expect(wrapper.text()).toContain("You have no Shaman hero ranked in This week");
+    });
+
+    it("CA11: ?mock=lagging shows lagSeconds and correctUpTo, and XP pending exactly on isPending lines", async () => {
+      vi.useFakeTimers({ now: new Date("2026-10-21T12:00:00Z"), toFake: ["Date"] });
+      route.query = { mock: "lagging" };
+      const wrapper = mountFromUrl();
+      await settleSimulated();
+      const response = await simulated(MockScenario.LAGGING).getRanking(
+        defaultRankingQuery(ME),
+      );
+
+      const banner = wrapper.get('[data-status="lagging"]');
+      expect(banner.text()).toContain("Ranking is behind");
+      expect(banner.text()).toContain("7 min");
+      expect(banner.get("time").attributes("datetime")).toBe(
+        response.statusDetail.correctUpTo,
+      );
+      const flagged = wrapper
+        .findAll("tbody tr.ranking-row")
+        .filter((row) => row.text().includes("XP pending"))
+        .map(rankOf);
+      const expected = response.entries
+        .filter((e) => e.isPending)
+        .map((e) => String(e.rank));
+      expect(expected.length).toBeGreaterThan(0);
+      expect(flagged).toEqual(expected);
+      // Readable: the table, pagination and my pinned heroes are all there.
+      expect(wrapper.findAll("tbody tr")).toHaveLength(10);
+      expect(wrapper.text()).toContain("10 of 220 · page 1 of 22");
+      expect(wrapper.find("tfoot").exists()).toBe(true);
+    });
+
+    it("CA11: ?mock=rebuilding: progress bar at 62 and « as of » the snapshot", async () => {
+      vi.useFakeTimers({ now: new Date("2026-10-21T12:00:00Z"), toFake: ["Date"] });
+      route.query = { mock: "rebuilding" };
+      const wrapper = mountFromUrl();
+      await settleSimulated();
+      const response = await simulated(MockScenario.REBUILDING).getRanking(
+        defaultRankingQuery(ME),
+      );
+
+      const banner = wrapper.get('[data-status="rebuilding"]');
+      expect(banner.text()).toContain("Ranking is being rebuilt from facts");
+      const bar = banner.get("progress");
+      expect(bar.attributes("value")).toBe("62");
+      expect(banner.text()).toMatch(/as of/);
+      expect(banner.get("time").attributes("datetime")).toBe(
+        response.statusDetail.snapshotAt,
+      );
+      expect(wrapper.findAll("tbody tr")).toHaveLength(10);
+    });
+
+    it("CA11: ?mock=frozen shows frozenAt and the reason, the table stays usable", async () => {
+      vi.useFakeTimers({ now: new Date("2026-10-21T12:00:00Z"), toFake: ["Date"] });
+      route.query = { mock: "frozen" };
+      const wrapper = mountFromUrl();
+      await settleSimulated();
+      const response = await simulated(MockScenario.FROZEN).getRanking(
+        defaultRankingQuery(ME),
+      );
+
+      const banner = wrapper.get('[data-status="frozen"]');
+      expect(banner.text()).toContain("Ranking is frozen");
+      expect(banner.get("time").attributes("datetime")).toBe(
+        response.statusDetail.frozenAt,
+      );
+      expect(banner.text()).toContain(response.statusDetail.reason!);
+      await button(wrapper, "Next page")!.trigger("click");
+      await settleSimulated();
+      expect(rankOf(wrapper.findAll("tbody tr")[0]!)).toBe("11");
+      expect(wrapper.find('[data-status="frozen"]').exists()).toBe(true);
+    });
+
+    it("CA11: missing details never print null/undefined/NaN", async () => {
+      for (const status of ["lagging", "rebuilding", "frozen"] as const) {
+        const api = apiStub({
+          getRanking: vi
+            .fn()
+            .mockResolvedValue(
+              ranking({ entries: [entry(1)], totalCount: 1, status } as never),
+            ),
+        });
+        const wrapper = mountPage(api);
+        await settle();
+        const banner = wrapper.get(`[data-status="${status}"]`);
+        expect(banner.text(), status).not.toMatch(/null|undefined|NaN|Invalid/);
+      }
+    });
+
+    it("CA11: an out-of-range rebuild progress is clamped", async () => {
+      const api = apiStub({
+        getRanking: vi.fn().mockResolvedValue(
+          ranking({
+            entries: [entry(1)],
+            totalCount: 1,
+            status: "rebuilding",
+            statusDetail: {
+              lagSeconds: null,
+              pendingCount: null,
+              correctUpTo: null,
+              rebuildProgress: 3,
+              snapshotAt: null,
+              frozenAt: null,
+              reason: null,
+            },
+          } as never),
+        ),
+      });
+      const wrapper = mountPage(api);
+      await settle();
+
+      expect(wrapper.get("progress").attributes("value")).toBe("100");
+    });
+
+    it("CA13: every state keeps exactly one h1 (loading, error, empty, statuses)", async () => {
+      for (const mock of ["empty", "error", "lagging", "rebuilding", "frozen"]) {
+        route.query = { mock };
+        const wrapper = mountFromUrl();
+        expect(wrapper.findAll("h1"), `${mock} loading`).toHaveLength(1);
+        await settleSimulated();
+        expect(wrapper.findAll("h1"), mock).toHaveLength(1);
+        wrapper.unmount();
+        mounted.splice(mounted.indexOf(wrapper), 1);
+      }
+    });
+
+    it("CA13: status banners and the pending badge carry text, never colour alone", async () => {
+      route.query = { mock: "lagging" };
+      const wrapper = mountFromUrl();
+      await settleSimulated();
+
+      const banner = wrapper.get('[data-status="lagging"]');
+      expect(banner.attributes("role")).toBe("status");
+      expect(banner.text().trim().length).toBeGreaterThan(20);
+      const progress = await (async () => {
+        route.query = { mock: "rebuilding" };
+        const rebuilding = mountFromUrl();
+        await settleSimulated();
+        return rebuilding.get("progress");
+      })();
+      const name =
+        progress.attributes("aria-label") ??
+        progress.attributes("aria-labelledby") ??
+        (progress.element.id
+          ? document.querySelector(`label[for="${progress.element.id}"]`)?.textContent
+          : null);
+      expect(name).toBeTruthy();
+    });
+
+    it("CA13: in the empty state, Enter a dungeon and the previous-season action are keyboard reachable", async () => {
+      route.query = { mock: "empty", period: "season" };
+      const wrapper = mountFromUrl();
+      await settleSimulated();
+
+      const link = wrapper.get('a[href="/dungeon"]');
+      expect(link.attributes("tabindex")).not.toBe("-1");
+      const previous = button(wrapper, "Season 3 final board")!;
+      expect(previous.attributes("type")).toBe("button");
+      expect(previous.attributes("disabled")).toBeUndefined();
     });
   });
 });

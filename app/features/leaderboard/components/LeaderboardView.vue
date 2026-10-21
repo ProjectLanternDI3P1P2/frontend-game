@@ -17,8 +17,10 @@ import {
 import {
   DEMO_PLAYER_NAME,
   EmptyReason,
+  classFilterHidesMe,
   clearedFilters,
   jumpTargetHeroId,
+  noHeroOfClassLabel,
   pageCount,
   pinnedHeroes,
   progressionPath,
@@ -27,13 +29,23 @@ import {
   rankingTitle,
   withChange,
 } from "../rankingViewRules";
-import { LoadStatus, RankingSort, type RankingQuery } from "../types";
+import UiNotice, { NoticeTone } from "~/shared/ui/UiNotice.vue";
+import {
+  LoadStatus,
+  RankingPeriod,
+  RankingSort,
+  RankingStatus,
+  type RankingQuery,
+} from "../types";
 import ConsolidationStatus from "./ConsolidationStatus.vue";
 import LeaderboardLoadState from "./LeaderboardLoadState.vue";
 import LeaderboardTable from "./LeaderboardTable.vue";
 import RankingFilters from "./RankingFilters.vue";
 import RankingHeader from "./RankingHeader.vue";
+import RankingEmptyState from "./RankingEmptyState.vue";
 import RankingPagination from "./RankingPagination.vue";
+import RankingSkeleton from "./RankingSkeleton.vue";
+import RankingStatusBanner from "./RankingStatusBanner.vue";
 
 const props = defineProps<{ currentPlayerId: string }>();
 
@@ -119,37 +131,65 @@ watch(ranking, (response) => {
   if (query.value.page > last) goToPage(last);
 });
 
+// ------------------------------------------------------------------ states
+
+const rankingStatus = computed(() => ranking.value?.status ?? RankingStatus.LIVE);
+/** The class filter alone leaves none of my heroes (CA10 banner). */
+const noHeroOfClass = computed(
+  () => status.value === LoadStatus.READY && classFilterHidesMe(query.value, me.value),
+);
+
+function clearClassFilter(): void {
+  change({ heroClass: null });
+}
+
+/** The new season is empty: the all-time board still holds the previous one. */
+function showPreviousSeason(): void {
+  change({ period: RankingPeriod.ALL_TIME });
+}
+
 // ------------------------------------------------------------------ jump
 
 const table = ref<InstanceType<typeof LeaderboardTable> | null>(null);
 const pendingJump = ref<string | null>(null);
+/** The query key the pending jump waits for; any other query cancels it. */
+let jumpKey: string | null = null;
 const jumping = ref(false);
+
+function cancelJump(): void {
+  pendingJump.value = null;
+  jumpKey = null;
+}
 
 async function focusPendingJump(): Promise<void> {
   const heroId = pendingJump.value;
   if (!heroId) return;
   await nextTick();
-  if (table.value?.focusHero(heroId)) pendingJump.value = null;
+  if (table.value?.focusHero(heroId)) cancelJump();
 }
 
 async function jumpToMyRank(): Promise<void> {
   const target = best.value;
   if (!target) return;
   pendingJump.value = target.heroId;
+  jumpKey = rankingQueryKey(request.value);
   if (entries.value.some((entry) => entry.heroId === target.heroId)) {
     await focusPendingJump();
     return;
   }
   jumping.value = true;
   try {
+    const startKey = jumpKey;
     const page = await findPageOfRank(target.rank);
+    // The user changed the ranking meanwhile: the jump no longer applies.
+    if (rankingQueryKey(request.value) !== startKey) throw new Error("stale jump");
     const next = { ...query.value, sort: RankingSort.TOTAL_XP, page };
-    const unchanged =
-      rankingQueryKey({ ...request.value, ...next }) === rankingQueryKey(request.value);
+    jumpKey = rankingQueryKey({ ...request.value, ...next });
+    const unchanged = jumpKey === startKey;
     query.value = next;
     if (unchanged) await focusPendingJump();
   } catch {
-    pendingJump.value = null;
+    cancelJump();
   } finally {
     jumping.value = false;
   }
@@ -158,6 +198,18 @@ async function jumpToMyRank(): Promise<void> {
 watch(entries, () => {
   if (pendingJump.value && status.value === LoadStatus.READY) void focusPendingJump();
 });
+
+// A jump never steals the focus later: it is dropped when its page fails to
+// load or when the query changes for another reason.
+watch(status, (value) => {
+  if (value === LoadStatus.ERROR || value === LoadStatus.EMPTY) cancelJump();
+});
+watch(
+  () => rankingQueryKey(request.value),
+  (key) => {
+    if (pendingJump.value && jumpKey !== null && key !== jumpKey) cancelJump();
+  },
+);
 </script>
 
 <template>
@@ -227,12 +279,33 @@ watch(entries, () => {
             >Clear filters</UiButton
           >
         </div>
-        <div v-else-if="status === LoadStatus.EMPTY" class="leaderboard__empty">
-          <p class="leaderboard__empty-text">
-            No hero has been ranked yet. Finish a dungeon to enter the leaderboard.
-          </p>
-        </div>
+        <RankingEmptyState
+          v-else-if="status === LoadStatus.EMPTY"
+          :season="ranking?.season ?? null"
+          :can-show-previous="query.period !== RankingPeriod.ALL_TIME"
+          @previous="showPreviousSeason"
+        />
+        <RankingSkeleton v-else-if="status === LoadStatus.LOADING" />
         <template v-else-if="status === LoadStatus.READY">
+          <RankingStatusBanner
+            :status="rankingStatus"
+            :detail="ranking?.statusDetail ?? null"
+          />
+          <UiNotice
+            v-if="noHeroOfClass"
+            :tone="NoticeTone.INFO"
+            class="leaderboard__notice"
+          >
+            <p class="leaderboard__notice-text">
+              {{ noHeroOfClassLabel(query, seasonLabel) }}
+            </p>
+            <UiButton
+              :size="ButtonSize.SM"
+              :variant="ButtonVariant.SECONDARY"
+              @click="clearClassFilter"
+              >Clear class filter</UiButton
+            >
+          </UiNotice>
           <LeaderboardTable
             ref="table"
             :entries="entries"
@@ -311,6 +384,10 @@ watch(entries, () => {
 
   &__empty-text {
     margin: 0;
+  }
+
+  &__notice-text {
+    margin: 0 0 var(--space-2);
   }
 
   @include bp.from("md") {

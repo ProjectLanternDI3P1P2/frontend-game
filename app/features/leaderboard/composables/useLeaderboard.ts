@@ -51,6 +51,13 @@ export function useLeaderboard(
   /** True while re-reading over data already on screen. */
   const refreshing = ref(false);
   let controller: AbortController | null = null;
+  /** The reads of the current `findPageOfRank`, cancelled by a new one. */
+  let probes: AbortController | null = null;
+
+  function cancelProbes(): void {
+    probes?.abort();
+    probes = null;
+  }
 
   const hasData = computed(
     () => status.value === LoadStatus.READY || status.value === LoadStatus.EMPTY,
@@ -62,6 +69,7 @@ export function useLeaderboard(
 
   async function load(): Promise<void> {
     controller?.abort();
+    cancelProbes();
     const current = new AbortController();
     controller = current;
     errorMessage.value = "";
@@ -95,31 +103,36 @@ export function useLeaderboard(
   /**
    * The page of the ranking ordered by total XP (current class, period and
    * search) that holds `rank`. Without filter, it is computed; otherwise the
-   * pages are probed by dichotomy (ranks grow along the pages).
+   * pages are probed by dichotomy (ranks grow along the pages). The probes
+   * are aborted by a new search, a new read and unmounting (rejects then).
    */
   async function findPageOfRank(rank: number): Promise<number> {
     const base = { ...toValue(query), sort: RankingSort.TOTAL_XP };
     if (isPlainRankOrder(base)) return pageOfRank(rank, base.pageSize);
+    cancelProbes();
+    const current = new AbortController();
+    probes = current;
     let low = 1;
     let high = pageCount(ranking.value?.totalCount ?? 0, base.pageSize);
     while (low < high) {
       const middle = Math.floor((low + high) / 2);
-      const probe = await api.getRanking({ ...base, page: middle });
+      const probe = await api.getRanking({ ...base, page: middle }, current.signal);
+      current.signal.throwIfAborted();
       const last = probe?.entries?.at(-1)?.rank ?? Infinity;
       if (rank > last) low = middle + 1;
       else high = middle;
     }
+    if (probes === current) probes = null;
     return low;
   }
 
   // A new filter, search, sort or page reads again (the previous answer is
   // ignored if it arrives late). The key ignores anything else in the route
-  // (e.g. `?mock=`) and re-evaluations that leave the query unchanged.
+  // (e.g. `?mock=`) and re-evaluations that leave the query unchanged: a
+  // watched string only triggers when it changes.
   watch(
     () => rankingQueryKey(toValue(query)),
-    (key, previous) => {
-      if (key !== previous) void load();
-    },
+    () => void load(),
   );
 
   if (getCurrentInstance() && options.immediate !== false) {
@@ -127,6 +140,7 @@ export function useLeaderboard(
     onBeforeUnmount(() => {
       controller?.abort();
       controller = null;
+      cancelProbes();
     });
   }
 

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
  * One page of the hero ranking in a semantic table (CA2, CA6, CA8), then my
- * heroes absent from the page, pinned in the table foot after a separator.
+ * heroes absent from the page, pinned in the table foot: those above the page
+ * first, then the separator and those below it.
  * Only the table scrolls horizontally on a narrow screen.
  */
 import { computed, ref } from "vue";
@@ -44,10 +45,24 @@ defineEmits<{ toggle: [heroId: string] }>();
 
 const root = ref<HTMLElement | null>(null);
 
+/** My pinned heroes ranked above the page: shown first, without a separator. */
+const above = computed(() => {
+  const first = props.entries[0];
+  return first ? props.pinned.filter((entry) => entry.rank < first.rank) : [];
+});
+
+/** My pinned heroes ranked below the page, by rank. */
+const below = computed(() => {
+  const first = props.entries[0];
+  return first
+    ? props.pinned.filter((entry) => entry.rank >= first.rank)
+    : props.pinned;
+});
+
+/** "<N> positions between rank <X> and yours": X ends the page, yours is `below[0]`. */
 const separator = computed(() => {
   const last = props.entries.at(-1);
-  // The first of my heroes below the page (one above it needs no gap).
-  const first = last && props.pinned.find((entry) => entry.rank > last.rank);
+  const first = below.value[0];
   if (!first || !last) return "";
   const between = positionsBetween(last.rank, first.rank);
   if (between === 0) return "";
@@ -115,11 +130,23 @@ defineExpose({ focusHero });
         />
       </tbody>
       <tfoot v-if="pinned.length" class="leaderboard-table__pinned">
+        <RankingRow
+          v-for="entry in above"
+          :key="entry.heroId"
+          :entry="entry"
+          :current-player-id="currentPlayerId"
+          :mine="true"
+          :current="entry.heroId === targetHeroId"
+          :expanded="entry.heroId === expandedHeroId"
+          :columns="COLUMNS.length"
+          :now="now"
+          @toggle="$emit('toggle', $event)"
+        />
         <tr v-if="separator" class="leaderboard-table__separator">
           <td :colspan="COLUMNS.length">{{ separator }}</td>
         </tr>
         <RankingRow
-          v-for="entry in pinned"
+          v-for="entry in below"
           :key="entry.heroId"
           :entry="entry"
           :current-player-id="currentPlayerId"

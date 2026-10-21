@@ -199,4 +199,24 @@ describe("useLeaderboard", () => {
       expect(request.heroClass).toBe(HeroClass.SHAMAN);
     }
   });
+
+  it("aborts the probes of findPageOfRank when a new read starts", async () => {
+    const signals: AbortSignal[] = [];
+    const api = apiStub({
+      getRanking: vi.fn().mockImplementation((_q, signal?: AbortSignal) => {
+        if (signal) signals.push(signal);
+        return Promise.resolve(ranking({ totalCount: 42 }));
+      }),
+    });
+    const state = useLeaderboard(query({ heroClass: HeroClass.MAGE }), { api });
+    await state.load();
+    signals.length = 0;
+
+    const search = state.findPageOfRank(40);
+    const probe = signals.at(-1)!;
+    expect(probe).toBeInstanceOf(AbortSignal);
+    void state.load();
+    expect(probe.aborted).toBe(true);
+    await expect(search).rejects.toBeDefined();
+  });
 });

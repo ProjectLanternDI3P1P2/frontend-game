@@ -192,3 +192,66 @@ export function pinnedHeroes(
 export function progressionPath(playerId: string, heroId: string): string {
   return `/players/${encodeURIComponent(playerId)}/heroes/${encodeURIComponent(heroId)}/statistics`;
 }
+
+// ------------------------------------------------------------------ states
+
+/**
+ * The label of the previous season from its id ("season-3" → "Season 3"):
+ * the contract only gives `previousSeasonId`. Unknown shapes read
+ * "Previous season".
+ */
+export function previousSeasonLabel(
+  previousSeasonId: string | null | undefined,
+): string {
+  const number = /(\d+)\s*$/.exec(previousSeasonId ?? "")?.[1];
+  return number ? `Season ${Number(number)}` : "Previous season";
+}
+
+/** "No ranked run in Season 4 yet" (a missing season reads "this season"). */
+export function noRankedRunLabel(seasonLabel: string | null | undefined): string {
+  return `No ranked run in ${seasonLabel?.trim() || "this season"} yet`;
+}
+
+/** "You have no Warrior hero ranked in Season 3". */
+export function noHeroOfClassLabel(
+  state: Pick<RankingQuery, "heroClass" | "period">,
+  seasonLabel?: string | null,
+): string {
+  const heroClass = state.heroClass ? `${HERO_CLASS_LABELS[state.heroClass]} ` : "";
+  return `You have no ${heroClass}hero ranked in ${periodLabel(state.period, seasonLabel)}`;
+}
+
+/** True when a class filter, alone, leaves none of my heroes in the ranking. */
+export function classFilterHidesMe(
+  state: Pick<RankingQuery, "heroClass" | "search">,
+  me: readonly RankingEntry[],
+): boolean {
+  return state.heroClass !== null && state.search.trim() === "" && me.length === 0;
+}
+
+/** "21 Oct 2026, 11:53 UTC"; a missing or invalid date reads "an unknown time". */
+export function formatDateTime(iso: string | null | undefined): string {
+  const date = iso ? new Date(iso) : null;
+  if (!date || Number.isNaN(date.getTime())) return "an unknown time";
+  return `${date.toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  })} UTC`;
+}
+
+/** "45 seconds", "7 min", "2 h 5 min"; a missing lag reads "an unknown time". */
+export function formatLag(seconds: number | null | undefined): string {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) {
+    return "an unknown time";
+  }
+  const whole = Math.round(seconds);
+  if (whole < 60) return `${whole} ${whole === 1 ? "second" : "seconds"}`;
+  const minutes = Math.round(whole / 60);
+  if (minutes < 60) return `${minutes} min`;
+  const rest = minutes % 60;
+  return `${Math.floor(minutes / 60)} h${rest ? ` ${rest} min` : ""}`;
+}
