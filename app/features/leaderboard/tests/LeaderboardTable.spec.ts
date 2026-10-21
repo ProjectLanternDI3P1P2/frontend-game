@@ -1,83 +1,89 @@
 import { mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import LeaderboardTable from "../components/LeaderboardTable.vue";
-import { buildLeaderboardView } from "../leaderboardRules";
-import { entry, leaderboard, ME } from "./fixtures/leaderboardFixtures";
+import { entry, ME, NOW } from "./fixtures/leaderboardFixtures";
 
-function mountTable(meRank: number) {
-  const me = entry(meRank, ME);
-  const entries = Array.from({ length: 50 }, (_, index) =>
-    index + 1 === meRank ? me : entry(index + 1),
+function mountTable(myRanks: number[] = [], props: Record<string, unknown> = {}) {
+  const entries = Array.from({ length: 10 }, (_, index) =>
+    entry(index + 1, myRanks.includes(index + 1) ? ME : undefined),
   );
-  const view = buildLeaderboardView(leaderboard({ entries, me }), ME);
   return mount(LeaderboardTable, {
-    props: { rows: view.rows, pinnedMe: view.pinnedMe },
-    attachTo: document.body,
+    props: { entries, currentPlayerId: ME, caption: "Ranking", now: NOW, ...props },
   });
 }
 
-const originalScrollIntoView = Element.prototype.scrollIntoView;
-
-afterEach(() => {
-  Element.prototype.scrollIntoView = originalScrollIntoView;
-});
-
 describe("LeaderboardTable", () => {
-  it("renders a semantic table of rank, player and score", () => {
-    const wrapper = mountTable(7);
+  it("renders a semantic table with every ranking column", () => {
+    const wrapper = mountTable();
 
-    expect(wrapper.findAll("thead th").map((th) => th.text())).toEqual([
+    const headers = wrapper.findAll("thead th");
+    expect(headers.map((th) => th.text())).toEqual([
       "Rank",
+      "Trend",
       "Player",
-      "Score",
+      "Hero",
+      "Class",
+      "Level",
+      "Total XP",
+      "Runs",
+      "Win rate",
+      "Last activity",
     ]);
-    expect(wrapper.findAll("tbody tr")).toHaveLength(50);
-    expect(wrapper.find("tbody tr").text()).toContain("Player 1");
-    wrapper.unmount();
+    expect(headers.every((th) => th.attributes("scope") === "col")).toBe(true);
+    expect(wrapper.find("caption").text()).toBe("Ranking");
+    expect(wrapper.findAll("tbody tr")).toHaveLength(10);
+    const first = wrapper.find("tbody tr");
+    expect(first.text()).toContain("Hero 1");
+    expect(first.text()).toContain("9,999");
+    expect(first.text()).toContain("50%");
+    expect(first.text()).toContain("3 min ago");
   });
 
-  it("marks my line with a 'You' badge and aria-current, not only a colour", () => {
-    const wrapper = mountTable(7);
-    const mine = wrapper.findAll('tbody tr[aria-current="true"]');
+  it("marks each of my heroes with 'You', and only the target line with aria-current", () => {
+    const wrapper = mountTable([3, 7], { targetHeroId: "hero-3" });
 
-    expect(mine).toHaveLength(1);
-    expect(mine[0]!.text()).toContain("You");
-    expect(mine[0]!.text()).toContain("7");
-    expect(wrapper.find(".leaderboard-table__pinned").exists()).toBe(false);
-    wrapper.unmount();
+    const mine = wrapper
+      .findAll("tbody tr")
+      .filter((row) => row.text().includes("You"));
+    expect(mine.map((row) => row.find("td").text())).toEqual(["3", "7"]);
+    const current = wrapper.findAll('tbody tr[aria-current="true"]');
+    expect(current).toHaveLength(1);
+    expect(current[0]!.find("td").text()).toBe("3");
+    expect(wrapper.find("tbody tr[tabindex]").exists()).toBe(false);
   });
 
-  it("scrolls to my line and focuses it on 'Show my position'", async () => {
-    const scrollIntoView = vi.fn();
-    Element.prototype.scrollIntoView = scrollIntoView;
-    const wrapper = mountTable(30);
+  it("never takes a deleted player's hero for mine", () => {
+    const wrapper = mount(LeaderboardTable, {
+      props: { entries: [entry(1, null)], currentPlayerId: "", caption: "Ranking" },
+    });
 
-    const button = wrapper
-      .findAll("button")
-      .find((b) => b.text() === "Show my position");
-    await button!.trigger("click");
-
-    const mine = wrapper.get('tbody tr[aria-current="true"]');
-    expect(scrollIntoView).toHaveBeenCalled();
-    expect(document.activeElement).toBe(mine.element);
-    wrapper.unmount();
+    expect(wrapper.text()).toContain("Anonymous hero");
+    expect(wrapper.text()).not.toContain("You");
   });
 
-  it("pins my line under the table with my real rank outside the top 50", async () => {
-    const wrapper = mountTable(132);
+  it("pins my heroes in the foot after the separator", () => {
+    const wrapper = mountTable([], { pinned: [entry(58, ME)] });
 
-    expect(wrapper.findAll("tbody tr")).toHaveLength(50);
-    expect(wrapper.find('tbody [aria-current="true"]').exists()).toBe(false);
-    const pinned = wrapper.get('.leaderboard-table__pinned[aria-current="true"]');
-    expect(pinned.text()).toContain("132");
-    expect(pinned.text()).toContain("You");
-    expect(pinned.text()).toContain("9,868");
+    const foot = wrapper.get("tfoot");
+    expect(foot.text()).toContain("47 positions between rank 10 and yours");
+    expect(foot.text()).toContain("Hero 58");
+    expect(foot.text()).toContain("You");
+  });
 
-    await wrapper
-      .findAll("button")
-      .find((b) => b.text() === "Show my position")!
-      .trigger("click");
-    expect(document.activeElement).toBe(pinned.element);
-    wrapper.unmount();
+  it("emits toggle from a line click and from its toggle button, once each", async () => {
+    const wrapper = mountTable();
+
+    await wrapper.findAll("tbody tr")[1]!.trigger("click");
+    await wrapper.get('[data-hero-id="hero-3"]').trigger("click");
+
+    expect(wrapper.emitted("toggle")).toEqual([["hero-2"], ["hero-3"]]);
+  });
+
+  it("only scrolls the table, as a keyboard-reachable named region", () => {
+    const wrapper = mountTable();
+    const region = wrapper.get('[role="region"]');
+
+    expect(region.attributes("aria-label")).toBe("Ranking");
+    expect(region.attributes("tabindex")).toBe("0");
   });
 });

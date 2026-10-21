@@ -7,6 +7,7 @@ import LeaderboardView from "../components/LeaderboardView.vue";
 import { STATISTICS_CATALOGUE } from "../statisticsCatalogue";
 import { MockScenario, type LeaderboardApi } from "../types";
 import { GatewayError } from "~/shared/utils/gateway";
+import { SEEDED_PLAYER_ID } from "~/features/player/seededPlayer";
 
 const stubs = {
   NuxtLink: { props: ["to"], template: '<a :href="to"><slot /></a>' },
@@ -99,7 +100,7 @@ describe("HeroStatisticsView", () => {
 describe("LeaderboardLoadState", () => {
   it("keeps the live region in the tree and shows Retry for an empty Gateway message", async () => {
     const api = createSimulatedLeaderboardApi({ delayMs: 0 });
-    vi.spyOn(api, "getLeaderboard").mockRejectedValue(
+    vi.spyOn(api, "getRanking").mockRejectedValue(
       new GatewayError(500, { code: "X", message: "" }),
     );
     const wrapper = mountWith(LeaderboardView, { currentPlayerId: "me" }, api);
@@ -114,35 +115,45 @@ describe("LeaderboardLoadState", () => {
 });
 
 describe("LeaderboardView", () => {
-  it("shows the top 50, my line, the consolidation age and Refresh", async () => {
+  it("shows the first page, my hero, the consolidation age and Refresh view", async () => {
     const api = simulated(MockScenario.PLAYED);
-    const spy = vi.spyOn(api, "getLeaderboard");
-    const wrapper = mountWith(LeaderboardView, { currentPlayerId: "me" }, api);
+    const spy = vi.spyOn(api, "getRanking");
+    const wrapper = mountWith(
+      LeaderboardView,
+      { currentPlayerId: SEEDED_PLAYER_ID },
+      api,
+    );
     await settle();
 
     expect(wrapper.findAll("h1")).toHaveLength(1);
-    expect(wrapper.findAll("tbody tr")).toHaveLength(50);
-    expect(wrapper.get('tr[aria-current="true"]').text()).toContain("You");
+    expect(wrapper.findAll("tbody tr")).toHaveLength(10);
+    const mine = wrapper.get('tr[aria-current="true"]');
+    expect(mine.text()).toContain("You");
+    expect(mine.find("td").text()).toBe("7");
     expect(wrapper.text()).toContain("Updated 3 min ago");
 
     await wrapper
       .findAll("button")
-      .find((b) => b.text() === "Refresh")!
+      .find((b) => b.text() === "Refresh view")!
       .trigger("click");
     await settle();
     expect(spy).toHaveBeenCalledTimes(2);
   });
 
-  it("pins my line when I am outside the top 50", async () => {
-    const wrapper = mountWith(
-      LeaderboardView,
-      { currentPlayerId: "me" },
-      simulated(MockScenario.CONSOLIDATING),
-    );
-    await settle();
+  it.each([MockScenario.LAGGING, MockScenario.REBUILDING, MockScenario.FROZEN])(
+    "keeps the table readable in the %s scenario",
+    async (scenario) => {
+      const wrapper = mountWith(
+        LeaderboardView,
+        { currentPlayerId: SEEDED_PLAYER_ID },
+        simulated(scenario),
+      );
+      await settle();
 
-    expect(wrapper.get(".leaderboard-table__pinned").text()).toContain("87");
-  });
+      expect(wrapper.findAll("tbody tr")).toHaveLength(10);
+      expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    },
+  );
 
   it("explains an empty leaderboard without an error", async () => {
     const wrapper = mountWith(
@@ -153,7 +164,7 @@ describe("LeaderboardView", () => {
     await settle();
 
     expect(wrapper.find("table").exists()).toBe(false);
-    expect(wrapper.text()).toContain("No player has been ranked yet");
+    expect(wrapper.text()).toContain("No hero has been ranked yet");
     expect(wrapper.find('[role="alert"]').exists()).toBe(false);
   });
 

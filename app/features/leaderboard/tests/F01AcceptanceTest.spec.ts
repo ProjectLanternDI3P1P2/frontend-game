@@ -1,6 +1,9 @@
 /**
  * F01 — Statistiques cumulées du héros et classement (données simulées).
- * Acceptance tests written from the feature sheet's criteria (CA1–CA13):
+ * Acceptance tests written from the feature sheet's criteria (CA1–CA13).
+ * F00 moved the leaderboard to the hero ranking contract (D8): CA7, CA8, CA10,
+ * CA12 and CA13 were adapted, CA9 (pinned line outside the top 50) retired;
+ * CA1–CA6 are unchanged:
  * pages are mounted as the user reaches them, the API is stubbed at its
  * typed boundary (or the real simulated source is used for CA12).
  */
@@ -21,11 +24,15 @@ import {
 import { LEADERBOARD_API_KEY, LEADERBOARD_SOURCE } from "../api/leaderboardSource";
 import { STATISTICS_CATALOGUE } from "../statisticsCatalogue";
 import {
+  HeroClass,
+  RankingPeriod,
+  RankingSort,
+  RankingStatus,
   StatisticCategory,
   type HeroStatisticsResponse,
   type LeaderboardApi,
-  type LeaderboardEntry,
-  type LeaderboardResponse,
+  type RankingEntry,
+  type RankingResponse,
 } from "../types";
 import { GatewayError } from "~/shared/utils/gateway";
 import UiTopNavigation from "~/shared/ui/UiTopNavigation.vue";
@@ -87,15 +94,53 @@ function statsResponse(
   };
 }
 
-function entry(rank: number, playerId = `p-${rank}`, score = 100_000 - rank * 10) {
-  return { rank, playerId, playerName: `Player ${rank}`, score } as LeaderboardEntry;
+// F00: the ranking helpers follow the hero ranking contract (D8).
+function entry(
+  rank: number,
+  playerId: string | null = `p-${rank}`,
+  totalXp = 100_000 - rank * 10,
+): RankingEntry {
+  return {
+    rank,
+    rankDelta: 0,
+    heroId: `hero-${rank}`,
+    heroName: `Hero ${rank}`,
+    heroClass: HeroClass.WARRIOR,
+    level: 10,
+    totalXp,
+    runs: 12,
+    winRate: 0.5,
+    lastActivityAt: minutesAgo(10),
+    playerId,
+    playerName: `Player ${rank}`,
+    isPending: false,
+  };
 }
 
-function board(overrides: Partial<LeaderboardResponse> = {}): LeaderboardResponse {
+function board(overrides: Partial<RankingResponse> = {}): RankingResponse {
   return {
     consolidatedAt: minutesAgo(3),
-    entries: Array.from({ length: 50 }, (_, index) => entry(index + 1)),
-    me: null,
+    status: RankingStatus.LIVE,
+    statusDetail: {
+      lagSeconds: null,
+      pendingCount: null,
+      correctUpTo: null,
+      rebuildProgress: null,
+      snapshotAt: null,
+      frozenAt: null,
+      reason: null,
+    },
+    season: {
+      id: "season-3",
+      label: "Season 3",
+      openedAt: "2026-09-21T00:00:00Z",
+      previousSeasonId: "season-2",
+    },
+    page: 1,
+    pageSize: 10,
+    totalCount: 50,
+    entries: Array.from({ length: 10 }, (_, index) => entry(index + 1)),
+    me: [],
     ...overrides,
   };
 }
@@ -105,7 +150,10 @@ function apiStub(
 ) {
   return {
     getHeroStatistics: vi.fn().mockResolvedValue(statsResponse()),
-    getLeaderboard: vi.fn().mockResolvedValue(board()),
+    getRanking: vi.fn().mockResolvedValue(board()),
+    getRankingHeroDetail: vi.fn().mockRejectedValue(new Error("not used")),
+    getRankingHeroFacts: vi.fn().mockRejectedValue(new Error("not used")),
+    getPublicRanking: vi.fn().mockRejectedValue(new Error("not used")),
     ...partial,
   };
 }
@@ -186,9 +234,15 @@ const BLANK_ERRORS: Array<[string, unknown]> = [
   ["whitespace-only message", new GatewayError(502, { code: "X", message: "  \n\t " })],
   [
     "missing message",
-    new GatewayError(500, { code: "X" } as unknown as { code: string; message: string }),
+    new GatewayError(500, { code: "X" } as unknown as {
+      code: string;
+      message: string;
+    }),
   ],
-  ["status 0 (network) without message", new GatewayError(0, { code: "", message: "" })],
+  [
+    "status 0 (network) without message",
+    new GatewayError(0, { code: "", message: "" }),
+  ],
   ["rejection with undefined", undefined],
   ["rejection with a bare string", "boom"],
   ["Error with empty message", new Error("")],
@@ -349,8 +403,11 @@ describe("F01", () => {
     });
 
     it("CA2: the feature keeps no client cache (no useFetch/useAsyncData/useState/storage)", () => {
+      // F04 (decision D11): the public, server-rendered rankings read through
+      // `useAsyncData` by design (payload hydration, no client cache).
       const sources = walk(FEATURE_DIR)
         .filter((file) => !file.includes("/tests/") && /\.(ts|vue)$/.test(file))
+        .filter((file) => !file.endsWith("/composables/usePublicRanking.ts"))
         .map((file) => readFileSync(file, "utf8"));
       for (const source of sources) {
         expect(source).not.toMatch(
@@ -526,7 +583,10 @@ describe("F01", () => {
         const text = alertText(wrapper);
         expect(text).toMatch(/could not be loaded/i);
         // the reason paragraph itself is not blank
-        const reason = wrapper.get('[role="alert"]').findAll("p").map((p) => p.text());
+        const reason = wrapper
+          .get('[role="alert"]')
+          .findAll("p")
+          .map((p) => p.text());
         expect(reason.some((t) => t.trim().length > 10)).toBe(true);
         expect(text).not.toMatch(/undefined|null|\[object|boom|at \w+ \(/i);
         expect(button(wrapper, /^retry$/i)).toBeDefined();
@@ -665,30 +725,32 @@ describe("F01", () => {
   });
 
   // ============================================================ leaderboard page
-  describe("CA7 — top 50 by ascending rank in a semantic table, date and Refresh", () => {
-    it("CA7: keeps at most 50 players, sorted by ascending rank, even if the API sends more, unsorted", async () => {
-      const entries = Array.from({ length: 60 }, (_, index) => entry(60 - index));
-      const api = apiStub({
-        getLeaderboard: vi.fn().mockResolvedValue(board({ entries })),
-      });
-      const wrapper = mountPage(LeaderboardPage, api);
+  // F00 (D8): the ranking is now one row per hero, paginated by 10. The top 50
+  // by player, "Show my position" and the pinned line (old CA7–CA9) are
+  // obsolete; F02 brings pagination, pinned heroes and "Jump to my rank".
+  describe("CA7 — first page of the hero ranking in a semantic table, date and Refresh", () => {
+    it("CA7: shows the page the API sends, in its order", async () => {
+      const wrapper = mountPage(LeaderboardPage, apiStub());
       await flushPromises();
 
       const rows = wrapper.findAll("table tbody tr");
-      expect(rows).toHaveLength(50);
+      expect(rows).toHaveLength(10);
       const ranks = rows.map((row) => Number(row.findAll("td, th")[0]!.text()));
-      expect(ranks).toEqual(Array.from({ length: 50 }, (_, index) => index + 1));
+      expect(ranks).toEqual(Array.from({ length: 10 }, (_, index) => index + 1));
     });
 
-    it("CA7: the table is semantic with Rank, Player and Score column headers", async () => {
+    it("CA7: the table is semantic with Rank, Hero and Total XP column headers", async () => {
       const wrapper = mountPage(LeaderboardPage, apiStub());
       await flushPromises();
 
       const headers = wrapper.findAll("table thead th");
-      expect(headers.map((th) => th.text())).toEqual(["Rank", "Player", "Score"]);
+      // F02 (CA2): the full set of columns.
+      expect(headers.map((th) => th.text())).toEqual(
+        expect.arrayContaining(["Rank", "Hero", "Total XP"]),
+      );
       headers.forEach((th) => expect(th.attributes("scope")).toBe("col"));
       const first = wrapper.findAll("table tbody tr")[0]!;
-      expect(first.text()).toContain("Player 1");
+      expect(first.text()).toContain("Hero 1");
       expect(first.text().replace(/\D/g, "")).toContain("99990");
     });
 
@@ -701,225 +763,133 @@ describe("F01", () => {
 
     it("CA7: Refresh re-reads and displays the new ranking", async () => {
       const api = apiStub({
-        getLeaderboard: vi
+        getRanking: vi
           .fn()
           .mockResolvedValueOnce(board())
           .mockResolvedValueOnce(
-            board({ entries: [{ ...entry(1), playerName: "NewLeader" }] }),
+            board({ entries: [{ ...entry(1), heroName: "NewLeader" }], totalCount: 1 }),
           ),
       });
       const wrapper = mountPage(LeaderboardPage, api);
       await flushPromises();
 
-      const refresh = button(wrapper, /^refresh$/i);
+      const refresh = button(wrapper, /^refresh view$/i);
       expect(refresh, "Refresh button").toBeDefined();
       await refresh!.trigger("click");
       await flushPromises();
 
-      expect(api.getLeaderboard).toHaveBeenCalledTimes(2);
+      expect(api.getRanking).toHaveBeenCalledTimes(2);
       expect(wrapper.findAll("table tbody tr")).toHaveLength(1);
       expect(wrapper.text()).toContain("NewLeader");
     });
 
-    it("CA7: the current player (seeded player, D5) is the one requested", async () => {
+    it("CA7: asks for the first page of the default ranking for the seeded player (D5)", async () => {
       const api = apiStub();
       mountPage(LeaderboardPage, api);
       await flushPromises();
 
-      expect(api.getLeaderboard).toHaveBeenCalledWith(
-        SEEDED_PLAYER_ID,
+      expect(api.getRanking).toHaveBeenCalledWith(
+        {
+          playerId: SEEDED_PLAYER_ID,
+          heroClass: null,
+          period: RankingPeriod.ALL_TIME,
+          search: "",
+          sort: RankingSort.TOTAL_XP,
+          page: 1,
+          pageSize: 10,
+        },
         expect.anything(),
       );
     });
   });
 
-  describe('CA8 — my line in the top 50: "You" badge, aria-current, Show my position', () => {
-    function boardWithMeAt(rank: number) {
-      const entries = Array.from({ length: 50 }, (_, index) =>
-        index + 1 === rank ? entry(rank, SEEDED_PLAYER_ID) : entry(index + 1),
+  describe('CA8 — my heroes on the page: "You" badge and aria-current', () => {
+    function boardWithMineAt(...ranks: number[]) {
+      const entries = Array.from({ length: 10 }, (_, index) =>
+        ranks.includes(index + 1)
+          ? entry(index + 1, SEEDED_PLAYER_ID)
+          : entry(index + 1),
       );
-      return board({ entries, me: entry(rank, SEEDED_PLAYER_ID) });
+      return board({
+        entries,
+        me: entries.filter((e) => e.playerId === SEEDED_PLAYER_ID),
+      });
     }
 
-    it('CA8: only my row carries aria-current="true" and a visible "You" badge', async () => {
+    // F02 (F00 hand-off): every hero of mine carries "You"; aria-current is kept
+    // for the line "Jump to my rank" targets, my best-ranked hero (me[0]).
+    it('CA8: my heroes carry a visible "You" badge; aria-current marks my best one', async () => {
       const api = apiStub({
-        getLeaderboard: vi.fn().mockResolvedValue(boardWithMeAt(7)),
+        getRanking: vi.fn().mockResolvedValue(boardWithMineAt(3, 7)),
       });
       const wrapper = mountPage(LeaderboardPage, api);
       await flushPromises();
 
       const current = wrapper.findAll('tbody tr[aria-current="true"]');
-      expect(current).toHaveLength(1);
-      expect(current[0]!.text()).toContain("Player 7");
-      expect(youBadge(current[0]!), "You badge").toBeDefined();
+      expect(current.map((row) => row.findAll("td, th")[0]!.text())).toEqual(["3"]);
+      const mine = wrapper
+        .findAll("tbody tr")
+        .filter((row) => ["3", "7"].includes(row.findAll("td, th")[0]!.text()));
+      for (const row of mine) expect(youBadge(row), "You badge").toBeDefined();
       const others = wrapper
         .findAll("tbody tr")
-        .filter((row) => row.attributes("aria-current") !== "true");
-      expect(others).toHaveLength(49);
+        .filter((row) => !["3", "7"].includes(row.findAll("td, th")[0]!.text()));
+      expect(others).toHaveLength(8);
       expect(others.some((row) => youBadge(row) !== undefined)).toBe(false);
-      expect(
-        wrapper
-          .find(".leaderboard-table__pinned, [aria-label='Your position']")
-          .exists(),
-      ).toBe(false);
     });
 
-    it("CA8: my row is recognised even when the API sends me=null", async () => {
-      const entries = Array.from({ length: 50 }, (_, index) =>
+    it("CA8: my hero is recognised by its playerId even when the API sends me=[]", async () => {
+      const entries = Array.from({ length: 10 }, (_, index) =>
         index === 2 ? entry(3, SEEDED_PLAYER_ID) : entry(index + 1),
       );
       const api = apiStub({
-        getLeaderboard: vi.fn().mockResolvedValue(board({ entries, me: null })),
+        getRanking: vi.fn().mockResolvedValue(board({ entries })),
       });
       const wrapper = mountPage(LeaderboardPage, api);
       await flushPromises();
 
-      expect(wrapper.get('tbody tr[aria-current="true"]').text()).toContain("Player 3");
+      expect(wrapper.get('tbody tr[aria-current="true"]').text()).toContain("Hero 3");
     });
 
-    it('CA8: "Show my position" scrolls to my row and gives it focus', async () => {
-      const scroll = vi.fn();
-      Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-        configurable: true,
-        value: scroll,
-      });
+    it("CA8: a deleted player's hero (playerId null) is never mine", async () => {
+      const entries = [{ ...entry(1), playerId: null, playerName: null }];
       const api = apiStub({
-        getLeaderboard: vi.fn().mockResolvedValue(boardWithMeAt(42)),
+        getRanking: vi.fn().mockResolvedValue(board({ entries, totalCount: 1 })),
       });
-      const wrapper = mountPage(LeaderboardPage, api, true);
+      const wrapper = mountPage(LeaderboardPage, api);
       await flushPromises();
 
-      const show = button(wrapper, /show my position|voir ma position/i);
-      expect(show, "Show my position button").toBeDefined();
-      await show!.trigger("click");
-
-      const myRow = wrapper.get('tbody tr[aria-current="true"]').element;
-      expect(scroll).toHaveBeenCalled();
-      expect(scroll.mock.contexts[0]).toBe(myRow);
-      expect(document.activeElement).toBe(myRow);
-      wrapper.unmount();
-    });
-
-    it("CA8: with reduced motion, the scroll is not animated", async () => {
-      const scroll = vi.fn();
-      Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-        configurable: true,
-        value: scroll,
-      });
-      vi.stubGlobal(
-        "matchMedia",
-        vi.fn().mockReturnValue({
-          matches: true,
-          addEventListener() {},
-          removeEventListener() {},
-        }),
-      );
-      window.matchMedia = globalThis.matchMedia;
-      const api = apiStub({
-        getLeaderboard: vi.fn().mockResolvedValue(boardWithMeAt(5)),
-      });
-      const wrapper = mountPage(LeaderboardPage, api, true);
-      await flushPromises();
-
-      await button(wrapper, /show my position/i)!.trigger("click");
-      expect(scroll.mock.calls[0]?.[0]?.behavior ?? "auto").not.toBe("smooth");
-      wrapper.unmount();
-    });
-
-    it('CA8: no "Show my position" button when I am not ranked at all', async () => {
-      const wrapper = mountPage(LeaderboardPage, apiStub());
-      await flushPromises();
-
-      expect(button(wrapper, /show my position/i)).toBeUndefined();
+      expect(wrapper.findAll("tbody tr")).toHaveLength(1);
       expect(wrapper.find('[aria-current="true"]').exists()).toBe(false);
-    });
-  });
-
-  describe("CA9 — outside the top 50: my line pinned under the table", () => {
-    it("CA9: shows my real rank and score under the table, not in it", async () => {
-      const me = { ...entry(87, SEEDED_PLAYER_ID, 4321), playerName: "Me Myself" };
-      const api = apiStub({ getLeaderboard: vi.fn().mockResolvedValue(board({ me })) });
-      const wrapper = mountPage(LeaderboardPage, api, true);
-      await flushPromises();
-
-      expect(wrapper.findAll("tbody tr")).toHaveLength(50);
-      expect(wrapper.find('tbody tr[aria-current="true"]').exists()).toBe(false);
-
-      const pinned = wrapper.get('[aria-current="true"]');
-      expect(pinned.text()).toContain("87");
-      expect(pinned.text().replace(/\D/g, "")).toContain("4321");
-      expect(pinned.text()).toContain("Me Myself");
-      expect(youBadge(pinned), "You badge").toBeDefined();
-
-      const table = wrapper.get("table").element;
-      // pinned line follows the table in document order
-      expect(
-        table.compareDocumentPosition(pinned.element) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
-      wrapper.unmount();
-    });
-
-    it('CA9: "Show my position" focuses the pinned line', async () => {
-      Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-        configurable: true,
-        value: vi.fn(),
-      });
-      const me = entry(87, SEEDED_PLAYER_ID);
-      const api = apiStub({ getLeaderboard: vi.fn().mockResolvedValue(board({ me })) });
-      const wrapper = mountPage(LeaderboardPage, api, true);
-      await flushPromises();
-
-      await button(wrapper, /show my position/i)!.trigger("click");
-      expect(document.activeElement).toBe(wrapper.get('[aria-current="true"]').element);
-      wrapper.unmount();
-    });
-
-    it("CA9: me sent beyond the 50th entry is pinned with its real rank", async () => {
-      const entries = Array.from({ length: 60 }, (_, index) =>
-        index + 1 === 55 ? entry(55, SEEDED_PLAYER_ID) : entry(index + 1),
-      );
-      const api = apiStub({
-        getLeaderboard: vi
-          .fn()
-          .mockResolvedValue(board({ entries, me: entry(55, SEEDED_PLAYER_ID) })),
-      });
-      const wrapper = mountPage(LeaderboardPage, api);
-      await flushPromises();
-
-      expect(wrapper.findAll("tbody tr")).toHaveLength(50);
-      expect(wrapper.get('[aria-current="true"]').text()).toContain("55");
     });
   });
 
   describe("CA10 — empty leaderboard and failure", () => {
     it("CA10: empty ranking → explicit message, no error, no table", async () => {
       const api = apiStub({
-        getLeaderboard: vi
-          .fn()
-          .mockResolvedValue({ consolidatedAt: null, entries: [], me: null }),
+        getRanking: vi.fn().mockResolvedValue(board({ entries: [], totalCount: 0 })),
       });
       const wrapper = mountPage(LeaderboardPage, api);
       await flushPromises();
 
       expect(wrapper.find('[role="alert"]').exists()).toBe(false);
       expect(wrapper.find("table").exists()).toBe(false);
-      expect(wrapper.text()).toMatch(/no player|nobody|empty/i);
-      expect(button(wrapper, /^refresh$/i)).toBeDefined();
+      expect(wrapper.text()).toMatch(/no hero|nobody|empty/i);
+      expect(button(wrapper, /^refresh view$/i)).toBeDefined();
     });
 
     it("CA10: null body → treated as empty, not as an error", async () => {
-      const api = apiStub({ getLeaderboard: vi.fn().mockResolvedValue(null) });
+      const api = apiStub({ getRanking: vi.fn().mockResolvedValue(null) });
       const wrapper = mountPage(LeaderboardPage, api);
       await flushPromises();
 
       expect(wrapper.find('[role="alert"]').exists()).toBe(false);
-      expect(wrapper.text()).toMatch(/no player|nobody|empty/i);
+      expect(wrapper.text()).toMatch(/no hero|nobody|empty/i);
     });
 
     it("CA10: loading is announced (aria-live=polite)", async () => {
-      const pending = deferred<LeaderboardResponse>();
-      const api = apiStub({ getLeaderboard: vi.fn().mockReturnValue(pending.promise) });
+      const pending = deferred<RankingResponse>();
+      const api = apiStub({ getRanking: vi.fn().mockReturnValue(pending.promise) });
       const wrapper = mountPage(LeaderboardPage, api);
       await nextTick();
 
@@ -931,7 +901,7 @@ describe("F01", () => {
 
     it("CA10: failure → role=alert and Retry, which reloads the ranking", async () => {
       const api = apiStub({
-        getLeaderboard: vi
+        getRanking: vi
           .fn()
           .mockRejectedValueOnce(new GatewayError(503, { code: "D", message: "Down." }))
           .mockResolvedValueOnce(board()),
@@ -946,14 +916,14 @@ describe("F01", () => {
       await button(wrapper, /^retry$/i)!.trigger("click");
       await flushPromises();
 
-      expect(api.getLeaderboard).toHaveBeenCalledTimes(2);
+      expect(api.getRanking).toHaveBeenCalledTimes(2);
       expect(wrapper.find('[role="alert"]').exists()).toBe(false);
-      expect(wrapper.findAll("tbody tr")).toHaveLength(50);
+      expect(wrapper.findAll("tbody tr")).toHaveLength(10);
     });
 
     it("CA10: a Gateway error without message still shows the alert and Retry", async () => {
       const api = apiStub({
-        getLeaderboard: vi
+        getRanking: vi
           .fn()
           .mockRejectedValue(new GatewayError(500, { code: "X", message: "" })),
       });
@@ -966,7 +936,7 @@ describe("F01", () => {
 
     it("CA10: a failing Refresh over displayed data shows the alert and Retry", async () => {
       const api = apiStub({
-        getLeaderboard: vi
+        getRanking: vi
           .fn()
           .mockResolvedValueOnce(board())
           .mockRejectedValueOnce(
@@ -975,7 +945,7 @@ describe("F01", () => {
       });
       const wrapper = mountPage(LeaderboardPage, api);
       await flushPromises();
-      await button(wrapper, /^refresh$/i)!.trigger("click");
+      await button(wrapper, /^refresh view$/i)!.trigger("click");
       await flushPromises();
 
       expect(wrapper.find('[role="alert"]').exists()).toBe(true);
@@ -987,14 +957,17 @@ describe("F01", () => {
     it.each(BLANK_ERRORS)(
       "CA10: %s → explicit role=alert with a readable reason, and Retry",
       async (_label, failure) => {
-        const api = apiStub({ getLeaderboard: vi.fn().mockRejectedValue(failure) });
+        const api = apiStub({ getRanking: vi.fn().mockRejectedValue(failure) });
         const wrapper = mountPage(LeaderboardPage, api);
         await flushPromises();
 
         expect(wrapper.find('[role="alert"]').exists()).toBe(true);
         const text = alertText(wrapper);
         expect(text).toMatch(/could not be loaded/i);
-        const reason = wrapper.get('[role="alert"]').findAll("p").map((p) => p.text());
+        const reason = wrapper
+          .get('[role="alert"]')
+          .findAll("p")
+          .map((p) => p.text());
         expect(reason.some((t) => t.trim().length > 10)).toBe(true);
         expect(text).not.toMatch(/undefined|null|\[object|boom|at \w+ \(/i);
         expect(wrapper.find("table").exists()).toBe(false);
@@ -1004,7 +977,7 @@ describe("F01", () => {
 
     it("CA10: a failing Refresh with a blank message shows the alert and Retry", async () => {
       const api = apiStub({
-        getLeaderboard: vi
+        getRanking: vi
           .fn()
           .mockResolvedValueOnce(board())
           .mockRejectedValueOnce(new GatewayError(500, { code: "X", message: " " }))
@@ -1012,21 +985,21 @@ describe("F01", () => {
       });
       const wrapper = mountPage(LeaderboardPage, api);
       await flushPromises();
-      await button(wrapper, /^refresh$/i)!.trigger("click");
+      await button(wrapper, /^refresh view$/i)!.trigger("click");
       await flushPromises();
 
       expect(alertText(wrapper)).toMatch(/could not be loaded/i);
       await button(wrapper, /^retry$/i)!.trigger("click");
       await flushPromises();
-      expect(api.getLeaderboard).toHaveBeenCalledTimes(3);
+      expect(api.getRanking).toHaveBeenCalledTimes(3);
       expect(wrapper.find('[role="alert"]').exists()).toBe(false);
-      expect(wrapper.findAll("tbody tr")).toHaveLength(50);
+      expect(wrapper.findAll("tbody tr")).toHaveLength(10);
     });
 
     it("CA10: Retry after a whitespace-only error announces loading, then shows the ranking", async () => {
-      const pending = deferred<LeaderboardResponse>();
+      const pending = deferred<RankingResponse>();
       const api = apiStub({
-        getLeaderboard: vi
+        getRanking: vi
           .fn()
           .mockRejectedValueOnce(new GatewayError(500, { code: "X", message: "\t" }))
           .mockReturnValueOnce(pending.promise),
@@ -1043,16 +1016,16 @@ describe("F01", () => {
 
       pending.resolve(board());
       await flushPromises();
-      expect(wrapper.findAll("tbody tr")).toHaveLength(50);
+      expect(wrapper.findAll("tbody tr")).toHaveLength(10);
       expect(expectExposedLiveRegion(wrapper).textContent).not.toMatch(/loading/i);
     });
 
     it("CA10: the live region stays exposed in ready, empty and error states", async () => {
       const api = apiStub({
-        getLeaderboard: vi
+        getRanking: vi
           .fn()
           .mockResolvedValueOnce(board())
-          .mockResolvedValueOnce({ consolidatedAt: null, entries: [], me: null })
+          .mockResolvedValueOnce(board({ entries: [], totalCount: 0, me: [] }))
           .mockRejectedValueOnce(new GatewayError(500, { code: "X", message: "" })),
       });
       const wrapper = mountPage(LeaderboardPage, api);
@@ -1060,12 +1033,12 @@ describe("F01", () => {
       const node = expectExposedLiveRegion(wrapper);
       expect(node.textContent?.trim()).toBe("");
 
-      await button(wrapper, /^refresh$/i)!.trigger("click");
+      await button(wrapper, /^refresh view$/i)!.trigger("click");
       await flushPromises();
-      expect(wrapper.text()).toMatch(/no player/i);
+      expect(wrapper.text()).toMatch(/no hero/i);
       expect(expectExposedLiveRegion(wrapper)).toBe(node);
 
-      await button(wrapper, /^refresh$/i)!.trigger("click");
+      await button(wrapper, /^refresh view$/i)!.trigger("click");
       await flushPromises();
       expect(wrapper.find('[role="alert"]').exists()).toBe(true);
       expect(expectExposedLiveRegion(wrapper)).toBe(node);
@@ -1156,7 +1129,7 @@ describe("F01", () => {
       expect(ranking.find('[role="alert"]').exists()).toBe(false);
     });
 
-    it("CA12: ?mock=consolidating → discreet mention and pinned line", async () => {
+    it("CA12: ?mock=consolidating → discreet mention; the ranking still shows", async () => {
       route.query = { mock: "consolidating" };
       useFakeTimeouts();
       const stats = mountPage(StatisticsPage);
@@ -1165,8 +1138,9 @@ describe("F01", () => {
 
       expect(stats.text()).toMatch(/consolidat/i);
       expect(stats.find('[role="alert"]').exists()).toBe(false);
-      expect(ranking.find('tbody tr[aria-current="true"]').exists()).toBe(false);
-      expect(ranking.find('[aria-current="true"]').exists()).toBe(true);
+      // F00: no pinned line any more; the ranking is read as usual.
+      expect(ranking.find('[role="alert"]').exists()).toBe(false);
+      expect(ranking.findAll("tbody tr")).toHaveLength(10);
     });
 
     it("CA12: ?mock=error → alert and Retry on both pages", async () => {
@@ -1188,7 +1162,7 @@ describe("F01", () => {
       const ranking = mountPage(LeaderboardPage);
       await elapse(300);
 
-      expect(ranking.findAll("tbody tr")).toHaveLength(50);
+      expect(ranking.findAll("tbody tr")).toHaveLength(10);
       expect(youBadge(ranking.get('tbody tr[aria-current="true"]'))).toBeDefined();
     });
 
@@ -1199,7 +1173,7 @@ describe("F01", () => {
       await elapse(300);
 
       expect(ranking.find('[role="alert"]').exists()).toBe(false);
-      expect(ranking.findAll("tbody tr")).toHaveLength(50);
+      expect(ranking.findAll("tbody tr")).toHaveLength(10);
     });
   });
 
@@ -1227,11 +1201,11 @@ describe("F01", () => {
       const ready = mountPage(LeaderboardPage, apiStub());
       const empty = mountPage(
         LeaderboardPage,
-        apiStub({ getLeaderboard: vi.fn().mockResolvedValue(board({ entries: [] })) }),
+        apiStub({ getRanking: vi.fn().mockResolvedValue(board({ entries: [] })) }),
       );
       const failed = mountPage(
         LeaderboardPage,
-        apiStub({ getLeaderboard: vi.fn().mockRejectedValue(new Error("x")) }),
+        apiStub({ getRanking: vi.fn().mockRejectedValue(new Error("x")) }),
       );
       await flushPromises();
       for (const wrapper of [ready, empty, failed]) {
@@ -1248,11 +1222,11 @@ describe("F01", () => {
     });
 
     it('CA13: every list on both pages carries role="list"', async () => {
-      const me = entry(87, SEEDED_PLAYER_ID);
+      const me = [entry(87, SEEDED_PLAYER_ID)];
       const stats = mountPage(StatisticsPage, apiStub());
       const ranking = mountPage(
         LeaderboardPage,
-        apiStub({ getLeaderboard: vi.fn().mockResolvedValue(board({ me })) }),
+        apiStub({ getRanking: vi.fn().mockResolvedValue(board({ me })) }),
       );
       await flushPromises();
 
@@ -1267,11 +1241,11 @@ describe("F01", () => {
     });
 
     it("CA13: my line is marked by text and aria-current, not only by colour", async () => {
-      const entries = Array.from({ length: 50 }, (_, index) =>
+      const entries = Array.from({ length: 10 }, (_, index) =>
         index === 0 ? entry(1, SEEDED_PLAYER_ID) : entry(index + 1),
       );
       const api = apiStub({
-        getLeaderboard: vi.fn().mockResolvedValue(board({ entries, me: entries[0] })),
+        getRanking: vi.fn().mockResolvedValue(board({ entries, me: [entries[0]!] })),
       });
       const wrapper = mountPage(LeaderboardPage, api);
       await flushPromises();
