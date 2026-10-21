@@ -23,7 +23,14 @@ export default defineNuxtConfig({
     // Default: durable reference content is statically generated. It is cheap
     // to serve, indexable, readable before JavaScript runs, and it survives the
     // API Gateway being unavailable.
-    "/": { prerender: true },
+    // Authentication is restored from localStorage by Keycloak in the browser.
+    // These routes must therefore be client-rendered: the server cannot know
+    // whether the requester has an active local Keycloak session.
+    "/": { ssr: false },
+    "/auth": { ssr: false },
+    "/home": { ssr: false },
+    "/players": { ssr: false },
+    "/players/**": { ssr: false },
     "/demo": { prerender: true },
     "/demo/**": { prerender: true },
 
