@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.1](https://github.com/ProjectLanternDI3P1P2/frontend-game/compare/v0.2.0...v0.2.1) (2026-10-21)
+
+
+### Fixed
+
+* **cd:** publish images through groupe7 Harbor domain ([0e0ae67](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/0e0ae67d3699676bb58b6ff14d83c71e310f1b54))
+* **cd:** publish through private Harbor 10.4.111.200:18443 ([2a7d2e6](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/2a7d2e6a55d5e16cfecf2a4c5fe6c4d64341d691))
+* **cd:** publish through private Harbor endpoint ([e54b4a0](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/e54b4a09a05570c3b5bededa51acf722e31f60fa))
+* **cd:** use shared workflow with new Harbor endpoint ([2fa6292](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/2fa62922fb150da0193bff2ed17d86b3c15a77a1))
+
 ## [0.2.0](https://github.com/ProjectLanternDI3P1P2/frontend-game/compare/v0.1.0...v0.2.0) (2026-10-21)
 
 
