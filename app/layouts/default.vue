@@ -9,7 +9,12 @@ import { ButtonSize, ButtonVariant } from "~/shared/ui/UiButton.vue";
  * exception: nothing here is a gameplay constraint.
  */
 const config = useRuntimeConfig();
-const { isAuthenticated, user, login, logout } = useAuth();
+const { isAuthenticated, user, logout } = useAuth();
+const router = useRouter();
+
+const openAuth = async () => {
+  await router.push("/auth");
+};
 const navigationItems = [
   { label: "Home", to: "/home" },
   { label: "Heroes", to: `/players/${SEEDED_PLAYER_ID}/heroes` },
@@ -31,9 +36,9 @@ const navigationItems = [
         <UiButton
           :variant="isAuthenticated ? ButtonVariant.GHOST : ButtonVariant.PRIMARY"
           :size="ButtonSize.SM"
-          @click="isAuthenticated ? logout() : login()"
+          @click="isAuthenticated ? logout() : openAuth()"
         >
-          {{ isAuthenticated ? "Sign out" : "Login" }}
+          {{ isAuthenticated ? "Sign out" : "Se connecter" }}
         </UiButton>
       </template>
     </UiTopNavigation>

@@ -3,6 +3,7 @@
   "enabled": true,
   "displayName": "Project Lantern (local)",
   "loginTheme": "lantern",
+  "registrationAllowed": true,
   "roles": {
     "realm": [
       {
@@ -14,9 +15,7 @@
   "groups": [
     {
       "name": "players",
-      "realmRoles": [
-        "player"
-      ]
+      "realmRoles": ["player"]
     }
   ],
   "clients": [
@@ -31,14 +30,8 @@
       "directAccessGrantsEnabled": false,
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": false,
-      "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*"
-      ],
-      "webOrigins": [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000"
-      ],
+      "redirectUris": ["http://localhost:3000/*", "http://127.0.0.1:3000/*"],
+      "webOrigins": ["http://localhost:3000", "http://127.0.0.1:3000"],
       "attributes": {
         "pkce.code.challenge.method": "S256"
       }
@@ -52,12 +45,8 @@
       "firstName": "Demo",
       "lastName": "Player",
       "email": "demo@lantern.local",
-      "groups": [
-        "/players"
-      ],
-      "realmRoles": [
-        "player"
-      ],
+      "groups": ["/players"],
+      "realmRoles": ["player"],
       "credentials": [
         {
           "type": "password",
