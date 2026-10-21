@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** CA7–CA10 — client-rendered (decision D2, docs/rendering-modes.md). */
+/** Hero ranking (D8), client-rendered (decision D2, docs/rendering-modes.md). */
 import LeaderboardView from "~/features/leaderboard/components/LeaderboardView.vue";
 import { SEEDED_PLAYER_ID } from "~/features/player/seededPlayer";
 

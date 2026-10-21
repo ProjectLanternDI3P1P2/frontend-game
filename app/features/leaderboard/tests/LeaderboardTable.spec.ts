@@ -1,83 +1,45 @@
 import { mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import LeaderboardTable from "../components/LeaderboardTable.vue";
-import { buildLeaderboardView } from "../leaderboardRules";
-import { entry, leaderboard, ME } from "./fixtures/leaderboardFixtures";
+import { entry, ME } from "./fixtures/leaderboardFixtures";
 
-function mountTable(meRank: number) {
-  const me = entry(meRank, ME);
-  const entries = Array.from({ length: 50 }, (_, index) =>
-    index + 1 === meRank ? me : entry(index + 1),
+function mountTable(...myRanks: number[]) {
+  const entries = Array.from({ length: 10 }, (_, index) =>
+    entry(index + 1, myRanks.includes(index + 1) ? ME : undefined),
   );
-  const view = buildLeaderboardView(leaderboard({ entries, me }), ME);
-  return mount(LeaderboardTable, {
-    props: { rows: view.rows, pinnedMe: view.pinnedMe },
-    attachTo: document.body,
-  });
+  return mount(LeaderboardTable, { props: { entries, currentPlayerId: ME } });
 }
 
-const originalScrollIntoView = Element.prototype.scrollIntoView;
-
-afterEach(() => {
-  Element.prototype.scrollIntoView = originalScrollIntoView;
-});
-
 describe("LeaderboardTable", () => {
-  it("renders a semantic table of rank, player and score", () => {
-    const wrapper = mountTable(7);
+  it("renders a semantic table of rank, hero and total XP", () => {
+    const wrapper = mountTable();
 
-    expect(wrapper.findAll("thead th").map((th) => th.text())).toEqual([
-      "Rank",
-      "Player",
-      "Score",
-    ]);
-    expect(wrapper.findAll("tbody tr")).toHaveLength(50);
-    expect(wrapper.find("tbody tr").text()).toContain("Player 1");
-    wrapper.unmount();
+    const headers = wrapper.findAll("thead th");
+    expect(headers.map((th) => th.text())).toEqual(["Rank", "Hero", "Total XP"]);
+    expect(headers.every((th) => th.attributes("scope") === "col")).toBe(true);
+    expect(wrapper.findAll("tbody tr")).toHaveLength(10);
+    const first = wrapper.find("tbody tr");
+    expect(first.text()).toContain("Hero 1");
+    expect(first.text()).toContain("9,999");
   });
 
-  it("marks my line with a 'You' badge and aria-current, not only a colour", () => {
-    const wrapper = mountTable(7);
+  it("marks each of my heroes with a 'You' badge and aria-current, not only a colour", () => {
+    const wrapper = mountTable(3, 7);
     const mine = wrapper.findAll('tbody tr[aria-current="true"]');
 
-    expect(mine).toHaveLength(1);
-    expect(mine[0]!.text()).toContain("You");
-    expect(mine[0]!.text()).toContain("7");
-    expect(wrapper.find(".leaderboard-table__pinned").exists()).toBe(false);
-    wrapper.unmount();
+    expect(mine).toHaveLength(2);
+    expect(mine.map((row) => row.find("td").text())).toEqual(["3", "7"]);
+    expect(mine.every((row) => row.text().includes("You"))).toBe(true);
+    expect(
+      wrapper.findAll("tbody tr").filter((row) => row.text().includes("You")),
+    ).toHaveLength(2);
   });
 
-  it("scrolls to my line and focuses it on 'Show my position'", async () => {
-    const scrollIntoView = vi.fn();
-    Element.prototype.scrollIntoView = scrollIntoView;
-    const wrapper = mountTable(30);
+  it("never takes a deleted player's hero for mine", () => {
+    const wrapper = mount(LeaderboardTable, {
+      props: { entries: [entry(1, null)], currentPlayerId: "" },
+    });
 
-    const button = wrapper
-      .findAll("button")
-      .find((b) => b.text() === "Show my position");
-    await button!.trigger("click");
-
-    const mine = wrapper.get('tbody tr[aria-current="true"]');
-    expect(scrollIntoView).toHaveBeenCalled();
-    expect(document.activeElement).toBe(mine.element);
-    wrapper.unmount();
-  });
-
-  it("pins my line under the table with my real rank outside the top 50", async () => {
-    const wrapper = mountTable(132);
-
-    expect(wrapper.findAll("tbody tr")).toHaveLength(50);
-    expect(wrapper.find('tbody [aria-current="true"]').exists()).toBe(false);
-    const pinned = wrapper.get('.leaderboard-table__pinned[aria-current="true"]');
-    expect(pinned.text()).toContain("132");
-    expect(pinned.text()).toContain("You");
-    expect(pinned.text()).toContain("9,868");
-
-    await wrapper
-      .findAll("button")
-      .find((b) => b.text() === "Show my position")!
-      .trigger("click");
-    expect(document.activeElement).toBe(pinned.element);
-    wrapper.unmount();
+    expect(wrapper.find('[aria-current="true"]').exists()).toBe(false);
   });
 });
