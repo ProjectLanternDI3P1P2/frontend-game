@@ -4,6 +4,20 @@
 
 <!-- Le plus récent en haut. Format : voir le skill decision-log. -->
 
+## D20 - 2026-10-21 - « Previous season final board » ouvre le classement All time
+
+Décision : faute de paramètre de saison dans le contrat, l'action de l'état vide bascule la période sur All time. Elle est désactivée, avec une explication, si la période est déjà All time. À corriger quand le back exposera la saison (`seasonId` dans `RankingQuery`).
+Pourquoi : le contrat F00 ne permet pas de lire une saison passée.
+Écarté : étendre le contrat en cours de lot (le contrat est figé après lancement).
+Source : rapport F02
+
+## D19 - 2026-10-21 - Ma ligne : `aria-current` unique, séparateur en tri XP seulement
+
+Décision : badge « You » et surlignage sur tous mes héros ; `aria-current="true"` sur une seule ligne (celle visée par « Jump to my rank », sinon mon meilleur héros). Le séparateur « N positions between… » n'apparaît qu'en tri Total XP. « Jump to my rank » remet le tri sur Total XP et garde les autres filtres.
+Pourquoi : RGAA (un seul élément courant) ; avec un autre tri, les rangs de la page ne sont pas contigus.
+Écarté : `aria-current` sur toutes mes lignes (CA6 de la fiche, contredit par D9 et les notes F00).
+Source : rapport F02
+
 ## D18 - 2026-10-21 - Exception `useAsyncData` pour la page publique
 
 Décision : le test F01 « CA2: the feature keeps no client cache » exclut uniquement `composables/usePublicRanking.ts`, qui utilise `useAsyncData` (hydratation SSR, pas de cache client).
