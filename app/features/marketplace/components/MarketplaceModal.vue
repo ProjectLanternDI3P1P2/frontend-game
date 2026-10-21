@@ -107,9 +107,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
                 <dd>{{ listing.quantity }}</dd>
               </div>
             </dl>
-            <p class="marketplace__seller">
-              Seller <span>{{ listing.sellerId }}</span>
-            </p>
           </div>
           <dl class="marketplace__price">
             <dt>Price</dt>
