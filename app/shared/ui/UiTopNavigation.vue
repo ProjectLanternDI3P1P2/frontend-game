@@ -1,26 +1,31 @@
 <script setup lang="ts">
-const route = useRoute();
-const playerId = computed(() => String(route.params.playerId ?? ""));
-const playerRoot = computed(() => `/players/${encodeURIComponent(playerId.value)}`);
+export interface TopNavigationItem {
+  label: string;
+  to: string;
+}
+
+defineProps<{
+  brand: string;
+  brandTo: string;
+  items: readonly TopNavigationItem[];
+}>();
 </script>
 
 <template>
-  <header class="player-top-navigation">
-    <div class="player-top-navigation__content">
-      <NuxtLink class="player-top-navigation__brand" :to="`${playerRoot}/heroes`"
-        >Lantern</NuxtLink
-      >
-      <nav class="player-top-navigation__links" aria-label="Player navigation">
-        <NuxtLink :to="`${playerRoot}/play`">Play</NuxtLink>
-        <NuxtLink :to="`${playerRoot}/heroes`">Heroes</NuxtLink>
-        <NuxtLink class="player-top-navigation__account" to="/">My account</NuxtLink>
+  <header class="top-navigation">
+    <div class="top-navigation__content">
+      <NuxtLink class="top-navigation__brand" :to="brandTo">{{ brand }}</NuxtLink>
+      <nav class="top-navigation__links" aria-label="Main navigation">
+        <NuxtLink v-for="item in items" :key="item.to" :to="item.to">
+          {{ item.label }}
+        </NuxtLink>
       </nav>
     </div>
   </header>
 </template>
 
 <style scoped lang="scss">
-.player-top-navigation {
+.top-navigation {
   border-bottom: 1px solid var(--color-border-subtle);
   background: var(--color-surface-raised);
 
@@ -61,19 +66,10 @@ const playerRoot = computed(() => `/players/${encodeURIComponent(playerId.value)
       color: var(--color-text-highlight);
     }
   }
-
-  &__account {
-    border: 1px solid var(--color-accent-strong);
-    padding: var(--space-2) var(--space-4);
-    background: var(--color-accent);
-    color: var(--color-text-inverse) !important;
-    font-family: var(--font-family-display);
-    font-weight: var(--font-weight-bold);
-  }
 }
 
 @media (max-width: 36rem) {
-  .player-top-navigation {
+  .top-navigation {
     &__content {
       align-items: flex-start;
       flex-direction: column;

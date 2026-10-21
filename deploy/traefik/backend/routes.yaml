@@ -1,11 +1,6 @@
 # Development only: no Keycloak token validation in this local stack.
 http:
   routers:
-    player-owned-api:
-      rule: Path(`/api/player`) || PathPrefix(`/api/player/`) || Path(`/api/v1/player`) || PathPrefix(`/api/v1/player/`)
-      priority: 200
-      middlewares: [remove-external-identity, owner-api-prefix]
-      service: player
     rewards-owned-api:
       rule: Path(`/api/rewards`) || PathPrefix(`/api/rewards/`) || Path(`/api/v1/rewards`) || PathPrefix(`/api/v1/rewards/`)
       priority: 200
@@ -22,7 +17,7 @@ http:
       middlewares: [remove-external-identity]
       service: dungeon
     player-api:
-      rule: Path(`/api/v1/players`) || PathPrefix(`/api/v1/players/`) || Path(`/api/v1/hero-classes`) || PathPrefix(`/api/v1/hero-classes/`) || Path(`/hubs/player`) || PathPrefix(`/hubs/player/`)
+      rule: Path(`/api/player`) || PathPrefix(`/api/player/`) || Path(`/hubs/player`) || PathPrefix(`/hubs/player/`)
       priority: 100
       middlewares: [remove-external-identity]
       service: player
@@ -63,10 +58,10 @@ http:
       service: leaderboard
 
   middlewares:
-    # Keep service-owned controller routes versioned (/api/v1/...).
+    # Rewards and Progression still expose their native routes below the owner prefix.
     owner-api-prefix:
       replacePathRegex:
-        regex: "^/api/(v1/)?(player|rewards|progression)(/|$)"
+        regex: "^/api/(v1/)?(rewards|progression)(/|$)"
         replacement: "/api/v1${3}"
     remove-external-identity:
       headers:

@@ -102,7 +102,7 @@ function defaultCorrelationId(): string {
   return `cid-${Date.now()}`;
 }
 
-/** Builds `/api/v1/<path>?<query>` without ever leaking undefined parameters. */
+/** Builds `/api/v1/<path>` or `/api/<service>/v1/<path>` without undefined query parameters. */
 export function buildGatewayUrl(
   baseUrl: string,
   apiVersion: string,
@@ -112,10 +112,12 @@ export function buildGatewayUrl(
   const normalisedBase = baseUrl.replace(/\/+$/, "");
   const normalisedPath = path.replace(/^\/+/, "");
   const isRelativeBase = normalisedBase === "" || normalisedBase.startsWith("/");
-  const url = new URL(
-    `${normalisedBase}/api/${apiVersion}/${normalisedPath}`,
-    "http://local-gateway.invalid",
-  );
+  const [service, ...servicePath] = normalisedPath.split("/");
+  const apiPath =
+    service === "player"
+      ? `/api/player/${apiVersion}/${servicePath.join("/")}`
+      : `/api/${apiVersion}/${normalisedPath}`;
+  const url = new URL(`${normalisedBase}${apiPath}`, "http://local-gateway.invalid");
 
   for (const [key, value] of Object.entries(query ?? {})) {
     if (value !== undefined) url.searchParams.set(key, String(value));

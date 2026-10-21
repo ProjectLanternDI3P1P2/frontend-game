@@ -8,7 +8,7 @@ import { usePlayerApi } from "~/features/player/api/playerApi";
 import { findSelectedHeroId } from "~/features/player/utils/selectedHero";
 import { HERO_ROSTER_CAPACITY, type HeroSummary } from "~/features/player/types";
 
-definePageMeta({ layout: "player" });
+definePageMeta({ layout: "default" });
 
 const MAX_HEROES = HERO_ROSTER_CAPACITY;
 const EMPTY_STATE_PORTRAITS = [
