@@ -1,13 +1,20 @@
 /**
  * Simulated implementation of `LeaderboardApi` (decision D1), used until the
  * leaderboard service is available. Same interface as the Gateway client, so
- * nothing above `api/` knows which one it talks to.
+ * nothing above `api/` knows which one it talks to. With `?mock=error`, every
+ * method fails with a `GatewayError` (503).
  */
 import {
-  simulatedHeroStatistics,
-  simulatedLeaderboard,
   simulatedFailure,
+  simulatedHeroStatistics,
+  simulatedNotFound,
 } from "../mocks/leaderboardMocks";
+import {
+  simulatedHeroDetail,
+  simulatedHeroFacts,
+  simulatedPublicRanking,
+  simulatedRanking,
+} from "../mocks/rankingMocks";
 import { MockScenario, type LeaderboardApi } from "../types";
 
 /** Short enough to stay pleasant, long enough to see the loading state. */
@@ -50,12 +57,33 @@ export function createSimulatedLeaderboardApi(
     return build();
   }
 
+  /** An unknown hero answers 404, as the Gateway would. */
+  function found<T>(value: T | null, heroId: string): T {
+    if (value === null) throw simulatedNotFound(heroId);
+    return value;
+  }
+
   return {
     getHeroStatistics(playerId, heroId, signal) {
       return respond(() => simulatedHeroStatistics(scenario, heroId, now()), signal);
     },
-    getLeaderboard(playerId, signal) {
-      return respond(() => simulatedLeaderboard(scenario, playerId, now()), signal);
+    getRanking(query, signal) {
+      return respond(() => simulatedRanking(scenario, query, now()), signal);
+    },
+    getRankingHeroDetail(heroId, signal) {
+      return respond(
+        () => found(simulatedHeroDetail(scenario, heroId, now()), heroId),
+        signal,
+      );
+    },
+    getRankingHeroFacts(heroId, signal) {
+      return respond(
+        () => found(simulatedHeroFacts(scenario, heroId, now()), heroId),
+        signal,
+      );
+    },
+    getPublicRanking(signal) {
+      return respond(() => simulatedPublicRanking(scenario, now()), signal);
     },
   };
 }

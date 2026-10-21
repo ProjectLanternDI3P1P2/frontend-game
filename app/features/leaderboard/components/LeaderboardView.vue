@@ -1,10 +1,13 @@
 <script setup lang="ts">
 /**
- * Leaderboard screen (CA7–CA10). Data comes through `useLeaderboard`, which
- * goes through `api/`; this view never knows whether it is simulated.
+ * Leaderboard screen. Data comes through `useLeaderboard`, which goes through
+ * `api/`; this view never knows whether it is simulated.
+ * F00: minimal adaptation to the hero ranking contract (first page, default
+ * query); filters, pagination and statuses come with F02.
  */
 import UiButton, { ButtonSize, ButtonVariant } from "~/shared/ui/UiButton.vue";
 import { useLeaderboard } from "../composables/useLeaderboard";
+import { defaultRankingQuery } from "../leaderboardRules";
 import { LoadStatus } from "../types";
 import ConsolidationStatus from "./ConsolidationStatus.vue";
 import LeaderboardLoadState from "./LeaderboardLoadState.vue";
@@ -14,21 +17,21 @@ const props = defineProps<{ currentPlayerId: string }>();
 
 const {
   status,
-  view,
+  entries,
   consolidation,
   errorMessage,
   refreshing,
   hasData,
   refresh,
   retry,
-} = useLeaderboard(() => props.currentPlayerId);
+} = useLeaderboard(() => defaultRankingQuery(props.currentPlayerId));
 </script>
 
 <template>
   <main id="main" class="leaderboard">
     <header class="leaderboard__header">
       <div class="leaderboard__heading">
-        <p class="leaderboard__eyebrow">Top 50 players</p>
+        <p class="leaderboard__eyebrow">Hero ranking</p>
         <h1 class="leaderboard__title">Leaderboard</h1>
         <ConsolidationStatus
           v-if="hasData && consolidation"
@@ -55,12 +58,12 @@ const {
     />
 
     <p v-if="status === LoadStatus.EMPTY" class="leaderboard__empty">
-      No player has been ranked yet. Finish a dungeon to enter the leaderboard.
+      No hero has been ranked yet. Finish a dungeon to enter the leaderboard.
     </p>
     <LeaderboardTable
       v-else-if="status === LoadStatus.READY"
-      :rows="view.rows"
-      :pinned-me="view.pinnedMe"
+      :entries="entries"
+      :current-player-id="currentPlayerId"
     />
   </main>
 </template>

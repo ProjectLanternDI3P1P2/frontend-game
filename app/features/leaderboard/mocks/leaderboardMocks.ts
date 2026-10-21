@@ -1,41 +1,23 @@
 /**
- * Simulated leaderboard data (decision D1). Only `api/simulatedLeaderboardApi.ts`
- * imports this file; components never do (CA12).
+ * Simulated hero statistics (decision D1) and the simulated failure. Only
+ * `api/simulatedLeaderboardApi.ts` imports `mocks/`; components never do.
+ * The hero ranking data lives in `rankingMocks.ts`.
  *
- * Scenarios:
- * - `played`: every statistic has a value; the current player is ranked 7th.
- * - `empty`: no statistic, never consolidated; nobody ranked yet.
+ * Statistics by scenario:
+ * - `empty`: no statistic, never consolidated.
  * - `consolidating`: a consolidation is running, the previous figures are
- *   served (one key is missing, shown as 0); the current player is ranked 87th,
- *   outside the top 50, so their line is pinned under the table.
- * - `error`: the service answers 503.
+ *   served (one key is missing, shown as 0).
+ * - any other scenario: every statistic has a value.
+ * - `error`: the service answers 503 (see `simulatedFailure`).
  */
 import { STATISTICS_CATALOGUE } from "../statisticsCatalogue";
-import {
-  MockScenario,
-  type HeroStatisticsResponse,
-  type LeaderboardEntry,
-  type LeaderboardResponse,
-} from "../types";
+import { MockScenario, type HeroStatisticsResponse } from "../types";
 import { GatewayError } from "~/shared/utils/gateway";
 
-const CONSOLIDATED_MINUTES_AGO = 3;
-const MY_NAME = "MaelisRune";
+/** Every scenario except `empty` was consolidated 3 minutes before `now`. */
+export const CONSOLIDATED_MINUTES_AGO = 3;
 
-const PLAYER_NAMES = [
-  "Aldric",
-  "Brenna",
-  "Corvin",
-  "Dahlia",
-  "Eamon",
-  "Fenna",
-  "Garrick",
-  "Hestia",
-  "Ivor",
-  "Juna",
-];
-
-function minutesBefore(now: Date, minutes: number): string {
+export function minutesBefore(now: Date, minutes: number): string {
   return new Date(now.getTime() - minutes * 60_000).toISOString();
 }
 
@@ -67,44 +49,16 @@ export function simulatedHeroStatistics(
   };
 }
 
-function entry(rank: number, playerId: string, playerName: string): LeaderboardEntry {
-  return { rank, playerId, playerName, score: 25_000 - rank * 173 - (rank % 7) * 11 };
-}
-
-function otherPlayer(rank: number): LeaderboardEntry {
-  const name = PLAYER_NAMES[rank % PLAYER_NAMES.length];
-  return entry(
-    rank,
-    `simulated-player-${String(rank).padStart(3, "0")}`,
-    `${name}${rank}`,
-  );
-}
-
-export function simulatedLeaderboard(
-  scenario: MockScenario,
-  playerId: string,
-  now: Date,
-): LeaderboardResponse {
-  if (scenario === MockScenario.EMPTY) {
-    return { consolidatedAt: null, entries: [], me: null };
-  }
-
-  const myRank = scenario === MockScenario.CONSOLIDATING ? 87 : 7;
-  const me = entry(myRank, playerId, MY_NAME);
-  const entries = Array.from({ length: 50 }, (_, index) =>
-    index + 1 === myRank ? me : otherPlayer(index + 1),
-  );
-
-  return {
-    consolidatedAt: minutesBefore(now, CONSOLIDATED_MINUTES_AGO),
-    entries,
-    me,
-  };
-}
-
 export function simulatedFailure(): GatewayError {
   return new GatewayError(503, {
     code: "SERVICE_UNAVAILABLE",
     message: "The leaderboard service is unavailable (simulated).",
+  });
+}
+
+export function simulatedNotFound(heroId: string): GatewayError {
+  return new GatewayError(404, {
+    code: "HERO_NOT_RANKED",
+    message: `No ranked hero with id "${heroId}" (simulated).`,
   });
 }

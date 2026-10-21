@@ -3,7 +3,8 @@
  *
  * Switch `LEADERBOARD_SOURCE` to `LeaderboardSource.GATEWAY` once the
  * leaderboard service publishes its contract; no component changes. In
- * simulated mode, `?mock=played|empty|consolidating|error` picks the scenario.
+ * simulated mode, `?mock=played|empty|lagging|rebuilding|frozen|error|consolidating`
+ * picks the scenario (default and unknown values: `played`).
  */
 import { inject, type InjectionKey } from "vue";
 import { LeaderboardSource, MockScenario, type LeaderboardApi } from "../types";
