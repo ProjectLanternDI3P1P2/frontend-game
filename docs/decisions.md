@@ -4,6 +4,48 @@
 
 <!-- Le plus récent en haut. Format : voir le skill decision-log. -->
 
+## D13 - 2026-10-21 - Lot leaderboard : périmètre strict et découpage
+
+Décision : uniquement les pages leaderboard (`/leaderboard`, `/rankings`), aucune autre page modifiée. Le lot est découpé en F00 (contrat, clients, mocks, règles) puis F02 (page classement), F03 (détail et faits) et F04 (page publique) en parallèle, sur la base `feature/leaderboard-hero-statistics`.
+Pourquoi : demande explicite de l'utilisateur ; le contrat partagé doit être figé avant le parallélisme.
+Écarté : une seule fiche (plus de 2 500 lignes, non parallélisable).
+Source : discussion
+
+## D12 - 2026-10-21 - Profil public et reconstruction
+
+Décision : « View public profile » mène à `/players/{playerId}/heroes` et disparaît pour un joueur supprimé. « Rebuild from facts » est visible mais désactivé (« Operators only »).
+Pourquoi : l'écran de profil public (Figma 99) est hors lot ; il n'y a ni authentification ni rôle opérateur.
+Écarté : créer une page de profil (hors périmètre leaderboard).
+Source : discussion
+
+## D11 - 2026-10-21 - Page publique `/rankings` en SSR `swr: 60`
+
+Décision : vitrine publique et indexable séparée (podium, leaders par classe, top 10), reliée par des liens à `/leaderboard`, qui reste en CSR.
+Pourquoi : le Figma 98 la veut « SSR, indexable » ; les données sont non personnelles et peuvent avoir une minute de retard.
+Écarté : un lien depuis l'accueil (hors pages leaderboard).
+Source : discussion
+
+## D10 - 2026-10-21 - Onglets du classement
+
+Décision : « Ranking » actif. « My progression » mène à la page des statistiques (F01) de mon héros le mieux classé. « Run history » est désactivé avec « Coming soon ».
+Pourquoi : aucun écran Figma pour ces deux onglets ; on reste dans le périmètre leaderboard.
+Écarté : créer ces écrans.
+Source : discussion
+
+## D9 - 2026-10-21 - Style : celui du projet, Figma pour le contenu
+
+Décision : les primitives `Ui*`, les tokens `--color-*` et le BEM existants sont réutilisés. Le Figma fait foi pour le contenu, les libellés et le comportement, pas pour le visuel. L'or de ma ligne est doublé du badge texte « You » (RGAA).
+Pourquoi : demande de l'utilisateur ; cohérence avec le reste de l'app.
+Écarté : reproduire le visuel du Figma.
+Source : discussion
+
+## D8 - 2026-10-21 - Classement par héros (remplace la partie classement de D4)
+
+Décision : une ligne par héros, trié par XP totale. Filtres de classe et de période, recherche, tri, pagination par 10, tendance, statuts LIVE / LAGGING / REBUILDING / FROZEN. `me` devient la liste de mes héros. Un clic sur une ligne la déplie sur place, sans ouvrir de profil. Contrat provisoire dans la fiche F00.
+Pourquoi : c'est ce que montre le Figma (« one row per hero », « opens the row, not a profile »).
+Écarté : le top 50 par joueur de D4.
+Source : discussion (comparaison Figma)
+
 ## D7 - 2026-10-21 - Données leaderboard : robustesse d'affichage
 
 Décision : une erreur sans message affiche un message générique ; une date de consolidation invalide affiche « Not consolidated yet » au lieu de faire planter la page ; l'API leaderboard est injectable via `provide(LEADERBOARD_API_KEY)` pour tester les vues sans Nuxt.
