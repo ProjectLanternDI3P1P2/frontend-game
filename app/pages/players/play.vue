@@ -17,7 +17,7 @@ definePageMeta({ layout: "default" });
 
 const route = useRoute();
 const router = useRouter();
-const playerId = computed(() => String(route.params.playerId));
+const playerId = computed(() => String(route.params.playerId || "me"));
 const heroes = ref<HeroSummary[]>([]);
 const selectedId = ref<string | null>(null);
 const loading = ref(true);
@@ -32,9 +32,7 @@ let hub: PlayerHubClient | null = null;
 const selectedHero = computed(
   () => heroes.value.find((hero) => hero.id === selectedId.value) ?? null,
 );
-const isJoinScreen = computed(
-  () => route.path === `/players/${encodeURIComponent(playerId.value)}/play`,
-);
+const isJoinScreen = computed(() => route.path === "/players/play");
 const replaySeedInvalid = computed(() => seedError(replaySeed.value));
 const replaySeedMissing = computed(() => missingSeedCharacters(replaySeed.value));
 const hasValidReplaySeed = computed(
@@ -71,13 +69,9 @@ async function createLobby(): Promise<void> {
   error.value = "";
   try {
     const config = useRuntimeConfig();
-    hub ??= new PlayerHubClient(
-      playerHubUrl(config.public.apiGatewayUrl),
-      () => undefined,
-    );
+    hub ??= new PlayerHubClient(playerHubUrl(config.public.apiGatewayUrl), () => undefined);
     const session = await hub.createSoloLobby({
       commandId: createIdempotencyKey(),
-      playerId: playerId.value,
       heroId: hero.id,
       dungeonSeed: replaySeed.value || undefined,
     });

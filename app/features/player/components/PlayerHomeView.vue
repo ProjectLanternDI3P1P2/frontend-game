@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { usePlayerApi } from "../api/playerApi";
-import { SEEDED_PLAYER_ID } from "../seededPlayer";
+const currentPlayerRoute = "me";
 import type { HeroSummary } from "../types";
 import HeroCollectionCard from "./HeroCollectionCard.vue";
 
@@ -12,7 +12,7 @@ async function loadHeroes() {
   loading.value = true;
   error.value = "";
   try {
-    heroes.value = await usePlayerApi().listHeroes(SEEDED_PLAYER_ID);
+    heroes.value = await usePlayerApi().listHeroes(currentPlayerRoute);
   } catch (cause) {
     error.value =
       cause instanceof Error ? cause.message : "Unable to load the seeded heroes.";
@@ -50,7 +50,7 @@ onMounted(loadHeroes);
         :key="hero.id"
         :hero="hero"
         :selected="hero.isSelected"
-        :to="`/players/${SEEDED_PLAYER_ID}/heroes/${hero.id}`"
+        :to="`/players/${currentPlayerRoute}/heroes/${hero.id}`"
       />
     </section>
     <NuxtLink class="player-home__dungeon-link" to="/dungeon"

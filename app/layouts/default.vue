@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { SEEDED_PLAYER_ID } from "~/features/player/seededPlayer";
 import { useAuth } from "~/features/auth/composables/useAuth";
 import { ButtonSize, ButtonVariant } from "~/shared/ui/UiButton.vue";
 
@@ -17,8 +16,8 @@ const openAuth = async () => {
 };
 const navigationItems = [
   { label: "Home", to: "/home" },
-  { label: "Heroes", to: `/players/${SEEDED_PLAYER_ID}/heroes` },
-  { label: "Lobby", to: `/players/${SEEDED_PLAYER_ID}/play` },
+  { label: "Heroes", to: "/players/me/heroes" },
+  { label: "Lobby", to: "/players/play" },
   { label: "Dungeon", to: "/dungeon" },
   { label: "Demo", to: "/demo" },
 ];
@@ -38,7 +37,7 @@ const navigationItems = [
           :size="ButtonSize.SM"
           @click="isAuthenticated ? logout() : openAuth()"
         >
-          {{ isAuthenticated ? "Sign out" : "Se connecter" }}
+          {{ isAuthenticated ? "Sign out" : "Sign in" }}
         </UiButton>
       </template>
     </UiTopNavigation>
