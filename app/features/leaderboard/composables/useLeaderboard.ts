@@ -2,6 +2,8 @@
  * Hero ranking state (decisions D3, D8): loading, ready, empty or error,
  * re-read on every visit, on "Refresh" and whenever the query changes; no
  * client cache. The response is kept as the backend sent it (contract F00).
+ * EMPTY says why (`emptyReason`): nobody is ranked, or nothing matches the
+ * class filter or the search.
  */
 import {
   computed,
@@ -15,9 +17,18 @@ import {
   type MaybeRefOrGetter,
 } from "vue";
 import { useLeaderboardApi } from "../api/leaderboardSource";
+import {
+  emptyReason as emptyReasonOf,
+  isPlainRankOrder,
+  pageCount,
+  pageOfRank,
+  rankingQueryKey,
+  type EmptyReason,
+} from "../rankingViewRules";
 import { formatConsolidationAge } from "../statisticsRules";
 import {
   LoadStatus,
+  RankingSort,
   type ConsolidationInfo,
   type RankingQuery,
   type RankingResponse,
@@ -40,23 +51,34 @@ export function useLeaderboard(
   /** True while re-reading over data already on screen. */
   const refreshing = ref(false);
   let controller: AbortController | null = null;
+  /** The reads of the current `findPageOfRank`, cancelled by a new one. */
+  let probes: AbortController | null = null;
+
+  function cancelProbes(): void {
+    probes?.abort();
+    probes = null;
+  }
 
   const hasData = computed(
     () => status.value === LoadStatus.READY || status.value === LoadStatus.EMPTY,
   );
   const entries = computed(() => ranking.value?.entries ?? []);
   const me = computed(() => ranking.value?.me ?? []);
+  /** Why the ranking is empty, for the query that was read; null otherwise. */
+  const emptyReason = ref<EmptyReason | null>(null);
 
   async function load(): Promise<void> {
     controller?.abort();
+    cancelProbes();
     const current = new AbortController();
     controller = current;
     errorMessage.value = "";
     if (hasData.value) refreshing.value = true;
     else status.value = LoadStatus.LOADING;
 
+    const request = { ...toValue(query) };
     try {
-      const response = await api.getRanking({ ...toValue(query) }, current.signal);
+      const response = await api.getRanking(request, current.signal);
       if (controller !== current) return;
       ranking.value = response ?? null;
       consolidation.value = {
@@ -68,6 +90,7 @@ export function useLeaderboard(
       const ranked =
         (response?.entries?.length ?? 0) > 0 || (response?.totalCount ?? 0) > 0;
       status.value = ranked ? LoadStatus.READY : LoadStatus.EMPTY;
+      emptyReason.value = ranked ? null : emptyReasonOf(request);
     } catch (cause) {
       if (controller !== current) return;
       errorMessage.value = describeLoadError(cause);
@@ -77,15 +100,47 @@ export function useLeaderboard(
     }
   }
 
+  /**
+   * The page of the ranking ordered by total XP (current class, period and
+   * search) that holds `rank`. Without filter, it is computed; otherwise the
+   * pages are probed by dichotomy (ranks grow along the pages). The probes
+   * are aborted by a new search, a new read and unmounting (rejects then).
+   */
+  async function findPageOfRank(rank: number): Promise<number> {
+    const base = { ...toValue(query), sort: RankingSort.TOTAL_XP };
+    if (isPlainRankOrder(base)) return pageOfRank(rank, base.pageSize);
+    cancelProbes();
+    const current = new AbortController();
+    probes = current;
+    let low = 1;
+    let high = pageCount(ranking.value?.totalCount ?? 0, base.pageSize);
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2);
+      const probe = await api.getRanking({ ...base, page: middle }, current.signal);
+      current.signal.throwIfAborted();
+      const last = probe?.entries?.at(-1)?.rank ?? Infinity;
+      if (rank > last) low = middle + 1;
+      else high = middle;
+    }
+    if (probes === current) probes = null;
+    return low;
+  }
+
   // A new filter, search, sort or page reads again (the previous answer is
-  // ignored if it arrives late).
-  watch(() => toValue(query), load, { deep: true });
+  // ignored if it arrives late). The key ignores anything else in the route
+  // (e.g. `?mock=`) and re-evaluations that leave the query unchanged: a
+  // watched string only triggers when it changes.
+  watch(
+    () => rankingQueryKey(toValue(query)),
+    () => void load(),
+  );
 
   if (getCurrentInstance() && options.immediate !== false) {
     onMounted(load);
     onBeforeUnmount(() => {
       controller?.abort();
       controller = null;
+      cancelProbes();
     });
   }
 
@@ -98,6 +153,8 @@ export function useLeaderboard(
     errorMessage,
     refreshing,
     hasData,
+    emptyReason,
+    findPageOfRank,
     load,
     refresh: load,
     retry: load,

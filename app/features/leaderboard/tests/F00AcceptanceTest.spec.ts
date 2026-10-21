@@ -1146,7 +1146,7 @@ describe("F00", () => {
 
       await wrapper
         .findAll("button")
-        .find((b) => b.text() === "Refresh")!
+        .find((b) => b.text() === "Refresh view")!
         .trigger("click");
       await new Promise((resolve) => setTimeout(resolve, 1));
       await flushPromises();

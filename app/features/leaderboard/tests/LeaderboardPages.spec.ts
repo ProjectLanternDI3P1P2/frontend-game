@@ -115,7 +115,7 @@ describe("LeaderboardLoadState", () => {
 });
 
 describe("LeaderboardView", () => {
-  it("shows the first page, my hero, the consolidation age and Refresh", async () => {
+  it("shows the first page, my hero, the consolidation age and Refresh view", async () => {
     const api = simulated(MockScenario.PLAYED);
     const spy = vi.spyOn(api, "getRanking");
     const wrapper = mountWith(
@@ -134,7 +134,7 @@ describe("LeaderboardView", () => {
 
     await wrapper
       .findAll("button")
-      .find((b) => b.text() === "Refresh")!
+      .find((b) => b.text() === "Refresh view")!
       .trigger("click");
     await settle();
     expect(spy).toHaveBeenCalledTimes(2);

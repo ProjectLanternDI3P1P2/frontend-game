@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { nextTick, ref } from "vue";
 import { useLeaderboard } from "../composables/useLeaderboard";
-import { HeroClass, LoadStatus } from "../types";
+import { EmptyReason } from "../rankingViewRules";
+import { HeroClass, LoadStatus, RankingSort } from "../types";
 import {
   apiStub,
   entry,
@@ -141,5 +142,81 @@ describe("useLeaderboard", () => {
 
     await state.retry();
     expect(state.status.value).toBe(LoadStatus.READY);
+  });
+
+  it("does not read again when the query is re-evaluated unchanged", async () => {
+    const api = apiStub();
+    const current = ref(query());
+    const state = useLeaderboard(() => ({ ...current.value }), { api });
+    await state.load();
+
+    current.value = query();
+    await nextTick();
+
+    expect(api.getRanking).toHaveBeenCalledTimes(1);
+  });
+
+  it("tells nobody ranked from nothing matching the filters", async () => {
+    const api = apiStub({
+      getRanking: vi.fn().mockResolvedValue(ranking({ entries: [], totalCount: 0 })),
+    });
+    const nobody = useLeaderboard(query(), { api });
+    await nobody.load();
+    expect(nobody.emptyReason.value).toBe(EmptyReason.NOBODY_RANKED);
+
+    const filtered = useLeaderboard(query({ search: "zzz" }), { api });
+    await filtered.load();
+    expect(filtered.emptyReason.value).toBe(EmptyReason.NO_MATCH);
+
+    const ready = useLeaderboard(query(), { api: apiStub() });
+    await ready.load();
+    expect(ready.emptyReason.value).toBeNull();
+  });
+
+  it("computes the page of a rank without filter, probes it with one", async () => {
+    const plain = useLeaderboard(query({ sort: RankingSort.LEVEL }), {
+      api: apiStub(),
+    });
+    expect(await plain.findPageOfRank(58)).toBe(6);
+
+    const byPage = (page: number) =>
+      ranking({
+        page,
+        totalCount: 50,
+        entries: Array.from({ length: 10 }, (_, i) =>
+          entry((page - 1) * 30 + i * 3 + 1),
+        ),
+      });
+    const api = apiStub({
+      getRanking: vi.fn().mockImplementation(async (q) => byPage(q.page)),
+    });
+    const filtered = useLeaderboard(query({ heroClass: HeroClass.SHAMAN }), { api });
+    await filtered.load();
+
+    expect(await filtered.findPageOfRank(64)).toBe(3);
+    for (const [request] of api.getRanking.mock.calls) {
+      expect(request.sort).toBe(RankingSort.TOTAL_XP);
+      expect(request.heroClass).toBe(HeroClass.SHAMAN);
+    }
+  });
+
+  it("aborts the probes of findPageOfRank when a new read starts", async () => {
+    const signals: AbortSignal[] = [];
+    const api = apiStub({
+      getRanking: vi.fn().mockImplementation((_q, signal?: AbortSignal) => {
+        if (signal) signals.push(signal);
+        return Promise.resolve(ranking({ totalCount: 42 }));
+      }),
+    });
+    const state = useLeaderboard(query({ heroClass: HeroClass.MAGE }), { api });
+    await state.load();
+    signals.length = 0;
+
+    const search = state.findPageOfRank(40);
+    const probe = signals.at(-1)!;
+    expect(probe).toBeInstanceOf(AbortSignal);
+    void state.load();
+    expect(probe.aborted).toBe(true);
+    await expect(search).rejects.toBeDefined();
   });
 });
