@@ -16,9 +16,15 @@
   --color-focus-ring: #e0b457;
   --font-family-body: "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-family-display: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-5: 1.5rem;
   --radius-sm: 2px;
   --radius-md: 6px;
   --shadow-gold: 0 0 0 1px rgb(224 180 87 / 20%), 0 8px 20px rgb(0 0 0 / 38%);
+  --shadow-inset: inset 0 1px rgb(255 255 255 / 8%), inset 0 -2px rgb(0 0 0 / 45%);
+  --duration-fast: 150ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
 body {
@@ -166,21 +172,22 @@ textarea {
 }
 .auth-form label {
   margin-bottom: 0.5rem;
-  color: var(--color-text-muted);
+  color: var(--color-text-primary);
   font-size: 0.875rem;
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: 2px;
+  font-weight: 600;
 }
 .auth-form input:not([type=hidden]):not([type=checkbox]):not([type=submit]) {
   width: 100%;
-  padding: 1rem;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
   font-weight: 400;
   color: var(--color-text-primary);
-  background: var(--color-surface-overlay);
+  background: var(--color-surface-base);
+  box-shadow: var(--shadow-inset);
+  transition: border-color var(--duration-fast) var(--easing-standard);
 }
 .auth-form input:not([type=hidden]):not([type=checkbox]):not([type=submit])::placeholder {
   color: var(--color-text-muted);
@@ -188,14 +195,31 @@ textarea {
 }
 .auth-form input:not([type=hidden]):not([type=checkbox]):not([type=submit]):focus {
   outline: none;
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-inset), 0 0 0 2px rgba(224, 180, 87, 0.24);
 }
 .auth-form__password-group {
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-base);
+  box-shadow: var(--shadow-inset);
+  transition: border-color var(--duration-fast) var(--easing-standard);
+}
+.auth-form__password-group:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-inset), 0 0 0 2px rgba(224, 180, 87, 0.24);
 }
 .auth-form__password-group input:not([type=hidden]):not([type=checkbox]):not([type=submit]) {
+  min-height: auto;
   border: 0;
-  border-radius: 3px 0 0 3px;
+  border-radius: 0;
+  box-shadow: none;
+}
+.auth-form__password-group input:not([type=hidden]):not([type=checkbox]):not([type=submit]):focus {
+  box-shadow: none;
 }
 .auth-form input[aria-invalid=true] {
   border-color: var(--color-danger);
@@ -205,16 +229,19 @@ textarea {
   background-color: var(--color-surface-base);
 }
 .auth-form button[data-password-toggle] {
+  min-height: 2.75rem;
+  padding-inline: var(--space-3);
   color: var(--color-text-primary);
-  background: var(--color-surface-overlay);
-  border-radius: 0 3px 3px 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 .auth-form button[data-password-toggle]::after {
   border-color: transparent;
 }
 .auth-form button[data-password-toggle]:hover, .auth-form button[data-password-toggle]:has(i[class*=eye-slash]) {
   color: var(--color-accent);
-  background: var(--color-accent-strong);
+  background: var(--color-surface-overlay);
 }
 .auth-form form[aria-busy=true] {
   cursor: wait;
@@ -334,13 +361,22 @@ textarea {
 }
 .auth-form__actions #kc-login,
 .auth-form__actions #kc-register {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  min-height: 35px;
-  border-radius: 4px;
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid var(--color-accent-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-inset);
+  font-family: var(--font-family-display);
+  letter-spacing: 0.035em;
   color: var(--color-surface-base);
   background: var(--color-accent);
   font-weight: 600;
   cursor: pointer;
+  transition: background-color var(--duration-fast) var(--easing-standard);
 }
 .auth-form__actions #kc-login:hover,
 .auth-form__actions #kc-register:hover {
@@ -373,14 +409,26 @@ textarea {
   font-weight: 400;
 }
 .auth-form__registration-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
   color: var(--color-text-primary);
+  font-family: var(--font-family-display);
   font-size: 0.875rem;
   font-weight: 600;
-  padding: 0.5rem 1.5rem;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 4px;
+  letter-spacing: 0.035em;
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
   background: var(--color-surface-overlay);
+  box-shadow: var(--shadow-inset), var(--shadow-gold);
   text-decoration: none;
+  transition: background-color var(--duration-fast) var(--easing-standard);
+}
+.auth-form__registration-link:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface-raised);
 }
 .auth-form__security-note {
   color: var(--color-text-muted);
@@ -443,14 +491,6 @@ textarea {
     max-width: none;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .auth {
-    background: var(--color-surface-base) url("../video/dungeon-party-loop-poster.webp") center/cover;
-  }
-  .auth__dungeon-background {
-    display: none;
-  }
-}
 #kc-info {
   position: relative;
   top: -1rem;
@@ -470,14 +510,26 @@ textarea {
   font-weight: 400;
 }
 #kc-registration a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
   color: var(--color-text-primary);
+  font-family: var(--font-family-display);
   font-size: 0.875rem;
   font-weight: 600;
-  padding: 0.5rem 1.5rem;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 4px;
+  letter-spacing: 0.035em;
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
   background: var(--color-surface-overlay);
+  box-shadow: var(--shadow-inset), var(--shadow-gold);
   text-decoration: none;
+  transition: background-color var(--duration-fast) var(--easing-standard);
+}
+#kc-registration a:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface-raised);
 }
 
 .subtitle-form {

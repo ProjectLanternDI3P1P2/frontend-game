@@ -21,9 +21,15 @@
     --color-focus-ring: #e0b457;
     --font-family-body: "Segoe UI", system-ui, -apple-system, sans-serif;
     --font-family-display: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-5: 1.5rem;
     --radius-sm: 2px;
     --radius-md: 6px;
     --shadow-gold: 0 0 0 1px rgb(224 180 87 / 20%), 0 8px 20px rgb(0 0 0 / 38%);
+    --shadow-inset: inset 0 1px rgb(255 255 255 / 8%), inset 0 -2px rgb(0 0 0 / 45%);
+    --duration-fast: 150ms;
+    --easing-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
 $primary-color: var(--color-text-primary);
@@ -219,22 +225,23 @@ textarea {
 
     label {
         margin-bottom: .5rem;
-        color: $secondary-color;
+        color: $primary-color;
         font-size: $font-size-sm;
-        font-weight: $font-weight-regular;
-        text-transform: uppercase;
-        letter-spacing: 2px;
+        font-weight: $font-weight-medium;
     }
 
     input:not([type="hidden"]):not([type="checkbox"]):not([type="submit"]) {
         width: 100%;
-        padding: 1rem;
-        border: 1px solid $border-color;
-        border-radius: var(--radius-md);
+        min-height: 2.75rem;
+        padding: var(--space-2) var(--space-3);
+        border: 1px solid var(--color-border-strong);
+        border-radius: var(--radius-sm);
         font-size: $font-size-sm;
         font-weight: $font-weight-regular;
         color: $primary-color;
-        background: $background-color-input;
+        background: $background-color-page;
+        box-shadow: var(--shadow-inset);
+        transition: border-color var(--duration-fast) var(--easing-standard);
 
         &::placeholder {
             color: $light-purple-color;
@@ -243,16 +250,35 @@ textarea {
 
         &:focus {
             outline: none;
+            border-color: $gold-color;
+            box-shadow: var(--shadow-inset), 0 0 0 2px rgb(224 180 87 / 24%);
         }
     }
 
     &__password-group {
-        border: 1px solid $border-color;
-        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        min-height: 2.75rem;
+        border: 1px solid var(--color-border-strong);
+        border-radius: var(--radius-sm);
+        background: $background-color-page;
+        box-shadow: var(--shadow-inset);
+        transition: border-color var(--duration-fast) var(--easing-standard);
+
+        &:focus-within {
+            border-color: $gold-color;
+            box-shadow: var(--shadow-inset), 0 0 0 2px rgb(224 180 87 / 24%);
+        }
 
         input:not([type="hidden"]):not([type="checkbox"]):not([type="submit"]) {
+            min-height: auto;
             border: 0;
-            border-radius: 3px 0 0 3px;
+            border-radius: 0;
+            box-shadow: none;
+
+            &:focus {
+                box-shadow: none;
+            }
         }
     }
 
@@ -266,9 +292,12 @@ textarea {
     }
 
     button[data-password-toggle] {
+        min-height: 2.75rem;
+        padding-inline: var(--space-3);
         color: $primary-color;
-        background: $background-color-input;
-        border-radius: 0 3px 3px 0;
+        background: transparent;
+        border: 0;
+        border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 
         &::after {
             border-color: transparent;
@@ -277,7 +306,7 @@ textarea {
         &:hover,
         &:has(i[class*="eye-slash"]) {
             color: $gold-color;
-            background: $dark-gold-color;
+            background: $background-color-input;
         }
     }
 
@@ -421,13 +450,22 @@ textarea {
 
         #kc-login,
         #kc-register {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             width: 100%;
-            min-height: 35px;
-            border-radius: 4px;
+            min-height: 2.75rem;
+            padding: var(--space-2) var(--space-5);
+            border: 1px solid $dark-gold-color;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-inset);
+            font-family: var(--font-family-display);
+            letter-spacing: .035em;
             color: $background-color-page;
             background: $gold-color;
             font-weight: $font-weight-medium;
             cursor: pointer;
+            transition: background-color var(--duration-fast) var(--easing-standard);
 
             &:hover {
                 color: $dark-purple-color;
@@ -464,14 +502,27 @@ textarea {
     }
 
     &__registration-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2.75rem;
         color: $primary-color;
+        font-family: var(--font-family-display);
         font-size: $font-size-sm;
         font-weight: $font-weight-medium;
-        padding: .5rem 1.5rem;
-        border: 1px solid $border-color;
-        border-radius: 4px;
+        letter-spacing: .035em;
+        padding: var(--space-2) var(--space-5);
+        border: 1px solid var(--color-border-strong);
+        border-radius: var(--radius-sm);
         background: $background-color-input;
+        box-shadow: var(--shadow-inset), var(--shadow-gold);
         text-decoration: none;
+        transition: background-color var(--duration-fast) var(--easing-standard);
+
+        &:hover {
+            border-color: $gold-color;
+            background: $background-color-card;
+        }
     }
 
     &__security-note {
@@ -548,16 +599,6 @@ textarea {
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .auth {
-        background: $background-color-page url("../video/dungeon-party-loop-poster.webp") center / cover;
-
-        &__dungeon-background {
-            display: none;
-        }
-    }
-}
-
 #kc-info {
     position: relative;
     top: -1rem;
@@ -579,14 +620,27 @@ textarea {
     }
 
     a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2.75rem;
         color: $primary-color;
+        font-family: var(--font-family-display);
         font-size: $font-size-sm;
         font-weight: $font-weight-medium;
-        padding: .5rem 1.5rem;
-        border: 1px solid $border-color;
-        border-radius: 4px;
+        letter-spacing: .035em;
+        padding: var(--space-2) var(--space-5);
+        border: 1px solid var(--color-border-strong);
+        border-radius: var(--radius-sm);
         background: $background-color-input;
+        box-shadow: var(--shadow-inset), var(--shadow-gold);
         text-decoration: none;
+        transition: background-color var(--duration-fast) var(--easing-standard);
+
+        &:hover {
+            border-color: $gold-color;
+            background: $background-color-card;
+        }
     }
 }
 
