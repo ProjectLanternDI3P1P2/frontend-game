@@ -4,6 +4,20 @@
 
 <!-- Le plus récent en haut. Format : voir le skill decision-log. -->
 
+## D18 - 2026-10-21 - Exception `useAsyncData` pour la page publique
+
+Décision : le test F01 « CA2: the feature keeps no client cache » exclut uniquement `composables/usePublicRanking.ts`, qui utilise `useAsyncData` (hydratation SSR, pas de cache client).
+Pourquoi : D11 impose le SSR à `/rankings` ; la règle « pas de cache client » (D3) reste vraie pour les pages personnelles.
+Écarté : retirer le test CA2 (garde-fou utile).
+Source : rapport F04
+
+## D17 - 2026-10-21 - `/rankings` : erreurs et fraîcheur sous cache `swr`
+
+Décision : en cas d'erreur, le serveur répond 503 avec un message générique fixe, et la date de fraîcheur est absolue en UTC. Les médailles et la tendance reprennent des tokens existants et portent l'information par le texte.
+Pourquoi : Nitro ne met en cache que les réponses en dessous de 400 (une panne ne doit pas écraser la bonne page) ; la page indexable ne doit pas exposer de texte interne ; une date relative casserait l'hydratation.
+Écarté : répondre 200 avec un état d'erreur.
+Source : rapport F04
+
 ## D16 - 2026-10-21 - Tiroir des faits : piège à focus local
 
 Décision : `RankingFactsDrawer.vue` implémente lui-même le piège à focus et le retour du focus au bouton d'ouverture. Le détail utilise `h3` (« Hero · <name> ») et `h4` (« Last 4 runs »), ce qui suppose un `h2` de F02 au-dessus.
