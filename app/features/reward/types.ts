@@ -22,7 +22,7 @@ export type ChestLootStatus = "loading" | "success" | "error";
 
 /** State of the Reward-owned modal for one Dungeon chest interaction. */
 export interface ChestLootInteraction {
-  chestElementId: number;
+  chestElementId: string | number;
   status: ChestLootStatus;
   result: ChestLootResult | null;
   errorMessage: string | null;

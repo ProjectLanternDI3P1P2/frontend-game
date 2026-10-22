@@ -28,7 +28,7 @@ copying `app/features/dungeon/`, `app/pages/dungeon/` and the route rule.
 | `joinDungeon`      | SignalR `/hubs/dungeons` → `JoinDungeon`                    | never: the run is mutable              |
 | `moveHero`         | SignalR `/hubs/dungeons` → `MoveHero`                       | never                                  |
 | `defeatFloorBoss`  | `POST /api/v1/dungeon-runs/{runId}/boss-defeats`            | never                                  |
-| `openChest`        | `POST /api/v1/dungeon-runs/{runId}/chests/{elementId}/open` | never                                  |
+| `openChest`        | `POST /api/v1/dungeon-runs/{runId}/chests/{elementId:guid}/open` | never                                  |
 | `fetchDungeonMap`  | `GET /api/v1/dungeons/{seed}/map?floor=n`                   | forever: a floor is immutable per seed |
 
 The fog of war survives a reload: the run carries the tiles the hero stood on

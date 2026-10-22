@@ -37,6 +37,12 @@ import {
 import { SHEETS, themeOf } from "../tiles/tileset";
 import type { Direction, DungeonElement, MobState, Position } from "../types";
 
+function stableAnimationDelay(id: string): number {
+  let hash = 0;
+  for (const character of id) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  return (hash / 0xffffffff) * 1.6;
+}
+
 const props = defineProps<{
   loaded: LoadedFloor;
   hero: Position;
@@ -57,9 +63,9 @@ const props = defineProps<{
   /** Mobs just killed, fading out where they fell. */
   dyingMobs: MobState[];
   /** Item element IDs whose chest state is open on this floor. */
-  openedChestElementIds: readonly number[];
+  openedChestElementIds: readonly (string | number)[];
   /** The nearby chest that can be opened with E, or null when none is in reach. */
-  openableChestElementId: number | null;
+  openableChestElementId: string | number | null;
 }>();
 
 const emit = defineEmits<{ openChest: [] }>();
@@ -154,7 +160,7 @@ const visibleElements = computed<VisibleSprite[]>(() => {
         key: `element-${element.id}`,
         className: `dungeon-sprite dungeon-sprite--${sprite.sheet} dungeon-element dungeon-element--${element.type}${isOpenedChest ? " dungeon-element--opened" : ""}${element.kind ? ` dungeon-element--${element.kind}` : ""}`,
         // Mobs float out of step with one another.
-        style: `${spriteStyle(sprite, element)};--delay:-${((element.id * 0.37) % 1.6).toFixed(2)}s`,
+        style: `${spriteStyle(sprite, element)};--delay:-${stableAnimationDelay(String(element.id)).toFixed(2)}s`,
       };
     });
 });
@@ -170,7 +176,7 @@ const visibleMobs = computed<VisibleSprite[]>(() => {
       // Same key alive and dying: the sprite stays where it fell and fades out.
       key: `mob-${mob.id}`,
       className: `${mobClassName(mob)}${dying.has(mob.id) ? " dungeon-mob--dying" : ""}`,
-      style: `${spriteStyle(ENEMY, mob)};--delay:-${((mob.id * 0.37) % 1.6).toFixed(2)}s`,
+      style: `${spriteStyle(ENEMY, mob)};--delay:-${stableAnimationDelay(String(mob.id)).toFixed(2)}s`,
     }));
 });
 

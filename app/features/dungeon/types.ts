@@ -40,7 +40,7 @@ export interface Position {
 
 export interface DungeonElement {
   /** Stable for a given seed and floor: other services reference it. */
-  id: number;
+  id: string | number;
   type: ElementTypeName;
   x: number;
   y: number;
@@ -89,7 +89,7 @@ export interface DungeonMapResponse {
 /** A living mob of the current floor, where it stands this turn. */
 export interface MobState {
   /** The id of the enemy element it spawned from. */
-  id: number;
+  id: string | number;
   kind: EnemyKindName;
   x: number;
   y: number;
@@ -124,7 +124,7 @@ export interface DungeonRunResponse {
    */
   visitedTiles: string;
   /** Item element IDs already opened on the current floor. */
-  openedChestElementIds: number[];
+  openedChestElementIds: (string | number)[];
   startedAt: string;
 }
 

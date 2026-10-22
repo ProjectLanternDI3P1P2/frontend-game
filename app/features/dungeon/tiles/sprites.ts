@@ -83,13 +83,20 @@ const OPENED_CHESTS: readonly AnimatedSprite[] = [64, 96, 128].map((y) => ({
 }));
 
 /** A chest, of a colour chosen by the item's id. */
-export function itemSprite(id: number): AnimatedSprite {
-  return CHESTS[id % CHESTS.length]!;
+function stableIndex(id: string | number, length: number): number {
+  if (typeof id === "number") return Math.abs(id) % length;
+  let hash = 0;
+  for (const character of id) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  return hash % length;
+}
+
+export function itemSprite(id: string | number): AnimatedSprite {
+  return CHESTS[stableIndex(id, CHESTS.length)]!;
 }
 
 /** The opened version of an item chest, with the same deterministic colour. */
-export function openedItemSprite(id: number): AnimatedSprite {
-  return OPENED_CHESTS[id % OPENED_CHESTS.length]!;
+export function openedItemSprite(id: string | number): AnimatedSprite {
+  return OPENED_CHESTS[stableIndex(id, OPENED_CHESTS.length)]!;
 }
 
 /** Spikes that come out of the floor and go back in. */
