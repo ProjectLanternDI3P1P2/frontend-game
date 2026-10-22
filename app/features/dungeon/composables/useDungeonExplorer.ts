@@ -9,7 +9,7 @@
  * backend did not accept.
  */
 import { computed, ref, shallowRef, watch } from "vue";
-import { defeatFloorBoss, joinDungeon, moveHero } from "../api/dungeonApi";
+import { defeatFloorBoss, joinDungeon, moveHero, spawnMob } from "../api/dungeonApi";
 import type { DecodedFloor } from "../dungeonMap";
 import {
   Cell,
@@ -28,6 +28,7 @@ import type {
   Direction,
   DungeonElement,
   DungeonRunResponse,
+  EnemyKindName,
   MobState,
   Position,
 } from "../types";
@@ -184,7 +185,11 @@ export function useDungeonExplorer(runId: string) {
       // Same rule as the backend: no request for a move it would refuse.
       bump.value = { direction, id: ++bumpCount };
       const isGate = cellAt(current, target.x, target.y) === Cell.Gate;
-      announce(isGate ? "The gate is locked: defeat the boss of this floor first." : "Blocked.");
+      announce(
+        isGate
+          ? "The gate is locked: defeat the boss of this floor first."
+          : "Blocked.",
+      );
       return;
     }
 
@@ -197,7 +202,8 @@ export function useDungeonExplorer(runId: string) {
 
     placeHero(target);
     const here = elementsAt(current, target);
-    if (here.length > 0) announce(`On this tile: ${here.map((e) => e.type).join(", ")}.`);
+    if (here.length > 0)
+      announce(`On this tile: ${here.map((e) => e.type).join(", ")}.`);
 
     pendingMoves.value++;
     const moveGeneration = generation;
@@ -271,6 +277,19 @@ export function useDungeonExplorer(runId: string) {
     }
   }
 
+  /** Debug only: a mob on a tile of the sandbox, once the moves typed ahead are confirmed. */
+  function spawn(kind: EnemyKindName, position: Position): void {
+    const moveGeneration = generation;
+    queue = queue.then(async () => {
+      if (moveGeneration !== generation) return;
+      try {
+        run.value = await spawnMob(runId, kind, position);
+      } catch (error) {
+        await resynchronise(error);
+      }
+    });
+  }
+
   /** The backend refused or the outcome is unknown: its state wins (ADR-FE-008). */
   async function resynchronise(error: unknown): Promise<void> {
     generation++;
@@ -318,6 +337,7 @@ export function useDungeonExplorer(runId: string) {
     start,
     move,
     fightBoss,
+    spawn,
   };
 }
 
@@ -328,8 +348,9 @@ function samePosition(a: Position, b: Position): boolean {
 function describeRoom(floor: DecodedFloor, roomId: number): string {
   const room = floor.rooms[roomId]!;
   const count = (type: DungeonElement["type"]) =>
-    floor.elements.filter((element) => element.roomId === roomId && element.type === type)
-      .length;
+    floor.elements.filter(
+      (element) => element.roomId === roomId && element.type === type,
+    ).length;
   const traps = count("trap");
   const details = [
     room.type === "combat" ? `${count("enemy")} enemies` : null,
