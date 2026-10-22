@@ -11,7 +11,7 @@ import { useGateway } from "~/shared/composables/useGateway";
 import type { GatewayClient } from "~/shared/utils/gateway";
 
 function heroesPath(playerId: string): string {
-  return `players/${encodeURIComponent(playerId)}/heroes`;
+  return `player/${encodeURIComponent(playerId)}/heroes`;
 }
 
 /**
@@ -21,7 +21,7 @@ function heroesPath(playerId: string): string {
 export function createPlayerApi(client: GatewayClient) {
   return {
     listHeroClasses(signal?: AbortSignal): Promise<HeroClassOption[]> {
-      return client.get<HeroClassOption[]>("hero-classes", { signal });
+      return client.get<HeroClassOption[]>("player/hero-classes", { signal });
     },
 
     listHeroes(playerId: string, signal?: AbortSignal): Promise<HeroSummary[]> {

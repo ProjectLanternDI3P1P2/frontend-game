@@ -191,11 +191,14 @@ Floor progression happens by walking into the boss and then its open gate.
 - Defeating the boss of the last floor, which has no gate, wins the run.
 
 The hero is a Mana Seed paper doll (`tiles/hero.ts`): a body, an outfit, hair,
-maybe a hat, a weapon and a shield, each on its own sheet, stacked in one window
-that plays the same frames. It stands on guard and shuffles between tiles with
-its weapon drawn, facing the way it last tried to go in all four directions; the
-weapon and the shield pass in front of or behind the body with the facing, as
-the art's layer order guides say. Headwear hides the hair, which would stick out
+maybe a hat, a weapon and what its other hand holds, each on its own sheet,
+stacked in one window that plays the same frames. It fights in one of three
+styles, each drawn from its own page of the art: a one-handed weapon and a
+shield (`pONE2`), a bow and a quiver (`pBOW2`), or a spear or halberd in both
+hands (`pPOL2`). It stands on guard and shuffles between tiles with its weapon
+drawn, facing the way it last tried to go in all four directions; the weapon
+and the off hand pass in front of or behind the body with the facing, as the
+art's layer order guides say. Headwear hides the hair, which would stick out
 of it. Until the run receives the hero from the
 Player service, its look is drawn at random from the run id
 (`heroAppearanceOf`): a new dungeon, a new hero, the same one on every floor and
