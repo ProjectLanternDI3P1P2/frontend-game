@@ -62,6 +62,22 @@ export interface TileLayer {
    * it, the hero and the mobs included, and is hidden by what stands in front of it.
    */
   upright?: boolean;
+  /**
+   * Part of a wall, which hides the hero, the mobs and the furniture behind it or beside it,
+   * so that their sprites, wider and taller than a tile, never stick out over the walls of a
+   * corridor. The lower half of a face hides what stands on its row: what stands below it
+   * is in front of the wall. The upper half of a face and the top of a wall hide what stands
+   * on their row and the row below, which is still the wall's (`WallDepth`).
+   */
+  wall?: WallDepth;
+}
+
+/** How far down a part of a wall hides what stands behind it (see `TileLayer.wall`). */
+export type WallDepth = "face" | "top";
+
+/** The same layers, as parts of a wall. */
+function asWall(layers: TileLayer[], wall: WallDepth): TileLayer[] {
+  return layers.map((layer) => ({ ...layer, wall }));
 }
 
 /** What the template renders: one absolutely positioned element per layer. */
@@ -491,7 +507,7 @@ export function planFloor(floor: DecodedFloor): TileLayer[][] {
 /** A wall tile: its rim, or the lower half of its face. */
 function wallLayers(plan: WallPlan, x: number, y: number, hash: number): TileLayer[] {
   if (plan.isRim(x, y) || plan.isThinWall(x, y)) {
-    return [atlas(rimSprite(plan.rimKey(x, y), roll(hash, 6) < CHANCE.jointedRim))];
+    return asWall([atlas(rimSprite(plan.rimKey(x, y), roll(hash, 6) < CHANCE.jointedRim))], "top");
   }
   return plan.isFace(x, y) ? lowerFaceLayers(plan, x, y) : [];
 }
@@ -517,13 +533,13 @@ function lowerFaceLayers(plan: WallPlan, x: number, y: number): TileLayer[] {
   const isTall = plan.isUpperFace(x, y - 1);
   const layers = [atlas(faceSprite(plan, isTall ? FACES.lower : FACES.short, x, y, plan.faceEnds(x, y)))];
   if (!isTall) layers.push(...wallDressing(plan, x, y, y, -TILE_SIZE));
-  return layers;
+  return asWall(layers, "face");
 }
 
 function upperFaceLayers(plan: WallPlan, x: number, y: number): TileLayer[] {
   const layers = [atlas(faceSprite(plan, FACES.upper, x, y + 1, plan.upperFaceEnds(x, y)))];
   layers.push(...wallDressing(plan, x, y, y + 1, 0));
-  return layers;
+  return asWall(layers, "top");
 }
 
 /**
@@ -707,8 +723,8 @@ function spillsOnlyOnFloor(plan: WallPlan, x: number, y: number, layer: TileLaye
 }
 
 function render(layer: TileLayer, x: number, y: number): RenderedLayer {
-  const { sheet, sprite, dx, dy, transform, upright } = layer;
-  const modifiers = [transform, upright ? "upright" : undefined].filter(Boolean);
+  const { sheet, sprite, dx, dy, transform, upright, wall } = layer;
+  const modifiers = [transform, upright ? "upright" : undefined, wall ? `wall-${wall}` : undefined].filter(Boolean);
   return {
     className: ["dungeon-tile", `dungeon-tile--${sheet}`, ...modifiers.map((name) => `dungeon-tile--${name}`)].join(" "),
     style:

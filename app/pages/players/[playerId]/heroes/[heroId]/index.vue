@@ -4,10 +4,12 @@ import { NoticeTone } from "~/shared/ui/UiNotice.vue";
 import { useToast } from "~/shared/composables/useToast";
 import { GatewayError } from "~/shared/utils/gateway";
 import { usePlayerApi } from "~/features/player/api/playerApi";
-import HeroPortraitPlaceholder from "~/features/player/components/HeroPortraitPlaceholder.vue";
+import HeroSprite from "~/features/player/components/HeroSprite.vue";
+import HeroDeletionModal from "~/features/player/components/HeroDeletionModal.vue";
+import { useHeroDeletion } from "~/features/player/composables/useHeroDeletion";
 import type { HeroClassOption, HeroSheet, HeroSummary } from "~/features/player/types";
 
-definePageMeta({ layout: "player" });
+definePageMeta({ layout: "default" });
 
 const route = useRoute();
 const playerId = computed(() => String(route.params.playerId));
@@ -17,6 +19,7 @@ const heroesPath = computed(
 );
 const hero = ref<HeroSheet | null>(null);
 const heroSummary = ref<HeroSummary | null>(null);
+const heroCount = ref(0);
 const heroClass = ref<HeroClassOption | null>(null);
 const loading = ref(true);
 const updatingSelection = ref(false);
@@ -24,9 +27,8 @@ const error = ref("");
 const { success } = useToast();
 
 const isSelected = computed(() => heroSummary.value?.isSelected ?? false);
-const isInActiveSession = computed(
-  () => heroSummary.value?.isEngagedInActiveSession ?? false,
-);
+const activeSession = computed(() => heroSummary.value?.activeSession ?? null);
+const isInActiveSession = computed(() => activeSession.value !== null);
 const heroClassLabel = computed(
   () =>
     heroClass.value?.label ??
@@ -62,6 +64,7 @@ async function refreshHero() {
   ]);
   hero.value = loadedHero;
   heroSummary.value = heroes.find((item) => item.id === loadedHero.id) ?? null;
+  heroCount.value = heroes.length;
   heroClass.value =
     heroClasses.find((item) => item.code === loadedHero.classCode) ?? null;
 }
@@ -106,6 +109,22 @@ async function toggleSelection() {
     updatingSelection.value = false;
   }
 }
+
+/** US-PLAYER-10: a running dungeon blocks deletion; a lobby is closed first. */
+const deletion = useHeroDeletion(playerId, hero, activeSession, {
+  deleteHero: (player, id) => usePlayerApi().deleteHero(player, id),
+  refresh: refreshHero,
+  navigate: (path) => navigateTo(path),
+  notifySuccess: (message, title) => success(message, { title }),
+});
+const {
+  open: deletionOpen,
+  step: deletionStep,
+  deleting,
+  error: deletionError,
+  closesLobby,
+  sessionId: activeSessionId,
+} = deletion;
 
 onMounted(load);
 </script>
@@ -155,9 +174,11 @@ onMounted(load);
           <p v-if="isSelected" class="hero-detail__state">Selected</p>
           <p v-else-if="isInActiveSession" class="hero-detail__state">In session</p>
           <div class="hero-detail__portrait">
-            <HeroPortraitPlaceholder
+            <HeroSprite
               :class-code="hero.classCode"
-              :label="hero.name + ' placeholder portrait'"
+              :appearance="hero.appearance"
+              :scale="4"
+              :label="hero.name + ' portrait'"
             />
           </div>
           <h2>{{ hero.name }}</h2>
@@ -181,6 +202,14 @@ onMounted(load);
             :aria-label="selectionActionLabel"
             @click="toggleSelection"
             >{{ selectionLabel }}</UiButton
+          >
+          <UiButton
+            class="hero-detail__delete"
+            :size="ButtonSize.SM"
+            :variant="ButtonVariant.DANGER"
+            full-width
+            @click="deletion.start"
+            >Delete this hero</UiButton
           >
         </aside>
 
@@ -237,6 +266,20 @@ onMounted(load);
           </section>
         </div>
       </div>
+
+      <HeroDeletionModal
+        v-model="deletionOpen"
+        :step="deletionStep"
+        :hero-name="hero.name"
+        :hero-class-label="heroClassLabel"
+        :hero-count="heroCount"
+        :closes-lobby="closesLobby"
+        :session-id="activeSessionId"
+        :deleting="deleting"
+        :error="deletionError"
+        @confirm="deletion.confirm"
+        @view-session="deletion.viewSession"
+      />
     </template>
   </main>
 </template>
@@ -354,6 +397,12 @@ onMounted(load);
     border-color: var(--color-accent);
   }
 
+  // Figma: muted destructive outline under the selection button.
+  &__delete {
+    border-color: var(--color-danger);
+    background-color: color-mix(in srgb, var(--color-danger) 20%, transparent);
+  }
+
   &__state {
     min-height: 0.75rem;
     margin: 0;
@@ -370,18 +419,10 @@ onMounted(load);
 
   &__portrait {
     display: grid;
-    min-height: 10rem;
+    min-height: 12rem;
     place-items: center;
+    padding: var(--space-3);
     background: var(--color-surface-overlay);
-  }
-
-  &__portrait :deep(.hero-portrait) {
-    width: 7rem;
-    height: 7rem;
-  }
-
-  &__portrait :deep(.hero-portrait__sprite) {
-    transform: scale(2);
   }
 
   &__identity h2 {

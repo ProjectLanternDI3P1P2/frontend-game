@@ -53,10 +53,15 @@ async function resolveReturn() {
     await navigateTo({ path: route.path }, { replace: true });
   }
 }
+const playerId = computed(() =>
+  typeof route.query.playerId === "string" ? route.query.playerId : null,
+);
+const explorer = useDungeonExplorer(String(route.params.runId));
 const {
   run,
   loaded,
   hero,
+  appearance,
   status,
   errorMessage,
   announcement,
@@ -99,7 +104,10 @@ function onKeydown(event: KeyboardEvent) {
 
 async function copyShareLink() {
   if (!run.value) return;
-  const url = `${window.location.origin}/dungeon?seed=${run.value.seed}`;
+  const path = playerId.value
+    ? `/players/${encodeURIComponent(playerId.value)}/play?seed=${encodeURIComponent(run.value.seed)}`
+    : `/dungeon?seed=${encodeURIComponent(run.value.seed)}`;
+  const url = `${window.location.origin}${path}`;
   await navigator.clipboard.writeText(url);
   copied.value = true;
   setTimeout(() => (copied.value = false), 2000);
@@ -126,6 +134,7 @@ async function copyShareLink() {
           :loaded="loaded"
           :hero="hero"
           :facing="facing"
+          :appearance="appearance"
           :revealed="revealed"
           :reveal-version="revealVersion"
           :bump="bump"

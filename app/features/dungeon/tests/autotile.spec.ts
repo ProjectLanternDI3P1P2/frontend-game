@@ -281,6 +281,31 @@ describe("autotiling", () => {
     expect(layersAt(x, y)[0]!.upright).toBeUndefined();
   });
 
+  it("lays the walls over the hero beside or behind them, so that it never sticks out over a corridor's walls", () => {
+    const rendered = renderFloor(floor);
+    const upperFaces = [...FACES.upper.plain, ...FACES.upper.worn, FACES.upper.leftEnd, FACES.upper.rightEnd];
+    const seen = new Set<string | undefined>();
+    for (let index = 0; index < plan.length; index++) {
+      const stack = plan[index]!;
+      const [ground] = stack;
+      if (!ground) continue;
+      // A wall top and the upper half of a face hide the row below them too; the lower half of
+      // a face only its own row, so that the hero in front of a wall is drawn over it. Floors
+      // and what stands on them are no part of a wall.
+      let expected: string | undefined;
+      if (ground.sheet === "atlas" && isRim(ground.sprite)) expected = "top";
+      else if (isOneOf(ground.sprite, upperFaces)) expected = "top";
+      else if (isOneOf(ground.sprite, allFaces)) expected = "face";
+      seen.add(expected);
+      for (const [depth, layer] of stack.entries()) {
+        // What hangs on a face is part of it.
+        expect(layer.wall).toBe(expected);
+        if (expected) expect(rendered[index]![depth]!.className).toContain(`dungeon-tile--wall-${expected}`);
+      }
+    }
+    expect(seen).toEqual(new Set(["top", "face", undefined]));
+  });
+
   it("draws each piece of a fence for its place in the fence", () => {
     // A floor with a fenced treasure: rails along its north side, posts down its sides.
     const fenced = decodeFloor(fixture as DungeonMapResponse);

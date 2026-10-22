@@ -9,10 +9,11 @@ import {
 import HeroPortraitPlaceholder from "~/features/player/components/HeroPortraitPlaceholder.vue";
 import HeroSelectionModal from "~/features/player/components/HeroSelectionModal.vue";
 import type { HeroSummary } from "~/features/player/types";
+import { formatSeed, missingSeedCharacters, seedError } from "~/features/dungeon/seed";
 import { createIdempotencyKey } from "~/shared/utils/idempotency";
 import { findSelectedHeroId } from "~/features/player/utils/selectedHero";
 
-definePageMeta({ layout: "player" });
+definePageMeta({ layout: "default" });
 
 const route = useRoute();
 const router = useRouter();
@@ -24,6 +25,9 @@ const creating = ref(false);
 const selectingHero = ref(false);
 const heroPickerOpen = ref(false);
 const error = ref("");
+const replaySeed = ref(
+  formatSeed(typeof route.query.seed === "string" ? route.query.seed : ""),
+);
 let hub: PlayerHubClient | null = null;
 const selectedHero = computed(
   () => heroes.value.find((hero) => hero.id === selectedId.value) ?? null,
@@ -31,6 +35,22 @@ const selectedHero = computed(
 const isJoinScreen = computed(
   () => route.path === `/players/${encodeURIComponent(playerId.value)}/play`,
 );
+const replaySeedInvalid = computed(() => seedError(replaySeed.value));
+const replaySeedMissing = computed(() => missingSeedCharacters(replaySeed.value));
+const hasValidReplaySeed = computed(
+  () => !replaySeedInvalid.value && replaySeedMissing.value === 0,
+);
+const canCreateLobby = computed(
+  () =>
+    Boolean(selectedHero.value) &&
+    !selectedHero.value?.isEngagedInActiveSession &&
+    (!replaySeed.value || hasValidReplaySeed.value),
+);
+
+function typeReplaySeed(event: Event): void {
+  const input = event.target as HTMLInputElement;
+  input.value = replaySeed.value = formatSeed(input.value);
+}
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -45,7 +65,8 @@ async function load(): Promise<void> {
 }
 
 async function createLobby(): Promise<void> {
-  if (!selectedHero.value || selectedHero.value.isEngagedInActiveSession) return;
+  const hero = selectedHero.value;
+  if (!hero || !canCreateLobby.value) return;
   creating.value = true;
   error.value = "";
   try {
@@ -57,7 +78,8 @@ async function createLobby(): Promise<void> {
     const session = await hub.createSoloLobby({
       commandId: createIdempotencyKey(),
       playerId: playerId.value,
-      heroId: selectedHero.value.id,
+      heroId: hero.id,
+      dungeonSeed: replaySeed.value || undefined,
     });
     await router.push(
       `/players/${encodeURIComponent(playerId.value)}/play/lobbies/${session.sessionId}`,
@@ -79,7 +101,8 @@ async function selectHero(hero: HeroSummary): Promise<void> {
     selectedId.value = hero.id;
     heroPickerOpen.value = false;
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : "Unable to select this hero.";
+    error.value =
+      cause instanceof Error ? cause.message : "Unable to select this hero.";
   } finally {
     selectingHero.value = false;
   }
@@ -93,51 +116,88 @@ onBeforeUnmount(() => void hub?.disconnect());
   <div>
     <NuxtPage v-if="!isJoinScreen" />
     <main v-else id="main" class="join-game">
-    <header>
-      <p class="join-game__eyebrow">Play a game</p>
-      <h1>Join a game</h1>
-    </header>
-    <p v-if="error" class="join-game__notice" role="alert">{{ error }}</p>
-    <p v-else-if="loading" class="join-game__notice">Loading your heroes…</p>
-    <div v-else class="join-game__layout">
-      <aside class="join-game__hero">
-        <p class="join-game__eyebrow">Selected hero</p>
-        <template v-if="selectedHero">
-          <HeroPortraitPlaceholder
-            :class-code="selectedHero.classCode"
-            :label="`${selectedHero.name} portrait`"
-          />
-          <h2>{{ selectedHero.name }}</h2>
-          <p>{{ selectedHero.classCode }} · level {{ selectedHero.level }}</p>
-          <UiButton :size="ButtonSize.SM" :variant="ButtonVariant.GHOST" @click="heroPickerOpen = true">Change hero</UiButton>
-        </template>
-        <template v-else
-          ><h2>No hero selected</h2>
-          <p>Select a hero before creating a lobby.</p>
-          <UiButton :size="ButtonSize.SM" :variant="ButtonVariant.GHOST" @click="heroPickerOpen = true">Choose a hero</UiButton></template
-        >
-      </aside>
-      <section class="join-game__content" aria-label="Lobby actions">
-        <article class="join-game__card">
-          <p class="join-game__eyebrow">Solo</p>
-          <h2>Create a lobby</h2>
-          <p>Prepare your hero, then start the run when you are ready.</p>
-          <UiButton
-            :size="ButtonSize.SM"
-            :variant="ButtonVariant.PRIMARY"
-            :busy="creating"
-            :disabled="!selectedHero || selectedHero.isEngagedInActiveSession"
-            @click="createLobby"
-            >{{ creating ? "Creating…" : "Create lobby" }}</UiButton
+      <header>
+        <p class="join-game__eyebrow">Play a game</p>
+        <h1>Join a game</h1>
+      </header>
+      <p v-if="error" class="join-game__notice" role="alert">{{ error }}</p>
+      <p v-else-if="loading" class="join-game__notice">Loading your heroes…</p>
+      <div v-else class="join-game__layout">
+        <aside class="join-game__hero">
+          <p class="join-game__eyebrow">Selected hero</p>
+          <template v-if="selectedHero">
+            <HeroPortraitPlaceholder
+              :class-code="selectedHero.classCode"
+              :appearance="selectedHero.appearance"
+              :label="`${selectedHero.name} portrait`"
+            />
+            <h2>{{ selectedHero.name }}</h2>
+            <p>{{ selectedHero.classCode }} · level {{ selectedHero.level }}</p>
+            <UiButton
+              :size="ButtonSize.SM"
+              :variant="ButtonVariant.GHOST"
+              @click="heroPickerOpen = true"
+              >Change hero</UiButton
+            >
+          </template>
+          <template v-else
+            ><h2>No hero selected</h2>
+            <p>Select a hero before creating a lobby.</p>
+            <UiButton
+              :size="ButtonSize.SM"
+              :variant="ButtonVariant.GHOST"
+              @click="heroPickerOpen = true"
+              >Choose a hero</UiButton
+            ></template
           >
-        </article>
-        <article class="join-game__card join-game__card--empty">
-          <p class="join-game__eyebrow">Open lobbies</p>
-          <h2>No games to join yet</h2>
-          <p>Joining another player’s lobby arrives with the multiplayer release.</p>
-        </article>
-      </section>
-    </div>
+        </aside>
+        <section class="join-game__content" aria-label="Lobby actions">
+          <article class="join-game__card">
+            <p class="join-game__eyebrow">Solo</p>
+            <h2>Create a lobby</h2>
+            <p>Prepare your hero, then start the run when you are ready.</p>
+            <label class="join-game__seed" for="dungeon-seed">
+              Replay seed <span>(optional)</span>
+              <input
+                id="dungeon-seed"
+                :value="replaySeed"
+                autocomplete="off"
+                autocapitalize="characters"
+                spellcheck="false"
+                placeholder="0KX4-M2T9-QZ7PA"
+                :aria-invalid="Boolean(replaySeedInvalid)"
+                :aria-describedby="replaySeed ? 'dungeon-seed-hint' : undefined"
+                @input="typeReplaySeed"
+              />
+              <span
+                v-if="replaySeed"
+                id="dungeon-seed-hint"
+                :class="{ 'join-game__seed-hint--error': replaySeedInvalid }"
+              >
+                {{
+                  replaySeedInvalid ??
+                  (hasValidReplaySeed
+                    ? "Ready to replay."
+                    : `${replaySeedMissing} more character${replaySeedMissing === 1 ? "" : "s"}.`)
+                }}
+              </span>
+            </label>
+            <UiButton
+              :size="ButtonSize.SM"
+              :variant="ButtonVariant.PRIMARY"
+              :busy="creating"
+              :disabled="!canCreateLobby"
+              @click="createLobby"
+              >{{ creating ? "Creating…" : "Create lobby" }}</UiButton
+            >
+          </article>
+          <article class="join-game__card join-game__card--empty">
+            <p class="join-game__eyebrow">Open lobbies</p>
+            <h2>No games to join yet</h2>
+            <p>Joining another player’s lobby arrives with the multiplayer release.</p>
+          </article>
+        </section>
+      </div>
     </main>
     <HeroSelectionModal
       v-model="heroPickerOpen"
@@ -193,6 +253,31 @@ h1 {
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
+}
+.join-game__seed {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xs);
+
+  span {
+    color: var(--color-text-muted);
+  }
+
+  .join-game__seed-hint--error {
+    color: var(--color-danger);
+  }
+
+  input {
+    min-block-size: 2.5rem;
+    padding-inline: var(--space-3);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-base);
+    color: var(--color-text-primary);
+    font-family: var(--font-family-mono);
+    text-transform: uppercase;
+  }
 }
 .join-game__hero h2 {
   display: -webkit-box;
