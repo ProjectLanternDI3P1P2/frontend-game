@@ -1,6 +1,7 @@
 <#import "template.ftl" as layout>
 <#import "user-profile-commons.ftl" as userProfileCommons>
 <#import "register-commons.ftl" as registerCommons>
+<#include "critical-style.ftl">
 
 
 <div class="auth">

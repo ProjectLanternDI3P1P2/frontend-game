@@ -1,5 +1,6 @@
 <#import "template.ftl" as layout>
 <#import "passkeys.ftl" as passkeys>
+<#include "critical-style.ftl">
 
 <div class="auth">
 	<video class="auth__dungeon-background" autoplay muted loop playsinline poster="${url.resourcesPath}/video/dungeon-party-loop-poster.webp" aria-hidden="true">
