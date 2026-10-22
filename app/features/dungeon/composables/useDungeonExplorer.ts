@@ -39,7 +39,27 @@ const MAX_PENDING_MOVES = 4;
 
 export type ExplorerStatus = "loading" | "ready" | "error";
 
-export function useDungeonExplorer(runId: string) {
+/** The most monsters Combat puts in one fight (its `Fight:MaxMonsters`). */
+const MAX_PACK = 4;
+
+/** The party met monsters: the page opens the fight. */
+export interface Encounter {
+  encounter: "Ordinary" | "Boss";
+  /** 1-based, as Combat counts floors. */
+  floor: number;
+  /** Ids of the mobs fought (their enemy elements); empty for the boss. */
+  elementIds: number[];
+}
+
+/** How a fight ended, as Combat reports it. */
+export type FightOutcome = "Victory" | "Defeat" | "Fled";
+
+export interface ExplorerOptions {
+  /** Called when mobs reach the hero, or the hero walks into the boss. */
+  onEncounter?: (encounter: Encounter) => void;
+}
+
+export function useDungeonExplorer(runId: string, options: ExplorerOptions = {}) {
   const run = shallowRef<DungeonRunResponse | null>(null);
   const loaded = shallowRef<LoadedFloor | null>(null);
   const hero = ref<Position>({ x: 0, y: 0 });
@@ -86,6 +106,13 @@ export function useDungeonExplorer(runId: string) {
       const killed = next.killedMobs;
       if (killed.length === 0) return;
       dyingMobs.value = [...dyingMobs.value, ...killed];
+      // Dungeon kills the mobs that reach the hero in place of a fight (its TODO
+      // "fight-trigger"): the fight is played here, against them.
+      void startEncounter(
+        "Ordinary",
+        killed.slice(0, MAX_PACK).map((mob) => mob.id),
+        MOVE_COOLDOWN_MS,
+      );
       setTimeout(() => {
         dyingMobs.value = dyingMobs.value.filter((mob) => !killed.includes(mob));
       }, MOVE_COOLDOWN_MS + MOB_DEATH_MS);
@@ -172,7 +199,7 @@ export function useDungeonExplorer(runId: string) {
 
     // Walking into the boss starts the fight; into the open gate, the way down.
     if (bossAt(current, target)) {
-      void fightBoss();
+      void startEncounter("Boss", []);
       return;
     }
     if (goesDown(current, target, state.floorBossDefeated)) {
@@ -244,18 +271,53 @@ export function useDungeonExplorer(runId: string) {
   }
 
   /**
-   * Stands in for the fight until Combat exists: walking into the boss records its
-   * defeat, which opens the gate down, or wins the run on the last floor.
+   * Lets the moves already typed land, then hands the fight to the page.
+   * @param delay Time for the player to see the contact before the fight opens.
    */
-  async function fightBoss(): Promise<void> {
-    if (!canFightBoss.value || isFighting) return;
+  async function startEncounter(
+    encounter: Encounter["encounter"],
+    elementIds: number[],
+    delay = 0,
+  ): Promise<void> {
+    const state = run.value;
+    if (!state || state.status !== "active" || isFighting) return;
+    if (encounter === "Boss" && !canFightBoss.value) return;
     isFighting = true;
     const moveGeneration = generation;
     await queue;
-    if (moveGeneration !== generation) {
-      isFighting = false;
+    if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+    isFighting = false;
+    if (moveGeneration !== generation) return;
+    announce(encounter === "Boss" ? "The boss attacks!" : "Monsters attack!");
+    options.onEncounter?.({ encounter, floor: state.currentFloor + 1, elementIds });
+  }
+
+  /**
+   * Back from Combat. The mobs of a pack are already dead on Dungeon's side; the boss
+   * beaten is recorded by Dungeon, which opens the gate down, or wins the run on the last
+   * floor. TODO(contract): in the target flow Combat reports the outcome to Dungeon itself,
+   * and a lost or fled fight leaves the mobs alive.
+   */
+  async function resolveFight(
+    encounter: Encounter["encounter"],
+    outcome: FightOutcome,
+  ): Promise<void> {
+    const state = run.value;
+    if (!state) return;
+    if (outcome === "Defeat") {
+      announce("The party has fallen… it gets back up, bruised.");
       return;
     }
+    if (outcome === "Fled") {
+      announce("The party got away.");
+      return;
+    }
+    if (encounter === "Ordinary") {
+      announce("The monsters are defeated.");
+      return;
+    }
+    if (state.floorBossDefeated || isFighting) return;
+    isFighting = true;
     try {
       const updated = await defeatFloorBoss(runId);
       run.value = updated;
@@ -317,7 +379,7 @@ export function useDungeonExplorer(runId: string) {
     canFightBoss,
     start,
     move,
-    fightBoss,
+    resolveFight,
   };
 }
 

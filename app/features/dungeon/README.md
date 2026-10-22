@@ -30,6 +30,15 @@ copying `app/features/dungeon/`, `app/pages/dungeon/` and the route rule.
 | `defeatFloorBoss`  | `POST /api/v1/dungeon-runs/{runId}/boss-defeats` | never                                  |
 | `fetchDungeonMap`  | `GET /api/v1/dungeons/{seed}/map?floor=n`        | forever: a floor is immutable per seed |
 
+`defeatFloorBoss` is temporary too: walking into the boss opens Combat's fight
+(`/combat`), and the explorer calls it when the party comes back victorious.
+In the target flow Combat reports the outcome to Dungeon itself.
+
+Dungeon kills the mobs that reach the hero in place of a fight (`killedMobs`):
+the explorer opens Combat's fight against them (at most 4). Until Combat reports
+the outcome to Dungeon, a lost or fled fight leaves them dead all the same. The
+fight comes back to `/dungeon/{runId}?fight=…`, which applies the outcome once
+and clears the query.
 The fog of war survives a reload: the run carries the tiles the hero stood on
 (`visitedTiles`), and the explorer reveals around each of them again on arrival
 at a floor.
@@ -159,7 +168,7 @@ There are no buttons and no stairs: everything happens by walking.
 - Where a corridor leaves a room northwards, the wall keeps its height on both
   sides of the opening and the corridor goes on between its walls: no arch.
 - Each floor ends with a boss, a mob twice the size of the others. Walking into it starts the fight
-  (for now, `defeatFloorBoss` records the victory at once).
+  (see Combat); a victory is recorded with `defeatFloorBoss`.
 - The north wall of the boss room holds the `gate` down, drawn as a closed
   portcullis (`gateSprite` in `tiles/sprites.ts`) that rises once
   `floorBossDefeated` is true. Walking into the open gate takes the party to the
