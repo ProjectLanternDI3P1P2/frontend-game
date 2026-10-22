@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.3](https://github.com/ProjectLanternDI3P1P2/frontend-game/compare/v0.2.2...v0.2.3) (2026-10-22)
+
+
+### Fixed
+
+* serve game under production path ([8429ae9](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/8429ae93dd10bf53a28dad347ce142588a02a756))
+* servir le jeu sous /game ([10b6346](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/10b634658642ade5fa1e68ee9d33569f89d475fd))
+
 ## [0.2.2](https://github.com/ProjectLanternDI3P1P2/frontend-game/compare/v0.2.1...v0.2.2) (2026-10-21)
 
 
