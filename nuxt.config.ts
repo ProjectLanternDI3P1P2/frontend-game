@@ -12,17 +12,13 @@ export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
   devtools: { enabled: true },
 
-  // ADR-FE-003: hybrid rendering. The server runtime stays enabled so that the
-  // routes listed in `routeRules` below can be rendered per request; everything
-  // else is statically generated at build time. CSR is never the default.
+  // The Node runtime stays enabled: deployed configuration is supplied by the
+  // environment when the container starts, never while its image is built.
   ssr: true,
 
   // ADR-FE-003: every non-default route declares its rendering mode here and is
   // justified in docs/rendering-modes.md.
   routeRules: {
-    // Default: durable reference content is statically generated. It is cheap
-    // to serve, indexable, readable before JavaScript runs, and it survives the
-    // API Gateway being unavailable.
     // Authentication is restored from localStorage by Keycloak in the browser.
     // These routes must therefore be client-rendered: the server cannot know
     // whether the requester has an active local Keycloak session.
@@ -31,8 +27,11 @@ export default defineNuxtConfig({
     "/home": { ssr: false },
     "/players": { ssr: false },
     "/players/**": { ssr: false },
-    "/demo": { prerender: true },
-    "/demo/**": { prerender: true },
+    // Component demonstrations load the same client plugins as the game. Do
+    // not prerender them, otherwise their public runtime configuration would
+    // be frozen in the image.
+    "/demo": { ssr: false },
+    "/demo/**": { ssr: false },
 
     // The dungeon explorer is authenticated, interactive game state with no
     // SEO value: client-rendered, as the game client is (ADR-FE-004).
@@ -57,7 +56,10 @@ export default defineNuxtConfig({
   },
 
   nitro: {
-    prerender: { crawlLinks: true, failOnError: false },
+    // Do not turn linked CSR routes into static HTML implicitly. A future
+    // static route must opt in with `prerender: true` and use only portable
+    // (relative) public URLs.
+    prerender: { crawlLinks: false, failOnError: false },
   },
 
   // ADR-FE-015: automated accessibility linting.
@@ -93,22 +95,24 @@ export default defineNuxtConfig({
   // ADR-FE-011: the small number of public API calls goes through the Gateway.
   runtimeConfig: {
     public: {
-      // The local Player service supports both REST and SignalR WebSocket
-      // directly. Deployments must supply Traefik's public Gateway URL here.
-      // A relative Nuxt/Vite proxy is deliberately avoided: it forwarded the
-      // SignalR negotiation but not the WebSocket upgrade.
-      apiGatewayUrl: process.env.NUXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8080",
-      apiVersion: process.env.NUXT_PUBLIC_API_VERSION || "v1",
-      telemetryEndpoint: process.env.NUXT_PUBLIC_TELEMETRY_ENDPOINT || "",
-      appName: process.env.NUXT_PUBLIC_APP_NAME || "game-client",
-      appVersion: process.env.NUXT_PUBLIC_APP_VERSION || "dev",
-      commitSha: process.env.NUXT_PUBLIC_COMMIT_SHA || "local",
-      builtAt: process.env.NUXT_PUBLIC_BUILT_AT || "local",
-      // Keycloak
-      keycloakUrl: process.env.NUXT_PUBLIC_KEYCLOAK_URL || "http://localhost:8080",
-      keycloakRealm: process.env.NUXT_PUBLIC_KEYCLOAK_REALM || "lantern",
-      keycloakClientId: process.env.NUXT_PUBLIC_KEYCLOAK_CLIENT_ID || "lantern-public",
-      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || "http://localhost:3000",
+      // Nuxt maps NUXT_PUBLIC_* variables to these declared keys at server
+      // startup. Never read process.env here: that would capture a build-time
+      // value in generated output.
+      //
+      // The fallbacks are safe for a statically generated browser page behind
+      // the production ingress. Local development supplies explicit values in
+      // .env instead.
+      apiGatewayUrl: "/",
+      apiVersion: "v1",
+      telemetryEndpoint: "",
+      appName: "game-client",
+      appVersion: "dev",
+      commitSha: "local",
+      builtAt: "local",
+      keycloakUrl: "/auth",
+      keycloakRealm: "lantern",
+      keycloakClientId: "lantern-public",
+      siteUrl: "",
     },
   },
 

@@ -43,9 +43,6 @@ services:
     <<: *frontend
     build:
       context: .
-      args:
-        NUXT_PUBLIC_API_GATEWAY_URL: /
-        NUXT_PUBLIC_KEYCLOAK_URL: http://localhost:${KEYCLOAK_PORT:-8081}
     environment:
       NUXT_PUBLIC_API_GATEWAY_URL: /
       NUXT_PUBLIC_APP_NAME: game-client

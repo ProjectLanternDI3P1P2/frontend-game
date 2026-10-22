@@ -121,11 +121,11 @@ et les guillemets ; utiliser une valeur alphanumérique pour cette stack.
 
 ## Routage HTTP et SignalR
 
-Les fronts reçoivent `NUXT_PUBLIC_API_GATEWAY_URL=/` au build et à l'exécution.
-Le navigateur appelle ainsi `/api/v1/...` et `/hubs/player` sur l'origine du
-front, toujours via Traefik, sans CORS ni proxy Nuxt. La valeur au build couvre
-aussi les pages pré-rendues. Les éventuels futurs appels SSR devront utiliser
-une URL interne absolue de Traefik, car `/` vise ici les appels du navigateur.
+Les fronts reçoivent `NUXT_PUBLIC_API_GATEWAY_URL=/` à l'exécution. Le
+navigateur appelle ainsi `/api/v1/...` et `/hubs/player` sur l'origine du
+front, toujours via Traefik, sans CORS ni proxy Nuxt. Les éventuels futurs
+appels SSR devront utiliser une URL interne absolue de Traefik, car `/` vise
+ici les appels du navigateur.
 
 La configuration commune des API se trouve dans `deploy/traefik/backend/routes.yaml`.
 Le mode complet charge aussi `deploy/traefik/frontends.yaml`. Elle utilise le
@@ -166,19 +166,23 @@ l'application .NET **dans ce conteneur**. Traefik et Reward partagent le réseau
 Le navigateur de l'hôte utilise une URL de Traefik, pas le nom interne `reward`.
 Plusieurs conteneurs peuvent écouter sur `8080`, chacun ayant sa propre adresse.
 
-### Pourquoi une variable au build Nuxt ?
+Keycloak est également accessible depuis les deux origines des fronts sous
+`/auth`. Traefik retire ce préfixe avant de transmettre la requête au Keycloak
+local, qui est monté à sa racine. Les pages pré-rendues peuvent donc utiliser
+la valeur portable `NUXT_PUBLIC_KEYCLOAK_URL=/auth` en Compose comme en
+production.
 
-`ARG NUXT_PUBLIC_API_GATEWAY_URL` reçoit un paramètre de construction Docker.
-L'instruction `ENV` le rend visible à `npm run build`. Le Compose complet passe
-`/`, ce qui fait appeler l'API sur l'origine du front. La valeur par défaut
-`http://localhost:8080` ne s'applique donc pas à ce build Compose.
+### Configuration Nuxt au démarrage
 
-Les pages `/` et `/demo` sont actuellement pré-rendues : Nuxt écrit leur HTML
-pendant le build, avec la configuration publique. Leur HTML déjà présent dans
-`.output/public` contient bien `window.__NUXT__.config.public.apiGatewayUrl`.
-Modifier seulement l'environnement du conteneur au démarrage ne réécrit pas
-ce HTML statique. Le paramètre au build évite de conserver une ancienne URL
-quand on navigue depuis une page pré-rendue vers le jeu.
+L'image du jeu ne reçoit aucune URL publique pendant sa construction. Les
+variables `NUXT_PUBLIC_*` sont fournies à l'exécution par Compose ou Kubernetes
+et Nuxt les injecte dans les réponses SSR/CSR. La même image est donc portable
+entre les environnements.
+
+Le crawl de pré-rendu est désactivé pour ne pas transformer les routes
+interactives en HTML statique contenant une configuration obsolète. Une future
+route statique doit explicitement déclarer `prerender: true` et utiliser les
+valeurs portables par défaut : Gateway `/` et Keycloak `/auth`.
 
 La configuration suit les dépendances cibles : Player → Dungeon ; Dungeon →
 Combat et Rewards ; Combat → Player, Rewards et Dungeon. Chaque adresse gRPC
