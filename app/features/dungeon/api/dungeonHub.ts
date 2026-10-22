@@ -9,7 +9,7 @@ import {
   SignalRHubError,
   signalRHubUrl,
 } from "~/shared/api/signalRHubClient";
-import type { Direction, DungeonRunResponse } from "../types";
+import type { Direction, DungeonRunResponse, EnemyKindName, Position } from "../types";
 
 type DungeonAcknowledgement = {
   commandId: string | null;
@@ -45,6 +45,23 @@ export class DungeonHubClient {
         commandId: crypto.randomUUID(),
         dungeonId,
         direction,
+      }),
+    );
+  }
+
+  /** Debug only: a mob on a tile of the sandbox dungeon. Refused on any other run. */
+  async spawnMob(
+    dungeonId: string,
+    kind: EnemyKindName,
+    { x, y }: Position,
+  ): Promise<DungeonRunResponse> {
+    return this.accept(
+      await this.hub.invoke<DungeonAcknowledgement>("SpawnMob", {
+        commandId: crypto.randomUUID(),
+        dungeonId,
+        kind,
+        x,
+        y,
       }),
     );
   }
