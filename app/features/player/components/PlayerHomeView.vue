@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { usePlayerApi } from "../api/playerApi";
-const currentPlayerRoute = "me";
 import type { HeroSummary } from "../types";
 import HeroCollectionCard from "./HeroCollectionCard.vue";
 
+const currentPlayerRoute = "me";
 const heroes = ref<HeroSummary[]>([]);
 const loading = ref(true);
 const error = ref("");
