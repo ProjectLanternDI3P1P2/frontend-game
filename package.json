@@ -62,5 +62,6 @@
   "lint-staged": {
     "*.{js,mjs,ts,vue}": "eslint --fix",
     "*": "prettier --write --ignore-unknown"
-  }
+  },
+  "version": "0.2.2"
 }

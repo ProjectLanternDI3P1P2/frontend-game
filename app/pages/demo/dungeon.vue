@@ -16,9 +16,9 @@ import MOB_SRC from "~/assets/dongeon/placeholder_mob.png";
 import DungeonSpriteSwatch from "~/features/dungeon/components/DungeonSpriteSwatch.vue";
 import { RIM_KEYS } from "~/features/dungeon/tiles/atlas.generated";
 import {
-  HERO_PAGE,
   HERO_SHEET,
-  HERO_WARDROBE,
+  HERO_STANCES,
+  HERO_WARDROBES,
   heroSprite,
   type HeroPose,
 } from "~/features/dungeon/tiles/hero";
@@ -83,7 +83,8 @@ const sheetSrc = (sheet: SheetName) => (sheet === "atlas" ? ATLASES[theme.value]
 
 /** The hero's body (the bottom layer of its paper doll), in its first skin tone. */
 const HERO_BODY = { style: "humn", variant: 1 };
-const HERO_BODY_SRC = heroSheetUrl(HERO_PAGE, "body", HERO_BODY);
+const HERO_BODY_PAGE = HERO_STANCES[0];
+const HERO_BODY_SRC = heroSheetUrl(HERO_BODY_PAGE, "body", HERO_BODY);
 
 const FACINGS: readonly Direction[] = ["south", "north", "east", "west"];
 
@@ -92,13 +93,20 @@ const HERO_POSES = (["idle", "move"] as const satisfies readonly HeroPose[]).fla
   FACINGS.map((facing) => ({ label: `${pose} ${facing}`, sprite: heroSprite(pose, facing) })),
 );
 
-/** Each piece of the wardrobe, in its first colour, standing on guard facing south. */
-const HERO_PIECES = HERO_SLOTS.flatMap((slot) =>
-  Object.keys(HERO_WARDROBE[slot]).map((style) => ({
-    label: `${slot} ${style}`,
-    src: heroSheetUrl(HERO_PAGE, slot, { style, variant: 1 }),
-    sprite: heroSprite("idle", "south"),
-  })),
+/**
+ * Each piece of the wardrobe, in its first colour, standing on guard facing south: the
+ * clothes once, then the weapons and off hands of every fighting style.
+ */
+const HERO_PIECES = HERO_STANCES.flatMap((stance) =>
+  HERO_SLOTS.filter(
+    (slot) => stance === HERO_BODY_PAGE || slot === "weapon" || slot === "shield",
+  ).flatMap((slot) =>
+    Object.keys(HERO_WARDROBES[stance][slot] ?? {}).map((style) => ({
+      label: `${stance} ${slot} ${style}`,
+      src: heroSheetUrl(stance, slot, { style, variant: 1 }),
+      sprite: heroSprite("idle", "south"),
+    })),
+  ),
 );
 
 const MOBS = [
@@ -191,7 +199,7 @@ const RAW_SHEETS = computed(() => [
   {
     title: "Hero body (Mana Seed)",
     src: HERO_BODY_SRC,
-    file: `heroes/mana-seed/${heroSheetPath(HERO_PAGE, "body", HERO_BODY)}`,
+    file: `heroes/mana-seed/${heroSheetPath(HERO_BODY_PAGE, "body", HERO_BODY)}`,
   },
 ]);
 </script>
