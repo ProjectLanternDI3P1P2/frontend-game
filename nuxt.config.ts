@@ -81,6 +81,9 @@ export default defineNuxtConfig({
   },
 
   app: {
+    // The production ingress exposes this application under
+    // https://groupe7.diiage.org/game.
+    baseURL: process.env.NUXT_APP_BASE_URL || "/game/",
     head: {
       htmlAttrs: { lang: "en" },
       meta: [{ name: "viewport", content: "width=device-width, initial-scale=1" }],
