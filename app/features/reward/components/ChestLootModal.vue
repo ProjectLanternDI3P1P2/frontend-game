@@ -64,7 +64,7 @@ const title = computed(() =>
         v-if="interaction.status === 'error'"
         :variant="ButtonVariant.SECONDARY"
         @click="$emit('retry')"
-        >Réessayer</UiButton
+        >Retry</UiButton
       >
       <UiButton @click="$emit('close')">Close</UiButton>
     </template>
