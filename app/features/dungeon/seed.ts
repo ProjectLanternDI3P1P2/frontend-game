@@ -3,6 +3,9 @@
  * "0KX4-M2T9-QZ7PA". Mirrors Dungeon's Seed.TryParse so that a malformed seed
  * is caught while typing instead of coming back as a 422.
  */
+/** Reserved by Dungeon for the debug sandbox: two bare rooms where mobs are spawned by hand. */
+export const SANDBOX_SEED = "0000000SANDBX";
+
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const SEED_LENGTH = 13;
 // 13 characters carry 65 bits: the first one only holds the 4 highest bits (0–F).
