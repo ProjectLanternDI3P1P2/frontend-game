@@ -171,7 +171,38 @@ describe("useDungeonExplorer", () => {
     expect(floors.sort()).toEqual([0, 1]);
   });
 
-  it("fights the boss when the hero walks into it", async () => {
+  it("opens the fight against the mobs that reached the hero", async () => {
+    vi.useFakeTimers();
+    const zombie = { id: 7, kind: "zombie", x: 1, y: 1, aggro: true, nextTeleport: null } as const;
+    const bat = { ...zombie, id: 8, kind: "bat" } as const;
+    vi.mocked(api.fetchDungeonRun).mockResolvedValue({ ...initialRun, mobs: [zombie, bat] });
+    vi.mocked(api.moveHero).mockResolvedValue({
+      ...initialRun,
+      hero: { x: initialRun.hero.x, y: initialRun.hero.y + 1 },
+      turn: 1,
+      mobs: [],
+      killedMobs: [zombie, bat],
+    });
+    const onEncounter = vi.fn();
+    const explorer = useDungeonExplorer(initialRun.id, { onEncounter });
+    await explorer.start();
+
+    explorer.move("south");
+    await flushPromises();
+    // The contact shows for a moment before the fight opens.
+    expect(onEncounter).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(MOVE_COOLDOWN_MS);
+    await flushPromises();
+
+    expect(onEncounter).toHaveBeenCalledWith({
+      encounter: "Ordinary",
+      floor: initialRun.currentFloor + 1,
+      elementIds: [7, 8],
+    });
+    vi.useRealTimers();
+  });
+
+  it("opens the boss fight when the hero walks into it, and records the victory", async () => {
     const boss = floor.elements.find((element) => element.type === "boss")!;
     const direction = (["north", "east", "south", "west"] as const).find((candidate) =>
       isWalkableAt(floor, step(boss, opposite(candidate))),
@@ -180,14 +211,24 @@ describe("useDungeonExplorer", () => {
     const run: DungeonRunResponse = { ...initialRun, hero: nextToBoss };
     vi.mocked(api.fetchDungeonRun).mockResolvedValue(run);
     vi.mocked(api.defeatFloorBoss).mockResolvedValue({ ...run, floorBossDefeated: true });
-    const explorer = useDungeonExplorer(initialRun.id);
+    const onEncounter = vi.fn();
+    const explorer = useDungeonExplorer(initialRun.id, { onEncounter });
     await explorer.start();
 
     explorer.move(direction);
     await flushPromises();
 
-    expect(api.defeatFloorBoss).toHaveBeenCalledWith(initialRun.id);
+    expect(onEncounter).toHaveBeenCalledWith({
+      encounter: "Boss",
+      floor: initialRun.currentFloor + 1,
+      elementIds: [],
+    });
     expect(api.moveHero).not.toHaveBeenCalled();
+    expect(api.defeatFloorBoss).not.toHaveBeenCalled();
+
+    await explorer.resolveFight("Boss", "Victory");
+
+    expect(api.defeatFloorBoss).toHaveBeenCalledWith(initialRun.id);
     expect(explorer.hero.value).toEqual(nextToBoss);
     expect(explorer.floorBossDefeated.value).toBe(true);
   });

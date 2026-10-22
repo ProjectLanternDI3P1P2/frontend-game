@@ -7,6 +7,8 @@ import DungeonControls from "~/features/dungeon/components/DungeonControls.vue";
 import DungeonMinimap from "~/features/dungeon/components/DungeonMinimap.vue";
 import DungeonViewport from "~/features/dungeon/components/DungeonViewport.vue";
 import { useBoardViewport } from "~/features/dungeon/composables/useBoardViewport";
+import { fetchFight } from "~/features/combat/api/combatApi";
+import type { Encounter } from "~/features/dungeon/composables/useDungeonExplorer";
 import { useDungeonExplorer } from "~/features/dungeon/composables/useDungeonExplorer";
 import { MOVE_COOLDOWN_MS, createCooldown, directionForKey } from "~/features/dungeon/dungeonRules";
 import type { Direction } from "~/features/dungeon/types";
@@ -16,7 +18,41 @@ definePageMeta({ layout: "game" });
 useHead({ title: "Exploration" });
 
 const route = useRoute();
-const explorer = useDungeonExplorer(String(route.params.runId));
+const runId = String(route.params.runId);
+const explorer = useDungeonExplorer(runId, { onEncounter: openFight });
+
+/**
+ * Mobs reaching the hero, or the hero walking into the boss, open the fight; Combat
+ * brings the party back here with `?fight=<id>`, and the outcome is applied to the run
+ * (see `resolveReturn`).
+ */
+function openFight({ encounter, floor, elementIds }: Encounter) {
+  void navigateTo({
+    path: "/combat",
+    query: {
+      auto: "1",
+      runId,
+      floor: String(floor),
+      encounter,
+      monsters: elementIds.length > 0 ? String(elementIds.length) : undefined,
+      returnTo: `/dungeon/${runId}?encounter=${encounter}`,
+    },
+  });
+}
+
+async function resolveReturn() {
+  const { fight: fightId, encounter } = route.query;
+  if (typeof fightId !== "string") return;
+  try {
+    const fight = await fetchFight(fightId);
+    if (fight.status !== "Active") {
+      await explorer.resolveFight(encounter === "Boss" ? "Boss" : "Ordinary", fight.status);
+    }
+  } finally {
+    // A reload must not apply the outcome twice.
+    await navigateTo({ path: route.path }, { replace: true });
+  }
+}
 const {
   run,
   loaded,
@@ -42,6 +78,7 @@ const copied = ref(false);
 
 onMounted(async () => {
   await explorer.start();
+  await resolveReturn();
   await nextTick();
   board.value?.focus();
 });
@@ -148,8 +185,9 @@ async function copyShareLink() {
       />
 
       <p id="dungeon-help" class="visually-hidden">
-        Arrow keys, WASD or ZQSD to move, one tile per turn. Walk into the boss of the floor to
-        fight it; once it is defeated, walk into the gate behind it to go down.
+        Arrow keys, WASD or ZQSD to move, one tile per turn. Mobs that reach you, and the boss
+        of the floor when you walk into it, start a fight; once the boss is defeated, walk into
+        the gate behind it to go down.
       </p>
       <p class="visually-hidden" aria-live="polite">{{ announcement }}</p>
     </template>

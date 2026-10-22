@@ -27,7 +27,7 @@ http:
       middlewares: [remove-external-identity]
       service: player
     combat-api:
-      rule: Path(`/api/v1/monster-types`) || PathPrefix(`/api/v1/monster-types/`) || PathRegexp(`^/api/v1/heroes/[^/]+/combat-data$`) || Path(`/hubs/combats`) || PathPrefix(`/hubs/combats/`) || Path(`/hubs/combat`) || PathPrefix(`/hubs/combat/`)
+      rule: Path(`/api/v1/combats`) || PathPrefix(`/api/v1/combats/`) || Path(`/api/v1/monster-types`) || PathPrefix(`/api/v1/monster-types/`) || PathRegexp(`^/api/v1/heroes/[^/]+/combat-data$`) || Path(`/hubs/combats`) || PathPrefix(`/hubs/combats/`) || Path(`/hubs/combat`) || PathPrefix(`/hubs/combat/`)
       priority: 100
       middlewares: [remove-external-identity]
       service: combat
