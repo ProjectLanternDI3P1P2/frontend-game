@@ -73,7 +73,7 @@ export interface OpenChestResponse {
 
 export function openChest(
   runId: string,
-  elementId: string,
+  elementId: string | number,
   signal?: AbortSignal,
 ): Promise<OpenChestResponse> {
   return useGateway().post<OpenChestResponse>(

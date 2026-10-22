@@ -322,7 +322,7 @@ export function useDungeonExplorer(runId: string) {
     }
 
     const interaction: ChestLootInteraction = {
-      chestElementId: String(chest.id),
+      chestElementId: chest.id,
       status: "loading",
       result: null,
       errorMessage: null,
@@ -350,7 +350,7 @@ export function useDungeonExplorer(runId: string) {
     try {
       const response = await requestOpenChest(
         runId,
-        String(interaction.chestElementId),
+        interaction.chestElementId,
         controller.signal,
       );
       if (!isCurrentChestRequest(interaction, requestGeneration)) return;
