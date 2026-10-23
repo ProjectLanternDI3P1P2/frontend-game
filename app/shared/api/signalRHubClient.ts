@@ -24,6 +24,8 @@ export class SignalRHubClient {
     private readonly eventHandlers: Readonly<
       Record<string, (arguments_: readonly unknown[]) => void>
     > = {},
+    private readonly getToken: () => string | null = () =>
+      import.meta.client ? (useNuxtApp().$keycloak.token ?? null) : null,
   ) {}
 
   async invoke<TResult>(target: string, ...arguments_: unknown[]): Promise<TResult> {
@@ -55,11 +57,15 @@ export class SignalRHubClient {
   }
 
   private async openWebSocket(): Promise<void> {
+    const token = this.getToken();
     const response = await fetch(
       `${this.hubUrl.replace(/\/$/, "")}/negotiate?negotiateVersion=1`,
       {
         method: "POST",
-        headers: { "X-Correlation-Id": crypto.randomUUID() },
+        headers: {
+          "X-Correlation-Id": crypto.randomUUID(),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       },
     );
     if (!response.ok)
@@ -69,7 +75,7 @@ export class SignalRHubClient {
       throw new SignalRHubError("The SignalR hub returned an invalid connection.");
 
     await new Promise<void>((resolve, reject) => {
-      const socket = new WebSocket(toWebSocketUrl(this.hubUrl, connectionToken));
+      const socket = new WebSocket(toWebSocketUrl(this.hubUrl, connectionToken, token));
       let handshaken = false;
       socket.addEventListener("open", () =>
         socket.send(`{"protocol":"json","version":1}${recordSeparator}`),
@@ -129,9 +135,14 @@ export function signalRHubUrl(gatewayUrl: string, hubPath: string): string {
   return `${gatewayUrl.replace(/\/$/, "")}${hubPath.startsWith("/") ? hubPath : `/${hubPath}`}`;
 }
 
-function toWebSocketUrl(hubUrl: string, connectionToken: string): string {
+function toWebSocketUrl(
+  hubUrl: string,
+  connectionToken: string,
+  accessToken: string | null,
+): string {
   const url = new URL(hubUrl, window.location.origin);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.searchParams.set("id", connectionToken);
+  if (accessToken) url.searchParams.set("access_token", accessToken);
   return url.toString();
 }

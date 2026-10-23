@@ -43,12 +43,14 @@ services:
     <<: *frontend
     build:
       context: .
-      args:
-        NUXT_PUBLIC_API_GATEWAY_URL: /
     environment:
       NUXT_PUBLIC_API_GATEWAY_URL: /
       NUXT_PUBLIC_APP_NAME: game-client
       NUXT_PUBLIC_SITE_URL: http://localhost:${GAME_PORT:-3000}
+      NUXT_PUBLIC_KEYCLOAK_URL: http://localhost:${KEYCLOAK_PORT:-8081}
+    depends_on:
+      keycloak:
+        condition: service_healthy
 
   frontend-public:
     <<: *frontend
@@ -63,6 +65,11 @@ services:
     extends:
       file: compose.backend.yaml
       service: postgres
+
+  keycloak:
+    extends:
+      file: compose.backend.yaml
+      service: keycloak
 
   rabbitmq:
     extends:
@@ -101,3 +108,7 @@ networks:
 volumes:
   postgres-data:
   rabbitmq-data:
+
+secrets:
+  github_packages_credentials:
+    environment: GITHUB_PACKAGES_CREDENTIALS

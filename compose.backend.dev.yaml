@@ -1,6 +1,8 @@
 name: lantern-local-dev
 
 services:
+  keycloak:
+    extends: { file: compose.backend.yaml, service: keycloak }
   traefik:
     extends: { file: compose.backend.yaml, service: traefik }
   postgres:
@@ -17,13 +19,16 @@ services:
         dungeon-contracts: ../dungeon-backend
   combat:
     extends: { file: compose.backend.yaml, service: combat }
-    build: { context: ../combat-backend, dockerfile: Dockerfile.dev, secrets: !reset [] }
+    build:
+      { context: ../combat-backend, dockerfile: Dockerfile.dev, secrets: !reset [] }
   dungeon:
     extends: { file: compose.backend.yaml, service: dungeon }
-    build: { context: ../dungeon-backend, dockerfile: Dockerfile.dev, secrets: !reset [] }
+    build:
+      { context: ../dungeon-backend, dockerfile: Dockerfile.dev, secrets: !reset [] }
   reward:
     extends: { file: compose.backend.yaml, service: reward }
-    build: { context: ../reward-backend, dockerfile: Dockerfile.dev, secrets: !reset [] }
+    build:
+      { context: ../reward-backend, dockerfile: Dockerfile.dev, secrets: !reset [] }
   leaderboard:
     extends: { file: compose.backend.yaml, service: leaderboard }
     build:

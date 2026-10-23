@@ -30,7 +30,11 @@ const selectingHero = ref(false);
 const heroPickerOpen = ref(false);
 const error = ref("");
 const heroes = ref<HeroSummary[]>([]);
-const isCreator = computed(() => session.value?.creatorPlayerId === playerId.value);
+const isCreator = computed(() =>
+  session.value?.members.some((member) =>
+    heroes.value.some((hero) => hero.id === member.id),
+  ),
+);
 const lobbyCode = computed(() => sessionId.value.slice(0, 8).toUpperCase());
 let hub: PlayerHubClient | null = null;
 
@@ -67,7 +71,7 @@ async function load(): Promise<void> {
       },
     );
     const [snapshot, playerHeroes] = await Promise.all([
-      hub.getSessionSnapshot(playerId.value, sessionId.value),
+      hub.getSessionSnapshot(sessionId.value),
       usePlayerApi().listHeroes(playerId.value),
     ]);
     session.value = snapshot;
@@ -86,7 +90,6 @@ async function changeHero(hero: HeroSummary): Promise<void> {
   try {
     const changed = await hub!.changeSessionHero({
       commandId: createIdempotencyKey(),
-      playerId: playerId.value,
       sessionId: session.value.sessionId,
       heroId: hero.id,
     });
@@ -114,7 +117,6 @@ async function start(): Promise<void> {
   try {
     const started = await hub!.startSession({
       commandId: createIdempotencyKey(),
-      playerId: playerId.value,
       sessionId: session.value.sessionId,
     });
     session.value = started;

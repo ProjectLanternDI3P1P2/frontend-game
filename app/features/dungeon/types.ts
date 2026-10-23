@@ -27,12 +27,7 @@ export type ElementTypeName = "enemy" | "boss" | "item" | "trap";
 /** How an enemy silhouette moves; the pack it stands for is Combat's. */
 export type EnemyKindName = "zombie" | "mage" | "goblin" | "bat";
 
-export type RoomTypeName =
-  | "start"
-  | "combat"
-  | "treasure"
-  | "empty"
-  | "boss";
+export type RoomTypeName = "start" | "combat" | "treasure" | "empty" | "boss";
 
 export type DungeonRunStatus = "active" | "won" | "lost" | "abandoned";
 
@@ -45,7 +40,7 @@ export interface Position {
 
 export interface DungeonElement {
   /** Stable for a given seed and floor: other services reference it. */
-  id: number;
+  id: string | number;
   type: ElementTypeName;
   x: number;
   y: number;
@@ -94,7 +89,7 @@ export interface DungeonMapResponse {
 /** A living mob of the current floor, where it stands this turn. */
 export interface MobState {
   /** The id of the enemy element it spawned from. */
-  id: number;
+  id: string | number;
   kind: EnemyKindName;
   x: number;
   y: number;
@@ -128,6 +123,8 @@ export interface DungeonRunResponse {
    * (`decodeVisitedTiles`): the fog of war is rebuilt from it after a reload.
    */
   visitedTiles: string;
+  /** Item element IDs already opened on the current floor. */
+  openedChestElementIds: (string | number)[];
   startedAt: string;
 }
 
