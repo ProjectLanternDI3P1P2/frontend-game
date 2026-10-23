@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.3.0](https://github.com/ProjectLanternDI3P1P2/frontend-game/compare/v0.2.3...v0.3.0) (2026-10-23)
+
+
+### Added
+
+* **dungeon:** add a debug sandbox button in development ([c3edb42](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/c3edb4260921aeb6cabb0e09d45225572f95e6c4))
+* **dungeon:** add SpawnMob to the Dungeon Hub client ([bf8f5e7](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/bf8f5e79912d6111d7ec7e1f98b062570b48c39b))
+* **dungeon:** debug sandbox to spawn mobs by click ([be5f1a3](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/be5f1a3f34e08ae0d4c00af57907c5dfba8f2ecd))
+* **dungeon:** emit the clicked tile from the viewport ([235817c](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/235817cd476cf98e6368796b52c2b0a7373d1b7d))
+* **dungeon:** queue mob spawns in the explorer ([f53cb4d](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/f53cb4d01b9762b133e1d9ab3844fcd1f1c19264))
+* **dungeon:** spawn the chosen mob on click in the sandbox run ([0f12c8d](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/0f12c8df463567a355785a9a94e91ba12eb60c2e))
+* **dungeon:** support UUID chest element ids ([95ebcca](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/95ebccaed5902ff287fd736f0ead96039c77b651))
+
+
+### Fixed
+
+* **auth:** address Keycloak review feedback ([5654010](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/56540103c0b36c5d9015586c7d4d305113523410))
+* **ci:** bake production gateway URL into Nuxt build ([7b7ffdf](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/7b7ffdf55e9a917fd39ab49a44e785352266b6f6))
+* **ci:** bake production gateway URL into Nuxt build ([5c73ee5](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/5c73ee55263e99a861d1c161a08eb32909405feb))
+* keep player home imports at module top ([c9df901](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/c9df9019debcc777ec238b566a55c49b87def799))
+* load public configuration at runtime ([18483c4](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/18483c4134348fb33cbcdab1b23b7ae92483c39e))
+
 ## [0.2.3](https://github.com/ProjectLanternDI3P1P2/frontend-game/compare/v0.2.2...v0.2.3) (2026-10-22)
 
 
