@@ -2,7 +2,7 @@
 
 Voir aussi le [contrat de configuration des communications](communications-configuration.md).
 
-Le fichier `compose.yaml` de `frontend-game` lance dix conteneurs : les deux
+Le fichier `compose.yaml` de `frontend-game` lance douze conteneurs : les deux
 fronts Nuxt, Player, Combat, Dungeon, Reward, Leaderboard, Traefik, PostgreSQL
 et RabbitMQ. Il assemble les dépôts indépendants sans déplacer leurs sources.
 
@@ -34,11 +34,42 @@ docker compose ps
 | ----------- | --------------------- |
 | Jeu         | http://localhost:3000 |
 | Site public | http://localhost:3001 |
+| Keycloak    | http://localhost:8081 |
 
 Ces deux ports appartiennent à Traefik et sont publiés uniquement sur
 `127.0.0.1`. Les microservices, PostgreSQL, RabbitMQ et gRPC ne publient aucun
 port sur l'hôte. Le réseau `backend` est interne ; les fronts utilisent un
 réseau `web` distinct et Traefik rejoint les deux.
+
+### Authentification locale
+
+Keycloak est un service de la stack locale. Il démarre en mode développement,
+importe automatiquement `keycloak/realm/lantern-realm.json` et monte le thème
+`keycloak/themes/lantern`. Aucune importation manuelle de realm ni copie de
+thème dans un conteneur n'est nécessaire.
+
+Le client public `lantern-public` est configuré pour le jeu sur
+`http://localhost:3000`. Le front Game est construit avec
+`NUXT_PUBLIC_KEYCLOAK_URL=http://localhost:8081` et attend que Keycloak soit
+en bonne santé avant son démarrage. Les identifiants locaux sont :
+
+| Usage                   | Identifiant | Mot de passe |
+| ----------------------- | ----------- | ------------ |
+| Joueur de démonstration | `demo`      | `demo`       |
+| Administration Keycloak | `admin`     | `admin`      |
+
+Les variables `KEYCLOAK_PORT`, `KEYCLOAK_ADMIN` et
+`KEYCLOAK_ADMIN_PASSWORD` figurent dans `.env.compose.example`. Les valeurs
+par défaut sont exclusivement locales ; les modifier avant toute exposition de
+la stack. La documentation détaillée est dans
+[`app/features/auth/readme.md`](../app/features/auth/readme.md).
+
+Traefik valide cryptographiquement les access tokens via son plugin JWT. Il
+vérifie la signature RS256 depuis le JWKS Keycloak, l'émetteur et le client
+`lantern-public`, puis transmet les headers d'identité de confiance
+`X-User-Id` et `X-Username` aux APIs. Les headers correspondants fournis par
+un client sont supprimés avant la validation. Le plugin est téléchargé au
+démarrage de Traefik : le premier lancement nécessite donc un accès réseau.
 
 Il n'y a pas de port API supplémentaire dans le Compose complet : les appels
 `http://localhost:3000/api/v1/...` arrivent déjà sur Traefik, qui les envoie au
@@ -53,12 +84,16 @@ RabbitMQ et Traefik. Il ne construit et ne lance aucun front :
 docker compose -f compose.backend.yaml up -d --build --wait --wait-timeout 240
 ```
 
-Dans cette variante, seul Traefik est publié sur `http://localhost:8088`
-(`API_PORT`). Les ports `3000` et `3001` restent libres pour les serveurs Nuxt
+Dans cette variante, Traefik est publié sur `http://localhost:8088`
+(`API_PORT`) et Keycloak sur `http://localhost:8081` (`KEYCLOAK_PORT`). Les
+ports `3000` et `3001` restent libres pour les serveurs Nuxt
 lancés sur l'hôte. Dans le `.env` de chaque front local, utiliser :
 
 ```dotenv
 NUXT_PUBLIC_API_GATEWAY_URL=http://localhost:8088
+NUXT_PUBLIC_KEYCLOAK_URL=http://localhost:8081
+NUXT_PUBLIC_KEYCLOAK_REALM=lantern
+NUXT_PUBLIC_KEYCLOAK_CLIENT_ID=lantern-public
 ```
 
 Lancer ensuite les fronts avec `npm run dev`, sur `3000` pour le jeu et `3001`
@@ -86,11 +121,11 @@ et les guillemets ; utiliser une valeur alphanumérique pour cette stack.
 
 ## Routage HTTP et SignalR
 
-Les fronts reçoivent `NUXT_PUBLIC_API_GATEWAY_URL=/` au build et à l'exécution.
-Le navigateur appelle ainsi `/api/v1/...` et `/hubs/player` sur l'origine du
-front, toujours via Traefik, sans CORS ni proxy Nuxt. La valeur au build couvre
-aussi les pages pré-rendues. Les éventuels futurs appels SSR devront utiliser
-une URL interne absolue de Traefik, car `/` vise ici les appels du navigateur.
+Les fronts reçoivent `NUXT_PUBLIC_API_GATEWAY_URL=/` à l'exécution. Le
+navigateur appelle ainsi `/api/v1/...` et `/hubs/player` sur l'origine du
+front, toujours via Traefik, sans CORS ni proxy Nuxt. Les éventuels futurs
+appels SSR devront utiliser une URL interne absolue de Traefik, car `/` vise
+ici les appels du navigateur.
 
 La configuration commune des API se trouve dans `deploy/traefik/backend/routes.yaml`.
 Le mode complet charge aussi `deploy/traefik/frontends.yaml`. Elle utilise le
@@ -131,19 +166,23 @@ l'application .NET **dans ce conteneur**. Traefik et Reward partagent le réseau
 Le navigateur de l'hôte utilise une URL de Traefik, pas le nom interne `reward`.
 Plusieurs conteneurs peuvent écouter sur `8080`, chacun ayant sa propre adresse.
 
-### Pourquoi une variable au build Nuxt ?
+Keycloak est également accessible depuis les deux origines des fronts sous
+`/auth`. Traefik retire ce préfixe avant de transmettre la requête au Keycloak
+local, qui est monté à sa racine. Les pages pré-rendues peuvent donc utiliser
+la valeur portable `NUXT_PUBLIC_KEYCLOAK_URL=/auth` en Compose comme en
+production.
 
-`ARG NUXT_PUBLIC_API_GATEWAY_URL` reçoit un paramètre de construction Docker.
-L'instruction `ENV` le rend visible à `npm run build`. Le Compose complet passe
-`/`, ce qui fait appeler l'API sur l'origine du front. La valeur par défaut
-`http://localhost:8080` ne s'applique donc pas à ce build Compose.
+### Configuration Nuxt au démarrage
 
-Les pages `/` et `/demo` sont actuellement pré-rendues : Nuxt écrit leur HTML
-pendant le build, avec la configuration publique. Leur HTML déjà présent dans
-`.output/public` contient bien `window.__NUXT__.config.public.apiGatewayUrl`.
-Modifier seulement l'environnement du conteneur au démarrage ne réécrit pas
-ce HTML statique. Le paramètre au build évite de conserver une ancienne URL
-quand on navigue depuis une page pré-rendue vers le jeu.
+L'image du jeu ne reçoit aucune URL publique pendant sa construction. Les
+variables `NUXT_PUBLIC_*` sont fournies à l'exécution par Compose ou Kubernetes
+et Nuxt les injecte dans les réponses SSR/CSR. La même image est donc portable
+entre les environnements.
+
+Le crawl de pré-rendu est désactivé pour ne pas transformer les routes
+interactives en HTML statique contenant une configuration obsolète. Une future
+route statique doit explicitement déclarer `prerender: true` et utiliser les
+valeurs portables par défaut : Gateway `/` et Keycloak `/auth`.
 
 La configuration suit les dépendances cibles : Player → Dungeon ; Dungeon →
 Combat et Rewards ; Combat → Player, Rewards et Dungeon. Chaque adresse gRPC
@@ -225,13 +264,11 @@ API/SignalR ; les deux endpoints frontend `/healthz` ne sont pas disponibles.
 - ADR-GLOB-002, 003, 005 et 010 : RabbitMQ, entrée unique, bases possédées par
   service et transports HTTP/SignalR/gRPC sont représentés dans cette stack.
   ADR-FE-007 : les deux fronts restent des dépôts et images indépendants.
-- ADR-GLOB-004 prévoit Keycloak, validation des jetons et injection d'identité.
-  **Cette stack locale ne réalise pas cette authentification.** Traefik retire
-  les en-têtes externes `X-User-Id`, `X-Username`, `X-Roles` et `X-Correlation-Id`,
-  mais n'injecte pas d'utilisateur authentifié. Les endpoints exigeant une
-  identité ne deviennent pas accessibles par l'ajout de ces en-têtes.
-  Une intégration Keycloak avec validation à la gateway et HTTPS reste nécessaire
-  avant tout déploiement partagé ou de production.
+- ADR-GLOB-004 est appliqué à la stack locale : Traefik valide les access
+  tokens Keycloak par son plugin JWT et injecte les headers d'identité de
+  confiance. Les microservices ne valident pas le JWT externe.
+  HTTPS et une gestion de secrets adaptée restent nécessaires avant tout
+  déploiement partagé ou de production.
 - Les adresses, abonnements et paramètres de résilience décrivent la cible des
   ADR. Les adaptateurs gRPC, consommateurs, outbox et instrumentation encore
   absents ne sont pas implémentés par ce travail. Le démarrage de la stack

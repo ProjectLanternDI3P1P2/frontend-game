@@ -1,63 +1,81 @@
-# Development only: no Keycloak token validation in this local stack.
+# Keycloak access tokens are validated by Traefik's JWT middleware plugin.
 http:
   routers:
     rewards-owned-api:
       rule: Path(`/api/rewards`) || PathPrefix(`/api/rewards/`) || Path(`/api/v1/rewards`) || PathPrefix(`/api/v1/rewards/`)
       priority: 200
-      middlewares: [remove-external-identity, owner-api-prefix]
+      middlewares: [authenticated, owner-api-prefix]
       service: reward
     progression-owned-api:
       rule: Path(`/api/progression`) || PathPrefix(`/api/progression/`) || Path(`/api/v1/progression`) || PathPrefix(`/api/v1/progression/`)
       priority: 200
-      middlewares: [remove-external-identity, owner-api-prefix]
+      middlewares: [authenticated, owner-api-prefix]
       service: leaderboard
     dungeon-api:
       rule: Path(`/api/v1/dungeons`) || PathPrefix(`/api/v1/dungeons/`) || Path(`/api/v1/dungeon-runs`) || PathPrefix(`/api/v1/dungeon-runs/`) || Path(`/hubs/dungeons`) || PathPrefix(`/hubs/dungeons/`)
       priority: 100
-      middlewares: [remove-external-identity]
+      middlewares: [authenticated]
       service: dungeon
     player-api:
       rule: Path(`/api/player`) || PathPrefix(`/api/player/`) || Path(`/hubs/player`) || PathPrefix(`/hubs/player/`)
       priority: 100
-      middlewares: [remove-external-identity]
+      middlewares: [authenticated]
       service: player
     combat-api:
       rule: Path(`/api/v1/monster-types`) || PathPrefix(`/api/v1/monster-types/`) || PathRegexp(`^/api/v1/heroes/[^/]+/combat-data$`) || Path(`/hubs/combats`) || PathPrefix(`/hubs/combats/`) || Path(`/hubs/combat`) || PathPrefix(`/hubs/combat/`)
       priority: 100
-      middlewares: [remove-external-identity]
+      middlewares: [authenticated]
       service: combat
     reward-api:
       rule: PathRegexp(`^/api/v1/heroes/[^/]+/inventory(/|$)`)
       priority: 100
-      middlewares: [remove-external-identity]
+      middlewares: [authenticated]
       service: reward
     player-service:
       rule: Path(`/services/player`) || PathPrefix(`/services/player/`)
       priority: 200
-      middlewares: [remove-external-identity, strip-service-prefix]
+      middlewares: [authenticated, strip-service-prefix]
       service: player
     combat-service:
       rule: Path(`/services/combat`) || PathPrefix(`/services/combat/`)
       priority: 200
-      middlewares: [remove-external-identity, strip-service-prefix]
+      middlewares: [authenticated, strip-service-prefix]
       service: combat
     dungeon-service:
       rule: Path(`/services/dungeon`) || PathPrefix(`/services/dungeon/`)
       priority: 200
-      middlewares: [remove-external-identity, strip-service-prefix]
+      middlewares: [authenticated, strip-service-prefix]
       service: dungeon
     reward-service:
       rule: Path(`/services/reward`) || PathPrefix(`/services/reward/`)
       priority: 200
-      middlewares: [remove-external-identity, strip-service-prefix]
+      middlewares: [authenticated, strip-service-prefix]
       service: reward
     leaderboard-service:
       rule: Path(`/services/leaderboard`) || PathPrefix(`/services/leaderboard/`)
       priority: 200
-      middlewares: [remove-external-identity, strip-service-prefix]
+      middlewares: [authenticated, strip-service-prefix]
       service: leaderboard
 
   middlewares:
+    authenticated:
+      chain:
+        middlewares: [remove-external-identity, keycloak-jwt]
+    keycloak-jwt:
+      plugin:
+        keycloak-jwt:
+          issuers:
+            - issuer: http://localhost:8081/realms/lantern
+              jwks: http://keycloak:8080/realms/lantern/protocol/openid-connect/certs
+          validMethods: [RS256]
+          require:
+            azp: lantern-public
+          headerMap:
+            X-User-Id: sub
+            X-Username: preferred_username
+          removeMissingHeaders: true
+          parameterName: access_token
+          forwardToken: false
     # Rewards and Progression still expose their native routes below the owner prefix.
     owner-api-prefix:
       replacePathRegex:
