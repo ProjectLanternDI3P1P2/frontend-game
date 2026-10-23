@@ -9,6 +9,8 @@ import type {
   Direction,
   DungeonMapResponse,
   DungeonRunResponse,
+  EnemyKindName,
+  Position,
 } from "../types";
 import { useGateway } from "~/shared/composables/useGateway";
 import type { ChestLootResult } from "~/features/reward/types";
@@ -48,6 +50,15 @@ export function moveHero(
   direction: Direction,
 ): Promise<DungeonRunResponse> {
   return useDungeonHub().moveHero(runId, direction);
+}
+
+/** `SpawnMob` on the Dungeon Hub — debug only, in the sandbox dungeon (`SANDBOX_SEED`). */
+export function spawnMob(
+  runId: string,
+  kind: EnemyKindName,
+  position: Position,
+): Promise<DungeonRunResponse> {
+  return useDungeonHub().spawnMob(runId, kind, position);
 }
 
 /**

@@ -14,6 +14,7 @@ import {
   joinDungeon,
   moveHero,
   openChest as requestOpenChest,
+  spawnMob,
 } from "../api/dungeonApi";
 import type { DecodedFloor } from "../dungeonMap";
 import {
@@ -33,6 +34,7 @@ import type {
   Direction,
   DungeonElement,
   DungeonRunResponse,
+  EnemyKindName,
   MobState,
   Position,
 } from "../types";
@@ -412,6 +414,19 @@ export function useDungeonExplorer(runId: string) {
     chestLoot.value = null;
   }
 
+  /** Debug only: queues a mob spawn on a clicked tile in the sandbox. */
+  function spawn(kind: EnemyKindName, position: Position): void {
+    const spawnGeneration = generation;
+    queue = queue.then(async () => {
+      if (disposed || spawnGeneration !== generation) return;
+      try {
+        run.value = await spawnMob(runId, kind, position);
+      } catch (error) {
+        await resynchronise(error);
+      }
+    });
+  }
+
   /** Invalidates in-flight responses when this explorer leaves the page. */
   function dispose(): void {
     disposed = true;
@@ -491,6 +506,7 @@ export function useDungeonExplorer(runId: string) {
     retryChestLoot,
     closeChestLoot,
     dispose,
+    spawn,
   };
 }
 

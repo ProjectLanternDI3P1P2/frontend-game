@@ -13,7 +13,8 @@ import {
   createCooldown,
   directionForKey,
 } from "~/features/dungeon/dungeonRules";
-import type { Direction } from "~/features/dungeon/types";
+import { SANDBOX_SEED } from "~/features/dungeon/seed";
+import type { Direction, EnemyKindName, Position } from "~/features/dungeon/types";
 import ChestLootModal from "~/features/reward/components/ChestLootModal.vue";
 import { ButtonSize, ButtonVariant } from "~/shared/ui/ui.types";
 
@@ -52,6 +53,9 @@ const {
 const board = ref<HTMLElement | null>(null);
 const viewport = useBoardViewport(board);
 const copied = ref(false);
+const isSandbox = computed(() => import.meta.dev && run.value?.seed === SANDBOX_SEED);
+const MOB_KINDS: EnemyKindName[] = ["zombie", "bat", "goblin", "mage"];
+const spawnKind = ref<EnemyKindName>("zombie");
 
 onMounted(async () => {
   await explorer.start();
@@ -72,6 +76,10 @@ const canMove = createCooldown(MOVE_COOLDOWN_MS);
 /** One move per slide, from the keyboard as from the on-screen pad. */
 function move(direction: Direction) {
   if (!movementBlocked.value && canMove()) explorer.move(direction);
+}
+
+function spawnAt(position: Position) {
+  if (isSandbox.value && !movementBlocked.value) explorer.spawn(spawnKind.value, position);
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -138,8 +146,23 @@ async function copyShareLink() {
           :opened-chest-element-ids="run.openedChestElementIds"
           :openable-chest-element-id="openableChest?.id ?? null"
           @open-chest="explorer.openChest"
+          @tile="spawnAt"
         />
       </div>
+
+      <fieldset v-if="isSandbox" class="dungeon-page__panel dungeon-page__sandbox">
+        <legend>Sandbox: click a tile to spawn</legend>
+        <label v-for="kind in MOB_KINDS" :key="kind">
+          <input
+            v-model="spawnKind"
+            type="radio"
+            name="spawn-kind"
+            :value="kind"
+            @change="board?.focus()"
+          />
+          {{ kind }}
+        </label>
+      </fieldset>
 
       <header class="dungeon-page__panel dungeon-page__hud">
         <h1 class="dungeon-page__title">
@@ -306,6 +329,28 @@ async function copyShareLink() {
       bottom: var(--space-4);
       left: var(--space-4);
       right: auto;
+    }
+  }
+  &__sandbox {
+    top: 50%;
+    left: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    translate: 0 -50%;
+
+    legend {
+      float: left;
+      margin-block-end: var(--space-2);
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+    }
+
+    label {
+      display: flex;
+      gap: var(--space-2);
+      text-transform: capitalize;
     }
   }
 

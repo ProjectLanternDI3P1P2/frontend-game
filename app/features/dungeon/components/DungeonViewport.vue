@@ -68,7 +68,11 @@ const props = defineProps<{
   openableChestElementId: string | number | null;
 }>();
 
-const emit = defineEmits<{ openChest: [] }>();
+const emit = defineEmits<{
+  openChest: [];
+  /** A click on the board, as the tile under the pointer (debug sandbox). */
+  tile: [position: Position];
+}>();
 
 const theme = computed(() => themeOf(props.loaded.floor.floor));
 
@@ -265,12 +269,24 @@ const worldStyle = computed(
 );
 
 const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
+
+function pickTile(event: MouseEvent) {
+  const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  const { tile } = props.viewport;
+  emit("tile", {
+    x: camera.value.x + Math.floor((event.clientX - box.left) / tile),
+    y: camera.value.y + Math.floor((event.clientY - box.top) / tile),
+  });
+}
 </script>
 
 <template>
+  <!-- Mouse picking is a development-only sandbox interaction; gameplay uses the board keyboard. -->
+  <!-- eslint-disable-next-line vuejs-accessibility/click-events-have-key-events, vuejs-accessibility/no-static-element-interactions -->
   <div
     :class="['dungeon-viewport', `dungeon-viewport--${theme}`]"
     :style="viewportStyle"
+    @click="pickTile"
   >
     <div class="dungeon-viewport__world" :style="worldStyle">
       <div
