@@ -19,9 +19,8 @@ export default defineNuxtConfig({
   // ADR-FE-003: every non-default route declares its rendering mode here and is
   // justified in docs/rendering-modes.md.
   routeRules: {
-    // Authentication is restored from localStorage by Keycloak in the browser.
-    // These routes must therefore be client-rendered: the server cannot know
-    // whether the requester has an active local Keycloak session.
+    // Authentication is restored from sessionStorage by Keycloak in the browser.
+    // The root route stays static so its shell remains readable before hydration.
     "/": { ssr: false },
     "/auth": { ssr: false },
     "/home": { ssr: false },

@@ -31,7 +31,7 @@ export function useGateway(): GatewayClient {
       redirectingToAuthentication = true;
       const redirect = router.currentRoute.value.fullPath;
       keycloak.clearToken();
-      localStorage.removeItem("lantern.keycloak.tokens");
+      sessionStorage.removeItem("lantern.keycloak.tokens");
       await router.replace({ path: "/auth", query: { redirect } });
       return false;
     },

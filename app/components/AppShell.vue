@@ -1,21 +1,25 @@
 <script setup lang="ts">
 import { useAuth } from "~/features/auth/composables/useAuth";
+import { keycloakRedirectUrl } from "~/features/auth/keycloakRedirectUrl";
 import { ButtonSize, ButtonVariant } from "~/shared/ui/UiButton.vue";
 
-const props = withDefaults(defineProps<{
-  fullBleed?: boolean;
-  holdContent?: boolean;
-}>(), {
-  fullBleed: false,
-  holdContent: false,
-});
+const props = withDefaults(
+  defineProps<{
+    fullBleed?: boolean;
+    holdContent?: boolean;
+  }>(),
+  {
+    fullBleed: false,
+    holdContent: false,
+  },
+);
 
 const config = useRuntimeConfig();
 const { isAuthenticated, user, login, logout } = useAuth();
 const route = useRoute();
 
 const loginFromNavigation = async () => {
-  await login(`${window.location.origin}${route.fullPath}`);
+  await login(keycloakRedirectUrl(window.location, config.app.baseURL, route.fullPath));
 };
 
 const authenticatedNavigationItems = [
@@ -37,7 +41,11 @@ const brandTo = computed(() => (isAuthenticated.value ? "/home" : "/auth"));
   <div class="site-shell">
     <a class="skip-link" href="#main">Skip to main content</a>
 
-    <UiTopNavigation brand="Project Lantern" :brand-to="brandTo" :items="navigationItems">
+    <UiTopNavigation
+      brand="Project Lantern"
+      :brand-to="brandTo"
+      :items="navigationItems"
+    >
       <template #actions>
         <span v-if="isAuthenticated" class="site-shell__identity">
           {{ user?.username }}
@@ -55,12 +63,20 @@ const brandTo = computed(() => (isAuthenticated.value ? "/home" : "/auth"));
     <main
       id="main"
       class="site-shell__main"
-      :class="{ 'site-shell__main--full-bleed': props.fullBleed, 'layout-container': !props.fullBleed }"
+      :class="{
+        'site-shell__main--full-bleed': props.fullBleed,
+        'layout-container': !props.fullBleed,
+      }"
     >
       <div v-show="!props.holdContent" class="site-shell__page">
         <slot />
       </div>
-      <p v-show="props.holdContent" data-testid="auth-loading" class="site-shell__auth-loading" aria-live="polite">
+      <p
+        v-show="props.holdContent"
+        data-testid="auth-loading"
+        class="site-shell__auth-loading"
+        aria-live="polite"
+      >
         Checking session…
       </p>
     </main>

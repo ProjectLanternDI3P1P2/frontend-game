@@ -14,14 +14,6 @@ export default defineNuxtPlugin(async (nuxtApp) => {
     clientId: config.public.keycloakClientId,
   });
 
-  // await keycloak.init({
-  //     onLoad: "check-sso",
-  //     pkceMethod: "S256",
-  //     checkLoginIframe: false,
-  // });
-
-  // Pbleme avec check-sso ; ca fait http//localhost:3000-> nuxt -> keycloak.init -> check-sso -> Est-ce que cet utilisateur est déjà connecté à Keycloak ?
-
   await restoreKeycloakSession(
     () =>
       keycloak.init({
@@ -31,7 +23,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
         refreshToken: tokens?.refreshToken,
         idToken: tokens?.idToken,
       }),
-    () => localStorage.removeItem(storageKey),
+    () => sessionStorage.removeItem(storageKey),
   );
   keycloakReady.value = true;
   // Nuxt restores the initial route while hydrating. Cleaning before this hook
@@ -45,7 +37,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
 
   const persistTokens = () => {
     if (!keycloak.token || !keycloak.refreshToken) return;
-    localStorage.setItem(
+    sessionStorage.setItem(
       storageKey,
       JSON.stringify({
         token: keycloak.token,
@@ -56,12 +48,12 @@ export default defineNuxtPlugin(async (nuxtApp) => {
   };
   keycloak.onAuthSuccess = persistTokens;
   keycloak.onAuthRefreshSuccess = persistTokens;
-  keycloak.onAuthLogout = () => localStorage.removeItem(storageKey);
+  keycloak.onAuthLogout = () => sessionStorage.removeItem(storageKey);
   keycloak.onTokenExpired = () => {
     void keycloak
       .updateToken(30)
       .then(persistTokens)
-      .catch(() => localStorage.removeItem(storageKey));
+      .catch(() => sessionStorage.removeItem(storageKey));
   };
   if (keycloak.authenticated) persistTokens();
 
@@ -77,10 +69,10 @@ type KeycloakTokens = { token?: string; refreshToken?: string; idToken?: string 
 function readPersistedTokens(storageKey: string): KeycloakTokens | null {
   try {
     return JSON.parse(
-      localStorage.getItem(storageKey) ?? "null",
+      sessionStorage.getItem(storageKey) ?? "null",
     ) as KeycloakTokens | null;
   } catch {
-    localStorage.removeItem(storageKey);
+    sessionStorage.removeItem(storageKey);
     return null;
   }
 }

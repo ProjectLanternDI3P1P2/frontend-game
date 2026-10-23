@@ -1,6 +1,8 @@
 import type { AuthUser } from "../types";
+import { keycloakRedirectUrl } from "../keycloakRedirectUrl";
 
 export const useAuth = () => {
+  const config = useRuntimeConfig();
   const getKeycloak = () => {
     if (!import.meta.client) {
       return null;
@@ -37,7 +39,8 @@ export const useAuth = () => {
     }
 
     await keycloak.login({
-      redirectUri: redirectUri ?? window.location.origin,
+      redirectUri:
+        redirectUri ?? keycloakRedirectUrl(window.location, config.app.baseURL, "/"),
     });
   };
 
@@ -49,7 +52,8 @@ export const useAuth = () => {
     }
 
     await keycloak.register({
-      redirectUri: redirectUri ?? window.location.origin,
+      redirectUri:
+        redirectUri ?? keycloakRedirectUrl(window.location, config.app.baseURL, "/"),
     });
   };
 
@@ -61,7 +65,7 @@ export const useAuth = () => {
     }
 
     await keycloak.logout({
-      redirectUri: window.location.origin,
+      redirectUri: keycloakRedirectUrl(window.location, config.app.baseURL, "/"),
     });
   };
 

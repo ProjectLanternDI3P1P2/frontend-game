@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useAuth } from "~/features/auth/composables/useAuth";
+import { keycloakRedirectUrl } from "~/features/auth/keycloakRedirectUrl";
 import { ButtonSize, ButtonVariant } from "~/shared/ui/ui.types";
 
 definePageMeta({
@@ -8,6 +9,7 @@ definePageMeta({
 });
 
 const route = useRoute();
+const config = useRuntimeConfig();
 const { login, register } = useAuth();
 
 const redirectPath = () => {
@@ -20,7 +22,8 @@ const redirectPath = () => {
     : "/home";
 };
 
-const redirectUri = () => `${window.location.origin}${redirectPath()}`;
+const redirectUri = () =>
+  keycloakRedirectUrl(window.location, config.app.baseURL, redirectPath());
 </script>
 
 <template>
@@ -33,6 +36,7 @@ const redirectUri = () => `${window.location.origin}${redirectPath()}`;
       playsinline
       poster="/media/dungeon-party-loop-poster.webp"
       aria-hidden="true"
+      tabindex="-1"
     >
       <source src="/media/dungeon-party-loop.webm" type="video/webm" />
     </video>
@@ -137,5 +141,4 @@ const redirectUri = () => `${window.location.origin}${redirectPath()}`;
     margin: var(--space-7) auto 0;
   }
 }
-
 </style>

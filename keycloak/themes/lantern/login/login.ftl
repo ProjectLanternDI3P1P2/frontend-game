@@ -3,7 +3,7 @@
 <#include "critical-style.ftl">
 
 <div class="auth">
-	<video class="auth__dungeon-background" autoplay muted loop playsinline poster="${url.resourcesPath}/video/dungeon-party-loop-poster.webp" aria-hidden="true">
+	<video class="auth__dungeon-background" autoplay muted loop playsinline poster="${url.resourcesPath}/video/dungeon-party-loop-poster.webp" aria-hidden="true" tabindex="-1">
 		<source src="${url.resourcesPath}/video/dungeon-party-loop.webm" type="video/webm" />
 	</video>
 	<div class="auth__side auth__side--left">
