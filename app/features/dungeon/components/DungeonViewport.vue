@@ -30,11 +30,18 @@ import {
   gateSprite,
   itemSprite,
   mobClassName,
+  openedItemSprite,
   spriteStyle,
   type AnimatedSprite,
 } from "../tiles/sprites";
 import { SHEETS, themeOf } from "../tiles/tileset";
 import type { Direction, DungeonElement, MobState, Position } from "../types";
+
+function stableAnimationDelay(id: string): number {
+  let hash = 0;
+  for (const character of id) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  return (hash / 0xffffffff) * 1.6;
+}
 
 const props = defineProps<{
   loaded: LoadedFloor;
@@ -55,9 +62,14 @@ const props = defineProps<{
   mobs: MobState[];
   /** Mobs just killed, fading out where they fell. */
   dyingMobs: MobState[];
+  /** Item element IDs whose chest state is open on this floor. */
+  openedChestElementIds: readonly (string | number)[];
+  /** The nearby chest that can be opened with E, or null when none is in reach. */
+  openableChestElementId: string | number | null;
 }>();
 
 const emit = defineEmits<{
+  openChest: [];
   /** A click on the board, as the tile under the pointer (debug sandbox). */
   tile: [position: Position];
 }>();
@@ -136,6 +148,7 @@ function spriteOf(element: DungeonElement): AnimatedSprite {
 const visibleElements = computed<VisibleSprite[]>(() => {
   const { cells: revealed } = revealedMask.value;
   const { floor } = props.loaded;
+  const openedChestIds = new Set(props.openedChestElementIds);
   return floor.elements
     .filter(
       (element) =>
@@ -145,12 +158,13 @@ const visibleElements = computed<VisibleSprite[]>(() => {
         !(element.type === "boss" && props.floorBossDefeated),
     )
     .map((element) => {
-      const sprite = spriteOf(element);
+      const isOpenedChest = element.type === "item" && openedChestIds.has(element.id);
+      const sprite = isOpenedChest ? openedItemSprite(element.id) : spriteOf(element);
       return {
         key: `element-${element.id}`,
-        className: `dungeon-sprite dungeon-sprite--${sprite.sheet} dungeon-element dungeon-element--${element.type}${element.kind ? ` dungeon-element--${element.kind}` : ""}`,
+        className: `dungeon-sprite dungeon-sprite--${sprite.sheet} dungeon-element dungeon-element--${element.type}${isOpenedChest ? " dungeon-element--opened" : ""}${element.kind ? ` dungeon-element--${element.kind}` : ""}`,
         // Mobs float out of step with one another.
-        style: `${spriteStyle(sprite, element)};--delay:-${((element.id * 0.37) % 1.6).toFixed(2)}s`,
+        style: `${spriteStyle(sprite, element)};--delay:-${stableAnimationDelay(String(element.id)).toFixed(2)}s`,
       };
     });
 });
@@ -166,7 +180,7 @@ const visibleMobs = computed<VisibleSprite[]>(() => {
       // Same key alive and dying: the sprite stays where it fell and fades out.
       key: `mob-${mob.id}`,
       className: `${mobClassName(mob)}${dying.has(mob.id) ? " dungeon-mob--dying" : ""}`,
-      style: `${spriteStyle(ENEMY, mob)};--delay:-${((mob.id * 0.37) % 1.6).toFixed(2)}s`,
+      style: `${spriteStyle(ENEMY, mob)};--delay:-${stableAnimationDelay(String(mob.id)).toFixed(2)}s`,
     }));
 });
 
@@ -176,6 +190,14 @@ const teleports = computed(() =>
     ({ id, x, y }) => ({ key: `teleport-${id}`, style: `--x:${x};--y:${y}` }),
   ),
 );
+
+const promptChest = computed<Position | null>(() => {
+  if (props.openableChestElementId === null) return null;
+  const chest = props.loaded.floor.elements.find(
+    (element) => element.id === props.openableChestElementId && element.type === "item",
+  );
+  return chest ? { x: chest.x, y: chest.y } : null;
+});
 
 /**
  * The portcullis of the gate down, drawn over its wall: closed until the boss falls, then
@@ -259,7 +281,7 @@ function pickTile(event: MouseEvent) {
 </script>
 
 <template>
-  <!-- Mouse picking for the debug sandbox only: the game itself is played with the keys. -->
+  <!-- Mouse picking is a development-only sandbox interaction; gameplay uses the board keyboard. -->
   <!-- eslint-disable-next-line vuejs-accessibility/click-events-have-key-events, vuejs-accessibility/no-static-element-interactions -->
   <div
     :class="['dungeon-viewport', `dungeon-viewport--${theme}`]"
@@ -309,6 +331,18 @@ function pickTile(event: MouseEvent) {
         :class="mob.className"
         :style="mob.style"
       />
+
+      <button
+        v-if="promptChest"
+        :key="openableChestElementId ?? undefined"
+        type="button"
+        class="dungeon-chest-prompt"
+        :style="tokenStyle(promptChest)"
+        aria-label="Open chest (E)"
+        @click="emit('openChest')"
+      >
+        <span>Open chest (E)</span>
+      </button>
 
       <div class="dungeon-token dungeon-token--hero" :style="tokenStyle(hero)">
         <span
@@ -793,6 +827,64 @@ function pickTile(event: MouseEvent) {
   filter: drop-shadow(
     0 0 calc(var(--px) * 2) color-mix(in srgb, var(--color-accent) 60%, transparent)
   );
+}
+
+.dungeon-element--opened {
+  filter: none;
+}
+
+.dungeon-chest-prompt {
+  position: absolute;
+  left: calc(var(--x) * var(--tile) + var(--tile) / 2);
+  top: calc(var(--y) * var(--tile) - var(--space-2));
+  z-index: calc(2 * var(--y) + 20);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2.25rem;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-accent-strong);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-accent);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-inset);
+  font-family: var(--font-family-display);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.035em;
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  white-space: nowrap;
+  translate: -50% -100%;
+  scale: 1;
+  opacity: 1;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--easing-standard);
+
+  &:hover {
+    background-color: var(--color-accent-strong);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  @include bp.motion-safe {
+    animation: dungeon-chest-prompt-appear var(--duration-fast) var(--easing-standard)
+      forwards;
+  }
+}
+
+@keyframes dungeon-chest-prompt-appear {
+  from {
+    scale: 0.86;
+    opacity: 0;
+  }
+
+  to {
+    scale: 1;
+    opacity: 1;
+  }
 }
 
 @keyframes dungeon-door-open {

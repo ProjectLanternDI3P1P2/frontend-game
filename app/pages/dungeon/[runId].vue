@@ -15,9 +15,11 @@ import {
 } from "~/features/dungeon/dungeonRules";
 import { SANDBOX_SEED } from "~/features/dungeon/seed";
 import type { Direction, EnemyKindName, Position } from "~/features/dungeon/types";
+import ChestLootModal from "~/features/reward/components/ChestLootModal.vue";
 import { ButtonSize, ButtonVariant } from "~/shared/ui/ui.types";
 
-definePageMeta({ layout: "game" });
+// A run id change remounts the explorer after its in-flight work is invalidated.
+definePageMeta({ layout: "game", key: (route) => route.fullPath });
 useHead({ title: "Exploration" });
 
 const route = useRoute();
@@ -43,19 +45,17 @@ const {
   floorBossDefeated,
   mobs,
   dyingMobs,
+  openableChest,
+  movementBlocked,
+  chestLoot,
 } = explorer;
-
-/**
- * The debug sandbox, in development only like on the backend: a click on a tile spawns the
- * chosen mob there. Elsewhere its seed is an ordinary dungeon.
- */
-const isSandbox = computed(() => import.meta.dev && run.value?.seed === SANDBOX_SEED);
-const MOB_KINDS: EnemyKindName[] = ["zombie", "bat", "goblin", "mage"];
-const spawnKind = ref<EnemyKindName>("zombie");
 
 const board = ref<HTMLElement | null>(null);
 const viewport = useBoardViewport(board);
 const copied = ref(false);
+const isSandbox = computed(() => import.meta.dev && run.value?.seed === SANDBOX_SEED);
+const MOB_KINDS: EnemyKindName[] = ["zombie", "bat", "goblin", "mage"];
+const spawnKind = ref<EnemyKindName>("zombie");
 
 onMounted(async () => {
   await explorer.start();
@@ -63,22 +63,35 @@ onMounted(async () => {
   board.value?.focus();
 });
 
+watch(
+  () => String(route.params.runId),
+  (nextRunId, previousRunId) => {
+    if (nextRunId !== previousRunId) explorer.dispose();
+  },
+);
+onBeforeUnmount(() => explorer.dispose());
+
 const canMove = createCooldown(MOVE_COOLDOWN_MS);
 
 /** One move per slide, from the keyboard as from the on-screen pad. */
 function move(direction: Direction) {
-  if (canMove()) explorer.move(direction);
+  if (!movementBlocked.value && canMove()) explorer.move(direction);
+}
+
+function spawnAt(position: Position) {
+  if (isSandbox.value && !movementBlocked.value) explorer.spawn(spawnKind.value, position);
 }
 
 function onKeydown(event: KeyboardEvent) {
+  if (event.code === "KeyE") {
+    event.preventDefault();
+    if (!movementBlocked.value) explorer.openChest();
+    return;
+  }
   const direction = directionForKey(event.code);
   if (!direction) return;
   event.preventDefault();
   move(direction);
-}
-
-function spawnAt(position: Position) {
-  if (isSandbox.value) explorer.spawn(spawnKind.value, position);
 }
 
 async function copyShareLink() {
@@ -130,13 +143,15 @@ async function copyShareLink() {
           :floor-boss-defeated="floorBossDefeated"
           :mobs="mobs"
           :dying-mobs="dyingMobs"
+          :opened-chest-element-ids="run.openedChestElementIds"
+          :openable-chest-element-id="openableChest?.id ?? null"
+          @open-chest="explorer.openChest"
           @tile="spawnAt"
         />
       </div>
 
       <fieldset v-if="isSandbox" class="dungeon-page__panel dungeon-page__sandbox">
         <legend>Sandbox: click a tile to spawn</legend>
-        <!-- Back to the board after a choice: arrow keys on a radio would change the kind. -->
         <label v-for="kind in MOB_KINDS" :key="kind">
           <input
             v-model="spawnKind"
@@ -205,15 +220,23 @@ async function copyShareLink() {
 
       <DungeonControls
         class="dungeon-page__pad"
-        :disabled="run.status !== 'active'"
+        :disabled="run.status !== 'active' || movementBlocked"
         @move="move"
       />
 
       <p id="dungeon-help" class="visually-hidden">
-        Arrow keys, WASD or ZQSD to move, one tile per turn. Walk into the boss of the
-        floor to fight it; once it is defeated, walk into the gate behind it to go down.
+        Arrow keys, WASD or ZQSD to move, one tile per turn. Press E while standing on
+        or next to a chest to open it. Walk into the boss of the floor to fight it; once
+        it is defeated, walk into the gate behind it to go down.
       </p>
       <p class="visually-hidden" aria-live="polite">{{ announcement }}</p>
+
+      <ChestLootModal
+        v-if="chestLoot"
+        :interaction="chestLoot"
+        @retry="explorer.retryChestLoot"
+        @close="explorer.closeChestLoot"
+      />
     </template>
   </div>
 </template>
@@ -308,25 +331,6 @@ async function copyShareLink() {
       right: auto;
     }
   }
-
-  &__actions {
-    position: absolute;
-    z-index: var(--z-overlay);
-    bottom: var(--space-6);
-    left: 50%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-3);
-    translate: -50% 0;
-    inline-size: max-content;
-    max-inline-size: calc(100% - 2 * var(--space-4));
-
-    > .dungeon-page__panel {
-      position: static;
-    }
-  }
-
   &__sandbox {
     top: 50%;
     left: var(--space-4);
@@ -347,6 +351,24 @@ async function copyShareLink() {
       display: flex;
       gap: var(--space-2);
       text-transform: capitalize;
+    }
+  }
+
+  &__actions {
+    position: absolute;
+    z-index: var(--z-overlay);
+    bottom: var(--space-6);
+    left: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    translate: -50% 0;
+    inline-size: max-content;
+    max-inline-size: calc(100% - 2 * var(--space-4));
+
+    > .dungeon-page__panel {
+      position: static;
     }
   }
 
