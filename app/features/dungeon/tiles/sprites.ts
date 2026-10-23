@@ -36,7 +36,15 @@ const still = { frames: 1, pitch: 0, duration: 1 };
  * three quarters of it, about the size of the hero, a few pixels above its tile.
  */
 export const ENEMY: AnimatedSprite = {
-  sheet: "mob", x: 0, y: 0, w: 32, h: 32, ...still, dx: -4, dy: -11, scale: 0.75,
+  sheet: "mob",
+  x: 0,
+  y: 0,
+  w: 32,
+  h: 32,
+  ...still,
+  dx: -4,
+  dy: -11,
+  scale: 0.75,
 };
 
 /** The classes of a mob of the run: its kind tints it, its aggro lights it up. */
@@ -62,14 +70,47 @@ const CHESTS: readonly AnimatedSprite[] = [64, 96, 128].map((y) => ({
   dy: -16,
 }));
 
+/** The matching open, emptied chest sprites: lid up, from the same three colour rows. */
+const OPENED_CHESTS: readonly AnimatedSprite[] = [64, 96, 128].map((y) => ({
+  sheet: "objects",
+  x: 100,
+  y,
+  w: 24,
+  h: 32,
+  ...still,
+  dx: -4,
+  dy: -16,
+}));
+
 /** A chest, of a colour chosen by the item's id. */
-export function itemSprite(id: number): AnimatedSprite {
-  return CHESTS[id % CHESTS.length]!;
+function stableIndex(id: string | number, length: number): number {
+  if (typeof id === "number") return Math.abs(id) % length;
+  let hash = 0;
+  for (const character of id) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  return hash % length;
+}
+
+export function itemSprite(id: string | number): AnimatedSprite {
+  return CHESTS[stableIndex(id, CHESTS.length)]!;
+}
+
+/** The opened version of an item chest, with the same deterministic colour. */
+export function openedItemSprite(id: string | number): AnimatedSprite {
+  return OPENED_CHESTS[stableIndex(id, OPENED_CHESTS.length)]!;
 }
 
 /** Spikes that come out of the floor and go back in. */
 export const TRAP: AnimatedSprite = {
-  sheet: "objects", x: 160, y: 262, w: 32, h: 20, frames: 3, pitch: 32, duration: 1.2, dx: -8, dy: -2,
+  sheet: "objects",
+  x: 160,
+  y: 262,
+  w: 32,
+  h: 20,
+  frames: 3,
+  pitch: 32,
+  duration: 1.2,
+  dx: -8,
+  dy: -2,
 };
 
 /**
@@ -78,12 +119,24 @@ export const TRAP: AnimatedSprite = {
  */
 export function gateSprite(theme: Theme): AnimatedSprite {
   return {
-    sheet: "objects", x: 0, y: theme === "stone" ? 320 : 0, w: 64, h: 64, frames: 5, pitch: 64, duration: 0.9, dx: -24, dy: -48,
+    sheet: "objects",
+    x: 0,
+    y: theme === "stone" ? 320 : 0,
+    w: 64,
+    h: 64,
+    frames: 5,
+    pitch: 64,
+    duration: 0.9,
+    dx: -24,
+    dy: -48,
   };
 }
 
 /** CSS custom properties of a sprite standing on tile (x, y). */
-export function spriteStyle(sprite: AnimatedSprite, { x, y }: { x: number; y: number }): string {
+export function spriteStyle(
+  sprite: AnimatedSprite,
+  { x, y }: { x: number; y: number },
+): string {
   return (
     `--x:${x};--y:${y};--dx:${sprite.dx};--dy:${sprite.dy};` +
     `--sx:${sprite.x};--sy:${sprite.y};--sw:${sprite.w};--sh:${sprite.h};` +

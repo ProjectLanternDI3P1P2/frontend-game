@@ -291,7 +291,7 @@ export function revealedTeleports(
   mobs: readonly MobState[],
   revealed: Uint8Array,
   width: number,
-): { id: number; x: number; y: number }[] {
+): { id: string | number; x: number; y: number }[] {
   return mobs.flatMap(({ id, nextTeleport }) =>
     nextTeleport && revealed[nextTeleport.y * width + nextTeleport.x] === 1
       ? [{ id, x: nextTeleport.x, y: nextTeleport.y }]
