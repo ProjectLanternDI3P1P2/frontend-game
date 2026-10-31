@@ -39,6 +39,20 @@ experience, and ADR-FE-014 explicitly refuses to let it replace field data.
 Note that Lighthouse cannot measure INP in the lab; the budget uses Total
 Blocking Time as a proxy. TBT regressions are a signal, not a verdict.
 
+## Audio
+
+ADR-FE-016. Audio never weighs on the first render: nothing is fetched until the
+player's first gesture.
+
+| Asset group              | Budget (all formats served to one browser) | When it loads             |
+| ------------------------ | ------------------------------------------ | ------------------------- |
+| v1 sound effects         | ≤ 150 KB total                             | First user gesture        |
+| Ambience loop, per theme | ≤ 700 KB                                   | Lazily, after the effects |
+
+These are v1 values, to be revisited with real measurements. Improvements to
+investigate (audio sprite, Service Worker cache, streamed ambience, lower
+bitrates) are listed in ADR-FE-016.
+
 ## Keeping the budgets
 
 The CSR game client pays for its JavaScript up front (ADR-FE-004), so initial
