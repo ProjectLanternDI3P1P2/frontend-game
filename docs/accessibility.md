@@ -50,8 +50,8 @@ ADR-FE-015, and are recorded here so a later change does not undo it.
 - **Nothing plays before the player acts.** Audio starts on the first user
   gesture only, as browsers require.
 - **The mute toggle is a real `<button>`** with `aria-pressed`, reachable by
-  keyboard, in the `game` layout. The `M` key toggles it too; the shortcut does
-  not fire while focus is in a text field.
+  keyboard, in the run's HUD. The `M` key toggles it too, from the board only,
+  so it never fires while focus is in a text field.
 - **The choice persists** (`localStorage`) and always wins over the default.
 - **The ambience stays in the background:** a drone with no melody, at a low
   default level (0.4), so it does not mask screen-reader speech.

@@ -95,8 +95,10 @@ sounds poorly.
 ### Preferences
 
 Sound is **on by default once the first gesture unlocks it**, at moderate
-levels (master 0.8, sfx 0.7, ambience 0.4). A mute toggle in the `game` layout
-and the `M` key switch it off; the choice is kept in `localStorage`, read and
+levels (master 0.8, sfx 0.7, ambience 0.4). A mute toggle
+(`shared/audio/AudioMuteToggle.vue`, placed in the run's HUD next to _Share_
+and _Leave_, so it never overlaps the board's other overlays) and the `M` key
+on the board switch it off; the choice is kept in `localStorage`, read and
 written inside `try/catch`, and the engine works without it. A stored choice
 always wins over the default.
 
@@ -118,8 +120,11 @@ validated by ear by the owning squad before it is merged.
 - Vitest: `diffRunCues` on every rule above, including the first snapshot that
   plays nothing; `AudioEngine` against a mocked `AudioContext` (mute, volumes,
   failing `localStorage`, `play` before unlock is ignored).
-- Cypress: the mute toggle exists, is accessible and persists. Real audio output
-  is not tested end to end.
+- Vitest, component level: the mute toggle is a button with `aria-pressed`,
+  toggles, and starts from the stored choice. It is not a Cypress spec: the run
+  screen needs a live Dungeon service, which the end-to-end suite does not start
+  yet. Move it to Cypress once that journey is covered end to end. Real audio
+  output is not tested.
 
 ## Consequences
 
