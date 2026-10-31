@@ -32,7 +32,7 @@ export interface CueSound {
 
 export const DUNGEON_CUES: Readonly<Record<DungeonCue, CueSound>> = {
   step: {
-    files: ["dungeon/step-1", "dungeon/step-2", "dungeon/step-3"],
+    files: Array.from({ length: 10 }, (_, i) => `dungeon/step-${i + 1}`),
     volume: 0.5,
   },
   bump: { files: ["dungeon/bump"], volume: 0.6 },
@@ -40,7 +40,15 @@ export const DUNGEON_CUES: Readonly<Record<DungeonCue, CueSound>> = {
   gateOpen: { files: ["dungeon/gate-open"], volume: 0.9 },
   victory: { files: ["dungeon/victory"], volume: 0.9 },
   floorDown: { files: ["dungeon/floor-down"], volume: 0.8 },
-  roomDiscovered: { files: ["dungeon/room-discovered"], volume: 0.5 },
+  // Barely there on purpose: noticed only when it is missing.
+  roomDiscovered: {
+    files: [
+      "dungeon/room-discovered-1",
+      "dungeon/room-discovered-2",
+      "dungeon/room-discovered-3",
+    ],
+    volume: 0.35,
+  },
 };
 
 /** One loop for every floor theme in v1 (ADR-FE-016). */
