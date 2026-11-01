@@ -5,6 +5,7 @@ import {
   AUDIO_PREFERENCES_KEY,
   AudioEngine,
   DEFAULT_AUDIO_PREFERENCES,
+  audioBaseUrl,
 } from "../audio/audioEngine";
 
 /** Just enough of the Web Audio graph to see what the engine builds and starts. */
@@ -267,5 +268,11 @@ describe("AudioEngine", () => {
     audio.play("dungeon/step-1");
     await flushPromises();
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("serves the files under the app's base URL, without a redirect", () => {
+    expect(audioBaseUrl("/game/")).toBe("/game/audio");
+    expect(audioBaseUrl("/game")).toBe("/game/audio");
+    expect(audioBaseUrl("/")).toBe("/audio");
   });
 });

@@ -24,7 +24,11 @@ services:
   dungeon:
     extends: { file: compose.backend.yaml, service: dungeon }
     build:
-      { context: ../dungeon-backend, dockerfile: Dockerfile.dev, secrets: !reset [] }
+      context: ../dungeon-backend
+      dockerfile: Dockerfile.dev
+      secrets: !reset []
+      additional_contexts:
+        reward-contracts: ../reward-backend
   reward:
     extends: { file: compose.backend.yaml, service: reward }
     build:

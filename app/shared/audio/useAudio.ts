@@ -7,9 +7,18 @@
  */
 import { readonly, ref } from "vue";
 import type { AudioBus, AudioPreferences, PlayOptions } from "./audioEngine";
-import { AUDIO_BASE_URL, AudioEngine, DEFAULT_AUDIO_PREFERENCES } from "./audioEngine";
+import { AudioEngine, DEFAULT_AUDIO_PREFERENCES, audioBaseUrl } from "./audioEngine";
 
 let engine: AudioEngine | null = null;
+let baseUrl = audioBaseUrl("/");
+
+/**
+ * Set once at start by `plugins/audio.client.ts` from the app's base URL,
+ * before any engine exists.
+ */
+export function setAudioAppBaseUrl(appBaseUrl: string): void {
+  baseUrl = audioBaseUrl(appBaseUrl);
+}
 const preferences = ref<AudioPreferences>({ ...DEFAULT_AUDIO_PREFERENCES });
 
 const GESTURES = ["pointerdown", "keydown", "touchstart"] as const;
@@ -24,7 +33,7 @@ function createEngine(): AudioEngine | null {
     fetch: (url) => window.fetch(url),
     storage: safeLocalStorage(),
     canPlayType: (mime) => probe.canPlayType(mime),
-    baseUrl: AUDIO_BASE_URL,
+    baseUrl,
   });
   preferences.value = created.currentPreferences;
   created.subscribe((next) => (preferences.value = next));

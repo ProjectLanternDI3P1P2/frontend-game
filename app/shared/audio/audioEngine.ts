@@ -32,8 +32,16 @@ export const DEFAULT_AUDIO_PREFERENCES: Readonly<AudioPreferences> = {
 
 export const AUDIO_PREFERENCES_KEY = "lantern.audio";
 
-/** Where the files are served from, and in which formats (ADR-FE-016). */
-export const AUDIO_BASE_URL = "/audio";
+/**
+ * Where the files are served from (ADR-FE-016): `public/audio/`, under the
+ * app's base URL (`/game/` in the deployed stack), so no request goes through
+ * a redirect.
+ */
+export function audioBaseUrl(appBaseUrl: string): string {
+  return `${appBaseUrl.replace(/\/+$/, "")}/audio`;
+}
+
+/** The formats, in order of preference. */
 const FORMATS = [
   { extension: "webm", mime: 'audio/webm; codecs="opus"' },
   { extension: "m4a", mime: 'audio/mp4; codecs="mp4a.40.2"' },
