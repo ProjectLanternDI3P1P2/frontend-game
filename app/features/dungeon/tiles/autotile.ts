@@ -113,6 +113,8 @@ const LITTER: Readonly<Record<RoomTypeName | "corridor", Partial<Record<Litter, 
   treasure: { coins: 45, note: 6, books: 8, potions: 10 },
   empty: { rubble: 30, bones: 8, note: 4, books: 10, potions: 3 },
   boss: { bones: 28, blood: 30, rubble: 10, help: 3 },
+  // An easter-egg room keeps its floor clean: the decorations are the show.
+  secret: {},
   corridor: { rubble: 12, bones: 5 },
 };
 

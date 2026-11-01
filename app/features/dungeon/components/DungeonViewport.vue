@@ -25,6 +25,7 @@ import { MAX_LAYERS } from "../tiles/autotile";
 import { HERO_SHEET, heroLayers, heroSprite, type HeroAppearance } from "../tiles/hero";
 import {
   BOSS,
+  DECORATIONS,
   ENEMY,
   TRAP,
   gateSprite,
@@ -35,7 +36,13 @@ import {
   type AnimatedSprite,
 } from "../tiles/sprites";
 import { SHEETS, themeOf } from "../tiles/tileset";
-import type { Direction, DungeonElement, MobState, Position } from "../types";
+import type {
+  DecorationKindName,
+  Direction,
+  DungeonElement,
+  MobState,
+  Position,
+} from "../types";
 
 function stableAnimationDelay(id: string): number {
   let hash = 0;
@@ -142,6 +149,8 @@ function spriteOf(element: DungeonElement): AnimatedSprite {
       return itemSprite(element.id);
     case "trap":
       return TRAP;
+    case "decoration":
+      return DECORATIONS[element.kind as DecorationKindName];
   }
 }
 
@@ -523,6 +532,13 @@ function pickTile(event: MouseEvent) {
     background-image: url("@/assets/dongeon/objects.png");
     background-size: calc(320 * var(--px) * var(--scale))
       calc(480 * var(--px) * var(--scale));
+  }
+
+  // The easter-egg decorations (see `DECORATIONS` in `tiles/sprites.ts`).
+  &--eggs {
+    background-image: url("@/assets/dongeon/easter-eggs.png");
+    background-size: calc(200 * var(--px) * var(--scale))
+      calc(64 * var(--px) * var(--scale));
   }
 
   &--mob {

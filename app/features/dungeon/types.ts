@@ -20,14 +20,26 @@ export type CellTypeName =
   | "grate"
   | "water"
   | "lava"
-  | "tomb";
+  | "tomb"
+  /** The ground under a decoration of an easter-egg room: blocks movement, draws no furniture. */
+  | "decoration";
 
-export type ElementTypeName = "enemy" | "boss" | "item" | "trap";
+export type ElementTypeName = "enemy" | "boss" | "item" | "trap" | "decoration";
 
 /** How an enemy silhouette moves; the pack it stands for is Combat's. */
 export type EnemyKindName = "zombie" | "mage" | "goblin" | "bat";
 
-export type RoomTypeName = "start" | "combat" | "treasure" | "empty" | "boss";
+/** What a decoration of an easter-egg room shows. */
+export type DecorationKindName =
+  "ship" | "campfire" | "strawberry" | "grassBlock" | "bluePortal" | "orangePortal";
+
+/** `secret`: a legendary easter-egg room, decorations only. */
+export type RoomTypeName =
+  "start" | "combat" | "treasure" | "empty" | "boss" | "secret";
+
+/** Which tribute a secret room pays: one game per room. */
+export type EasterEggName =
+  "outerWildsShip" | "outerWildsCampfire" | "celeste" | "minecraft" | "portal";
 
 export type DungeonRunStatus = "active" | "won" | "lost" | "abandoned";
 
@@ -45,8 +57,8 @@ export interface DungeonElement {
   x: number;
   y: number;
   roomId: number;
-  /** Movement kind of an enemy silhouette; null for any other element. */
-  kind: EnemyKindName | null;
+  /** Movement kind of an enemy silhouette, or what a decoration shows; null otherwise. */
+  kind: EnemyKindName | DecorationKindName | null;
 }
 
 export interface DungeonRoom {
@@ -64,6 +76,8 @@ export interface DungeonRoom {
   /** Rooms to cross from the start room. */
   depth: number;
   connectedRoomIds: number[];
+  /** Which easter egg a secret room holds; absent or null for any other room. */
+  easterEgg?: EasterEggName | null;
 }
 
 /**
