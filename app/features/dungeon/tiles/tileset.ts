@@ -201,6 +201,8 @@ export const OBSTACLES: Readonly<Record<RoomTypeName, readonly Prop[]>> = {
   treasure: [...props(PROP.coins, PROP.tallGreenVase, PROP.amphora), ...OPEN_CHESTS],
   empty: props(PROP.brokenPot, PROP.brokenVase, PROP.rock, PROP.boulder, PROP.greenPot, PROP.barrel),
   boss: props(PROP.skulls, PROP.barrelOfBones, PROP.candelabrum, PROP.candles, PROP.skulls, PROP.boulder),
+  // Easter-egg templates hold no obstacle; should one ever, it is a quiet room's.
+  secret: props(PROP.brokenPot, PROP.rock, PROP.boulder),
 };
 
 /**
