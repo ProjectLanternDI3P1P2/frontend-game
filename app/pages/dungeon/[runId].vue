@@ -3,6 +3,7 @@
  * The exploration screen. Client-rendered (ADR-FE-004): see routeRules.
  * Composes the dungeon feature; holds no rule of its own.
  */
+import { useDungeonAudio } from "~/features/dungeon/audio/useDungeonAudio";
 import DungeonControls from "~/features/dungeon/components/DungeonControls.vue";
 import DungeonMinimap from "~/features/dungeon/components/DungeonMinimap.vue";
 import DungeonViewport from "~/features/dungeon/components/DungeonViewport.vue";
@@ -16,6 +17,7 @@ import {
 import { SANDBOX_SEED } from "~/features/dungeon/seed";
 import type { Direction, EnemyKindName, Position } from "~/features/dungeon/types";
 import ChestLootModal from "~/features/reward/components/ChestLootModal.vue";
+import AudioMuteToggle from "~/shared/audio/AudioMuteToggle.vue";
 import { ButtonSize, ButtonVariant } from "~/shared/ui/ui.types";
 
 // A run id change remounts the explorer after its in-flight work is invalidated.
@@ -26,7 +28,11 @@ const route = useRoute();
 const playerId = computed(() =>
   typeof route.query.playerId === "string" ? route.query.playerId : null,
 );
-const explorer = useDungeonExplorer(String(route.params.runId));
+// ADR-FE-016: the explorer decides which cue plays; the page wires the sound.
+const dungeonAudio = useDungeonAudio();
+const explorer = useDungeonExplorer(String(route.params.runId), {
+  sound: dungeonAudio,
+});
 const {
   run,
   loaded,
@@ -59,6 +65,8 @@ const spawnKind = ref<EnemyKindName>("zombie");
 
 onMounted(async () => {
   await explorer.start();
+  // Waits for the first gesture if there was none yet, and loads after the effects.
+  dungeonAudio.startAmbience();
   await nextTick();
   board.value?.focus();
 });
@@ -69,7 +77,10 @@ watch(
     if (nextRunId !== previousRunId) explorer.dispose();
   },
 );
-onBeforeUnmount(() => explorer.dispose());
+onBeforeUnmount(() => {
+  explorer.dispose();
+  dungeonAudio.stopAmbience();
+});
 
 const canMove = createCooldown(MOVE_COOLDOWN_MS);
 
@@ -83,6 +94,11 @@ function spawnAt(position: Position) {
 }
 
 function onKeydown(event: KeyboardEvent) {
+  if (event.code === "KeyM") {
+    event.preventDefault();
+    dungeonAudio.toggleMuted();
+    return;
+  }
   if (event.code === "KeyE") {
     event.preventDefault();
     if (!movementBlocked.value) explorer.openChest();
@@ -180,6 +196,7 @@ async function copyShareLink() {
           </div>
         </dl>
         <div class="dungeon-page__links">
+          <AudioMuteToggle />
           <UiButton
             :variant="ButtonVariant.GHOST"
             :size="ButtonSize.SM"
@@ -226,8 +243,9 @@ async function copyShareLink() {
 
       <p id="dungeon-help" class="visually-hidden">
         Arrow keys, WASD or ZQSD to move, one tile per turn. Press E while standing on
-        or next to a chest to open it. Walk into the boss of the floor to fight it; once
-        it is defeated, walk into the gate behind it to go down.
+        or next to a chest to open it. Press M to mute or unmute the sound. Walk into
+        the boss of the floor to fight it; once it is defeated, walk into the gate
+        behind it to go down.
       </p>
       <p class="visually-hidden" aria-live="polite">{{ announcement }}</p>
 
