@@ -28,6 +28,9 @@ import {
   roomAt,
   step,
 } from "../dungeonMap";
+import { diffRunCues } from "../audio/diffRunCues";
+import type { DungeonSound } from "../audio/useDungeonAudio";
+import { SILENT_DUNGEON } from "../audio/useDungeonAudio";
 import { MOB_DEATH_MS, MOVE_COOLDOWN_MS, reveal } from "../dungeonRules";
 import { heroAppearanceOf } from "../tiles/hero";
 import type {
@@ -48,7 +51,16 @@ const MAX_PENDING_MOVES = 4;
 
 export type ExplorerStatus = "loading" | "ready" | "error";
 
-export function useDungeonExplorer(runId: string) {
+export interface DungeonExplorerOptions {
+  /** ADR-FE-016: silent unless the page wires the dungeon's sounds. */
+  sound?: DungeonSound;
+}
+
+export function useDungeonExplorer(
+  runId: string,
+  options: DungeonExplorerOptions = {},
+) {
+  const sound = options.sound ?? SILENT_DUNGEON;
   const run = shallowRef<DungeonRunResponse | null>(null);
   const loaded = shallowRef<LoadedFloor | null>(null);
   const hero = ref<Position>({ x: 0, y: 0 });
@@ -104,6 +116,15 @@ export function useDungeonExplorer(runId: string) {
       setTimeout(() => {
         dyingMobs.value = dyingMobs.value.filter((mob) => !killed.includes(mob));
       }, MOVE_COOLDOWN_MS + MOB_DEATH_MS);
+    },
+    { flush: "sync" },
+  );
+  // ADR-FE-016: what the server confirms is heard from the snapshots alone.
+  watch(
+    run,
+    (next, previous) => {
+      if (disposed) return;
+      for (const cue of diffRunCues(previous ?? null, next)) sound.play(cue);
     },
     { flush: "sync" },
   );
@@ -220,6 +241,7 @@ export function useDungeonExplorer(runId: string) {
       // Same rule as the backend: no request for a move it would refuse.
       bump.value = { direction, id: ++bumpCount };
       const isGate = cellAt(current, target.x, target.y) === Cell.Gate;
+      sound.play(isGate ? "gateLocked" : "bump");
       announce(
         isGate
           ? "The gate is locked: defeat the boss of this floor first."
@@ -231,11 +253,13 @@ export function useDungeonExplorer(runId: string) {
     // Same rule as the backend: a mob blocks the way.
     if (mobs.value.some((mob) => samePosition(mob, target))) {
       bump.value = { direction, id: ++bumpCount };
+      sound.play("bump");
       announce("A mob blocks the way.");
       return;
     }
 
     placeHero(target);
+    sound.play("step");
     const here = elementsAt(current, target);
     if (here.length > 0)
       announce(`On this tile: ${here.map((e) => e.type).join(", ")}.`);
