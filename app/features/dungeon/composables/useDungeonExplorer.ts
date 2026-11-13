@@ -36,6 +36,7 @@ import { heroAppearanceOf } from "../tiles/hero";
 import type {
   Direction,
   DungeonElement,
+  DungeonRoom,
   DungeonRunResponse,
   EnemyKindName,
   MobState,
@@ -538,7 +539,8 @@ function samePosition(a: Position, b: Position): boolean {
   return a.x === b.x && a.y === b.y;
 }
 
-function describeRoom(floor: DecodedFloor, roomId: number): string {
+/** What the live region says on entering a room. */
+export function describeRoom(floor: DecodedFloor, roomId: number): string {
   const room = floor.rooms[roomId]!;
   const count = (type: DungeonElement["type"]) =>
     floor.elements.filter(
@@ -550,10 +552,32 @@ function describeRoom(floor: DecodedFloor, roomId: number): string {
     traps > 0 ? `beware of ${traps} spike traps` : null,
     room.type === "boss" ? describeBoss(floor) : null,
     room.type === "treasure" ? "a treasure lies here" : null,
+    room.type === "secret" ? describeEasterEgg(room.easterEgg) : null,
   ].filter(Boolean);
 
   const title = `Room ${room.id + 1} of ${floor.rooms.length}`;
   return details.length ? `${title}: ${details.join(", ")}.` : `${title}.`;
+}
+
+/**
+ * What a secret room holds, said in words: its look is never the only sign that it is a
+ * secret room, for those who cannot see the screen (ADR-FE-015).
+ */
+function describeEasterEgg(easterEgg: DungeonRoom["easterEgg"]): string {
+  switch (easterEgg) {
+    case "outerWildsShip":
+      return "a strange room: a little ship has landed here";
+    case "outerWildsCampfire":
+      return "a strange room: a campfire burns, a marshmallow roasting over it";
+    case "celeste":
+      return "a strange room: a winged strawberry floats in the air";
+    case "minecraft":
+      return "a strange room: a lone grass block stands in the middle of the dungeon";
+    case "portal":
+      return "a strange room: a blue and an orange portal hang on the back wall";
+    default:
+      return "a strange room";
+  }
 }
 
 function describeBoss(floor: DecodedFloor): string {
