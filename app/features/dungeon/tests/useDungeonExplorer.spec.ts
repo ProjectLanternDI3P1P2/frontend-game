@@ -389,6 +389,104 @@ describe("useDungeonExplorer", () => {
       vi.mocked(api.fetchDungeonMap).mock.calls.map(([, floorIndex]) => floorIndex),
     ).toContain(1);
   });
+
+  describe("sound (ADR-FE-016)", () => {
+    function listen() {
+      const cues: string[] = [];
+      return { cues, sound: { play: (cue: string) => void cues.push(cue) } };
+    }
+
+    it("plays nothing on arrival, then a step as soon as the move is predicted", async () => {
+      serverAccepts();
+      const { cues, sound } = listen();
+      const explorer = useDungeonExplorer(initialRun.id, { sound });
+      await explorer.start();
+      expect(cues).toEqual([]);
+
+      explorer.move("south");
+      expect(cues).toEqual(["step"]);
+    });
+
+    it("bumps on a wall, without a step", async () => {
+      serverAccepts();
+      const { cues, sound } = listen();
+      const explorer = useDungeonExplorer(initialRun.id, { sound });
+      await explorer.start();
+      explorer.move("south");
+      await flushPromises();
+      while (
+        cellAt(floor, explorer.hero.value.x - 1, explorer.hero.value.y) === Cell.Floor
+      ) {
+        explorer.move("west");
+        await flushPromises();
+      }
+      cues.length = 0;
+
+      explorer.move("west");
+      expect(cues).toEqual(["bump"]);
+    });
+
+    it("opens the gate with the sound once the server confirms the boss fell", async () => {
+      const boss = floor.elements.find((element) => element.type === "boss")!;
+      const direction = (["north", "east", "south", "west"] as const).find(
+        (candidate) => isWalkableAt(floor, step(boss, opposite(candidate))),
+      )!;
+      const run: DungeonRunResponse = {
+        ...initialRun,
+        hero: step(boss, opposite(direction)),
+      };
+      vi.mocked(api.joinDungeon).mockResolvedValue(run);
+      vi.mocked(api.defeatFloorBoss).mockResolvedValue({
+        ...run,
+        floorBossDefeated: true,
+      });
+      const { cues, sound } = listen();
+      const explorer = useDungeonExplorer(initialRun.id, { sound });
+      await explorer.start();
+
+      explorer.move(direction);
+      expect(cues).toEqual([]);
+      await flushPromises();
+      expect(cues).toEqual(["gateOpen"]);
+    });
+
+    it("rattles the locked gate, then goes down through the open one", async () => {
+      const gate = gateOf(floor)!;
+      const belowGate: DungeonRunResponse = {
+        ...initialRun,
+        hero: { x: gate.x, y: gate.y + 1 },
+      };
+      vi.mocked(api.joinDungeon).mockResolvedValue(belowGate);
+      vi.mocked(api.moveHero).mockResolvedValue({
+        ...belowGate,
+        floorBossDefeated: true,
+        currentFloor: 1,
+        hero: { x: 7, y: 9 },
+        turn: 1,
+      });
+      const { cues, sound } = listen();
+      const explorer = useDungeonExplorer(initialRun.id, { sound });
+      await explorer.start();
+
+      explorer.move("north");
+      expect(cues).toEqual(["gateLocked"]);
+
+      explorer.run.value = { ...belowGate, floorBossDefeated: true };
+      explorer.move("north");
+      await flushPromises();
+      expect(cues).toEqual(["gateLocked", "gateOpen", "floorDown"]);
+    });
+
+    it("stays silent once the explorer is disposed", async () => {
+      const { cues, sound } = listen();
+      const explorer = useDungeonExplorer(initialRun.id, { sound });
+      await explorer.start();
+      explorer.dispose();
+
+      explorer.run.value = { ...initialRun, floorBossDefeated: true };
+      expect(cues).toEqual([]);
+    });
+  });
 });
 
 function opposite(direction: Direction): Direction {
