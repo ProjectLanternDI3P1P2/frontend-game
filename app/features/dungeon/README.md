@@ -226,6 +226,11 @@ shows.
 - A decoration stands on the first tile of its footprint, in reading order; the
   ground under it (`decoration` cells) blocks movement and gets no furniture.
   The portals stand on the top row, walkable, and hang on the wall above it.
+- The walls and the floor of a secret room stay bare (no litter, no candles at the foot of
+  the walls, nothing hung on them), so that nothing overlaps the portals on the wall.
+- A decoration whose kind the client does not know (a newer service, a typo) is drawn as
+  `MISSING_DECORATION`, a violet and black checkerboard in the sheet, like Minecraft's
+  missing texture, rather than leaving a hole in the room.
 - Entering a secret room is announced like any room, with what it holds.
 - To add one: draw it in the sheet, add its kind to `DecorationKindName` and
   `DECORATIONS`, add the game to `EasterEggName` and its announcement, then its

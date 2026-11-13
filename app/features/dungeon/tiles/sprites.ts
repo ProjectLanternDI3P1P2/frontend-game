@@ -1,7 +1,7 @@
 /**
  * The sprites that stand on the board: enemies, bosses, items, traps, the boss gate and the
- * decorations of the easter-egg rooms (the hero, a paper doll, is in `hero.ts`). Data only: the viewport binds `spriteStyle` and CSS
- * plays the frames.
+ * decorations of the easter-egg rooms (the hero, a paper doll, is in `hero.ts`). Data only:
+ * the viewport binds `spriteStyle` and CSS plays the frames.
  *
  * An animation is a row of frames `pitch` pixels apart in its sheet; CSS steps through
  * them by moving the background, so no JavaScript runs per frame.
@@ -196,6 +196,32 @@ export const DECORATIONS: Readonly<Record<DecorationKindName, AnimatedSprite>> =
     dy: -2,
   },
 };
+
+/**
+ * Shown for a decoration whose kind this client does not know (a newer Dungeon service, a
+ * typo): Minecraft's violet and black missing texture, in the easter-egg sheet, so the
+ * mistake is seen in the room rather than leaving a hole in it.
+ */
+export const MISSING_DECORATION: AnimatedSprite = {
+  sheet: "eggs",
+  x: 48,
+  y: 16,
+  w: 16,
+  h: 16,
+  ...still,
+  dx: 0,
+  dy: 0,
+};
+
+const DECORATION_SPRITES: Readonly<Record<string, AnimatedSprite | undefined>> =
+  DECORATIONS;
+
+/** The sprite of a decoration, whatever kind the service sent: unknown or missing is the placeholder. */
+export function decorationSprite(kind: string | null): AnimatedSprite {
+  // Own keys only: a kind named `constructor` is not a decoration.
+  if (kind === null || !Object.hasOwn(DECORATIONS, kind)) return MISSING_DECORATION;
+  return DECORATION_SPRITES[kind] ?? MISSING_DECORATION;
+}
 
 /** CSS custom properties of a sprite standing on tile (x, y). */
 export function spriteStyle(

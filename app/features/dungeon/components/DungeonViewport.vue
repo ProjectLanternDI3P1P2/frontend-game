@@ -25,9 +25,9 @@ import { MAX_LAYERS } from "../tiles/autotile";
 import { HERO_SHEET, heroLayers, heroSprite, type HeroAppearance } from "../tiles/hero";
 import {
   BOSS,
-  DECORATIONS,
   ENEMY,
   TRAP,
+  decorationSprite,
   gateSprite,
   itemSprite,
   mobClassName,
@@ -36,13 +36,7 @@ import {
   type AnimatedSprite,
 } from "../tiles/sprites";
 import { SHEETS, themeOf } from "../tiles/tileset";
-import type {
-  DecorationKindName,
-  Direction,
-  DungeonElement,
-  MobState,
-  Position,
-} from "../types";
+import type { Direction, DungeonElement, MobState, Position } from "../types";
 
 function stableAnimationDelay(id: string): number {
   let hash = 0;
@@ -150,7 +144,7 @@ function spriteOf(element: DungeonElement): AnimatedSprite {
     case "trap":
       return TRAP;
     case "decoration":
-      return DECORATIONS[element.kind as DecorationKindName];
+      return decorationSprite(element.kind);
   }
 }
 

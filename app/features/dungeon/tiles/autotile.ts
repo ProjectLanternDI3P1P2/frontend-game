@@ -113,7 +113,9 @@ const LITTER: Readonly<Record<RoomTypeName | "corridor", Partial<Record<Litter, 
   treasure: { coins: 45, note: 6, books: 8, potions: 10 },
   empty: { rubble: 30, bones: 8, note: 4, books: 10, potions: 3 },
   boss: { bones: 28, blood: 30, rubble: 10, help: 3 },
-  // An easter-egg room keeps its floor clean: the decorations are the show.
+  // An easter-egg room keeps its floor and its walls clean (no litter, no candles at the foot
+  // of the walls, nothing hung on them: see `canDecorate` and `litter`): the decorations are
+  // the show, and the portals hang on a bare wall.
   secret: {},
   corridor: { rubble: 12, bones: 5 },
 };
@@ -407,6 +409,8 @@ class WallPlan {
   /** A face that can carry a decoration: a plain stretch of wall, between two faces. */
   private canDecorate(x: number, y: number): boolean {
     if (!this.isFace(x, y) || this.isThinWall(x, y) || this.isNextToDoor(x, y)) return false;
+    // Bare in an easter-egg room: the portals hang there, and nothing may overlap them.
+    if (this.roomType(x, y + 1) === "secret") return false;
     return (
       this.isFace(x - 1, y) &&
       this.isFace(x + 1, y) &&
@@ -683,7 +687,13 @@ function litter(
   const { entrance } = plan.floor;
   if (x === entrance.x && y >= entrance.y - 2 && y <= entrance.y) return [];
 
-  if (plan.isFace(x, y - 1) && !plan.isThinWall(x, y - 1) && roll(hash, 10) < CHANCE.wallFoot) {
+  // Not at the foot of the walls of an easter-egg room: the floor stays clean.
+  if (
+    roomType !== "secret" &&
+    plan.isFace(x, y - 1) &&
+    !plan.isThinWall(x, y - 1) &&
+    roll(hash, 10) < CHANCE.wallFoot
+  ) {
     return [standing("props", pick(WALL_FOOT, hash >>> 11), 1)];
   }
 

@@ -13,6 +13,7 @@ import PROPS_SRC from "~/assets/dongeon/props.png";
 import OBJECTS_SRC from "~/assets/dongeon/objects.png";
 import LIQUIDS_SRC from "~/assets/dongeon/liquids.png";
 import MOB_SRC from "~/assets/dongeon/placeholder_mob.png";
+import EGGS_SRC from "~/assets/dongeon/easter-eggs.png";
 import DungeonSpriteSwatch from "~/features/dungeon/components/DungeonSpriteSwatch.vue";
 import { RIM_KEYS } from "~/features/dungeon/tiles/atlas.generated";
 import {
@@ -25,7 +26,9 @@ import {
 import { HERO_SLOTS, heroSheetPath, heroSheetUrl } from "~/features/player/appearance";
 import {
   BOSS,
+  DECORATIONS,
   ENEMY,
+  MISSING_DECORATION,
   TRAP,
   gateSprite,
   itemSprite,
@@ -119,6 +122,7 @@ const ANIMATED_SHEETS: Record<AnimatedSprite["sheet"], { src: string; sheet: { w
   hero: { src: HERO_BODY_SRC, sheet: HERO_SHEET },
   mob: { src: MOB_SRC, sheet: { width: 32, height: 32 } },
   objects: { src: OBJECTS_SRC, sheet: SHEETS.objects },
+  eggs: { src: EGGS_SRC, sheet: { width: 200, height: 64 } },
 };
 
 // --- Walls and floors -----------------------------------------------------------------------
@@ -183,6 +187,9 @@ const OBJECTS = [
   ...[0, 1, 2].map((id) => ({ label: `chest ${id + 1}`, sprite: itemSprite(id) })),
   { label: "spikes", sprite: TRAP },
   ...THEMES.map((t) => ({ label: `${t} gate`, sprite: gateSprite(t) })),
+  // The easter-egg rooms' decorations, and what an unknown one is drawn as.
+  ...Object.entries(DECORATIONS).map(([kind, sprite]) => ({ label: kind, sprite })),
+  { label: "missing decoration", sprite: MISSING_DECORATION },
 ];
 
 const TOMB_SPRITES = named(TOMBS);
@@ -196,6 +203,7 @@ const RAW_SHEETS = computed(() => [
   { title: "Objects", src: OBJECTS_SRC, file: "dongeon/objects.png" },
   { title: "Liquids", src: LIQUIDS_SRC, file: "dongeon/liquids.png" },
   { title: "Mob placeholder", src: MOB_SRC, file: "dongeon/placeholder_mob.png" },
+  { title: "Easter eggs", src: EGGS_SRC, file: "dongeon/easter-eggs.png" },
   {
     title: "Hero body (Mana Seed)",
     src: HERO_BODY_SRC,

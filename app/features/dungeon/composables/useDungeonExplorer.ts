@@ -515,7 +515,8 @@ function samePosition(a: Position, b: Position): boolean {
   return a.x === b.x && a.y === b.y;
 }
 
-function describeRoom(floor: DecodedFloor, roomId: number): string {
+/** What the live region says on entering a room. */
+export function describeRoom(floor: DecodedFloor, roomId: number): string {
   const room = floor.rooms[roomId]!;
   const count = (type: DungeonElement["type"]) =>
     floor.elements.filter(
@@ -534,7 +535,10 @@ function describeRoom(floor: DecodedFloor, roomId: number): string {
   return details.length ? `${title}: ${details.join(", ")}.` : `${title}.`;
 }
 
-/** A secret room is a tribute: sound is never the only sign of it (ADR-FE-015). */
+/**
+ * What a secret room holds, said in words: its look is never the only sign that it is a
+ * secret room, for those who cannot see the screen (ADR-FE-015).
+ */
 function describeEasterEgg(easterEgg: DungeonRoom["easterEgg"]): string {
   switch (easterEgg) {
     case "outerWildsShip":
