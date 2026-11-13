@@ -35,7 +35,7 @@ snapshot it already sends.
   locked gate) — play from `useDungeonExplorer.move()`, at prediction time, so
   the sound has no network latency.
 - **Server-confirmed events** are derived by one pure function,
-  `diffRunCues(previous, next): SoundCue[]`, run on every new `run` value. It
+  `diffRunCues(previous, next): DungeonCue[]`, run on every new `run` value. It
   is the **single source** for these cues; no sound is played directly from
   `fightBoss()`, `goDown()` or any other call site.
 
@@ -51,9 +51,9 @@ previous state) has nothing to compare with and plays **no** cue.
 
 ### Scope of v1
 
-Steps (2–3 random variants), bump / locked gate, gate opening, boss defeated and
-final victory, floor descent, room discovered, and **one** ambience loop shared
-by every floor theme.
+Steps (10 random variants, `step-1` to `step-10`), bump / locked gate, gate
+opening, boss defeated and final victory, floor descent, room discovered, and
+**one** ambience loop shared by every floor theme.
 
 Deferred: chest opening (the flow exists, the sound is a later story), a second
 ambience per theme. Mob, combat and UI sounds belong to their owning squads and
