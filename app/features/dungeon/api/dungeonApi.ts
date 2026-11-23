@@ -73,8 +73,9 @@ export function defeatFloorBoss(runId: string): Promise<DungeonRunResponse> {
 }
 
 /**
- * GET /api/v1/dungeons/{seed}/map?floor=n — a whole floor in about 25 KB
- * (3 KB gzipped). Immutable: it is fetched once per floor and cached forever.
+ * GET /api/v1/dungeons/{seed}/map?floor=n — a whole floor in about 13 KB
+ * (under 2 KB compressed). Fetched once per floor and session; the browser
+ * revalidates it by ETag.
  */
 export function fetchDungeonMap(
   seed: string,

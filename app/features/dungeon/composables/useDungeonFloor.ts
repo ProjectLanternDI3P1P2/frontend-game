@@ -6,7 +6,7 @@
  * screen. Concurrent requests for the same floor share one promise. A failed
  * load is evicted so that it can be retried.
  *
- * The decoded floor holds typed arrays of ~17,000 tiles: `markRaw` keeps Vue
+ * The decoded floor holds typed arrays of ~9,000 tiles: `markRaw` keeps Vue
  * from making them deeply reactive, which would cost far more than the
  * rendering itself.
  */
