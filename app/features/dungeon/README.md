@@ -43,6 +43,13 @@ passes an optional replay seed to Dungeon, then opens `/dungeon/:runId` after
 Player returns the created run. The standalone `/dungeon` launcher remains a
 development explorer for starting a run directly against Dungeon.
 
+In development, `/dungeon` also offers a **Debug sandbox** button: it starts a
+run on the reserved seed `SANDBOX_SEED` (`0000000SANDBX`), which the backend only
+builds as the sandbox in its `Development` environment. Each floor holds two bare
+rooms, then the five easter-egg rooms. On that run, `/dungeon/:runId` shows a
+panel to pick a mob kind; a click on a tile spawns it (`spawnMob`), and the mobs
+play from the hero's next move.
+
 ### How it stays fast without an engine or a canvas (ADR-FE-005, ADR-FE-006)
 
 | Concern    | Decision                                                                                                                                                                                               |

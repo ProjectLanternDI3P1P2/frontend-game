@@ -3,7 +3,10 @@
  * "0KX4-M2T9-QZ7PA". Mirrors Dungeon's Seed.TryParse so that a malformed seed
  * is caught while typing instead of coming back as a 422.
  */
-/** Reserved by Dungeon for the debug sandbox: two bare rooms where mobs are spawned by hand. */
+/**
+ * Reserved by Dungeon for the debug sandbox, in development only: two bare rooms where
+ * mobs are spawned by hand, then the easter-egg rooms. Elsewhere, an ordinary seed.
+ */
 export const SANDBOX_SEED = "0000000SANDBX";
 
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
