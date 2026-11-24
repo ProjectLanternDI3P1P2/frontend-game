@@ -43,7 +43,7 @@ Alternatives écartées : [piste-images.md](piste-images.md).
 `e2e-build-backends` lance `docker compose -f compose.backend.dev.yaml build player combat
 dungeon reward`, puis `docker save | gzip`, et publie l'artefact (`retention-days: 1`). Chaque
 runner fait `docker load` et `up --no-build`. Ce job tourne en parallèle de `e2e-build` (Nuxt)
-et de `e2e-plan`, comme chez Mawster.
+et de `e2e-plan`.
 
 ## Front ★ sur l'hôte
 
@@ -59,7 +59,7 @@ et de `e2e-plan`, comme chez Mawster.
    (`/health/ready` de chaque service .NET et de Keycloak, `pg_isready`, la topologie RabbitMQ,
    le ping Traefik) bloquent jusqu'à ce que tout soit vert.
 2. Le réglage `directAccessGrants` de Keycloak ([identite.md](identite.md)).
-3. `wait_for_http` (porté de Mawster) sur `http://localhost:3000/healthz`.
+3. `wait_for_http` sur `http://localhost:3000/game/healthz` (le jeu est servi sous `/game/`).
 
 Il n'y a pas de sonde à travers le gateway : toutes les routes exigent un JWT. La première spec
 authentifiée sert de preuve de routage.
@@ -84,4 +84,3 @@ Un runner sans accès sortant ne démarrerait pas.
 - `frontend-game/compose.backend.yaml`, `compose.backend.dev.yaml`, `deploy/traefik/backend/`
 - `player-backend/Dockerfile.dev`, `player-backend/.github/workflows/cd.yaml` (Harbor
   `10.4.111.200`)
-- `Mawster/.github/workflows/_test.yaml` (jobs `e2e-build`, `e2e`)

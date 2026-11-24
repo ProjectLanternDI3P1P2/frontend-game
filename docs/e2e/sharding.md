@@ -4,7 +4,7 @@
 
 ## Critères
 
-- Même mécanique que Mawster, pour ne maintenir qu'un seul modèle mental.
+- Des specs réparties automatiquement entre les runners, sans liste à tenir à la main.
 - Une matrice de 2 pour valider le sharding sans saturer les runners.
 
 ## Matrice
@@ -17,24 +17,25 @@
 
 `E2E_RUNNERS: '2'`, `E2E_WORKERS: '1'` dans le workflow, lus par le planner.
 
-## Scripts ★ Python, portés de Mawster
+## Scripts ★ Python
 
-Dans `frontend-game/scripts/e2e/` :
+Dans `frontend-game/scripts/e2e/` (stdlib seule) :
 
-| Mawster           | Lantern                                                                                                                                                          |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `config.py`       | `FRONT_DIR` = racine du repo, `GATEWAY_PORT = 8088`, `FRONT_PORT = 3000`, `HEALTH_TIMEOUT = 240`                                                                 |
-| `spec_planner.py` | Repris tel quel : bin-packing par nombre de `it(`, lanes séparées par `\|`. Sans le filtre vision.                                                               |
-| `servers.py`      | `start_backend` → `docker compose up -d --wait <services>` ; `start_frontend` → `node .output/server/index.mjs`. Plus de static server, plus de base par worker. |
-| `e2e_parallel.py` | Mêmes étapes `backends` et `tests`. `npx cypress run` au lieu de `pnpm exec`.                                                                                    |
-| `report.py`       | Repris tel quel (rapport fusionné dans `cypress/results`)                                                                                                        |
+| Script            | Rôle                                                                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `config.py`       | Chemins, ports (front 3000, Traefik 8088, Keycloak 8081), liste des services, `HEALTH_TIMEOUT = 240`                                 |
+| `spec_planner.py` | Bin-packing des specs par nombre de `it(`, en lanes séparées par `\|`. Imprime la matrice JSON lue par la CI                         |
+| `servers.py`      | `docker compose up -d --wait <services>` détaché, attente des healthchecks, password grant Keycloak, `node .output/server/index.mjs` |
+| `e2e_parallel.py` | Deux étapes, `backends` puis `tests` ; un Cypress par lane                                                                           |
+| `report.py`       | Rapport fusionné dans `cypress/results`                                                                                              |
 
-Les étapes restent séparées pour garder le parallélisme de Mawster : `backends` démarre la stack
-en arrière-plan **pendant** que le runner installe Node et Cypress, puis `tests` attend les
-health checks et lance Cypress.
+Les étapes sont séparées pour le parallélisme : `backends` démarre la stack en arrière-plan
+**pendant** que le runner installe Node et Cypress, puis `tests` attend les health checks
+(`docker compose ps`) et lance Cypress.
 
-Cypress reçoit `baseUrl=http://localhost:3000` et `--expose gatewayUrl=http://localhost:8088`,
-pour les setups par API.
+Cypress reçoit `baseUrl=http://localhost:3000/game` (le jeu est servi sous `app.baseURL`
+`/game/`) et `--env gatewayUrl=http://localhost:8088,keycloakUrl=http://localhost:8081`, pour
+les setups par API.
 
 ## Workflow (`ci.yml`)
 
@@ -57,17 +58,13 @@ Le job `e2e` actuel (build et start dans le même job) est remplacé.
 - Avec 2 specs et 2 runners, chaque runner en prend une. Le sharding est prouvé, pas encore
   rentable.
 
-## Plan d'implémentation
+## Réserves
 
-1. Auth E2E ([identite.md](identite.md)) : le réglage Keycloak au boot et `cy.login()`.
-2. `scripts/e2e/` : le portage Python. Vérifier en local avec les deux étapes de
-   `e2e_parallel.py` (`backends` puis `tests`).
-3. `play-solo-run.cy.ts`, avec des sélecteurs `data-cy` et un nom de héros unique.
-4. `ci.yml` : les jobs `e2e-plan`, `e2e-build`, `e2e-build-backends` et `e2e` (matrix).
-5. Mettre à jour [local-stack.md](../local-stack.md) avec la commande E2E locale.
+- En local, Cypress 15.21 avec Chrome 158 headless plante quand un même run enchaîne plusieurs
+  specs (`* is not a valid URL`). Avec 1 spec par lane, la CI n'est pas concernée. À revoir si
+  une lane reçoit plusieurs specs.
 
 ## Sources
 
-- `Mawster/scripts/e2e/{config,spec_planner,e2e_parallel,servers,report}.py`
-- `Mawster/.github/workflows/_test.yaml`
+- `frontend-game/scripts/e2e/`
 - `frontend-game/.github/workflows/ci.yml`

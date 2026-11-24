@@ -1,24 +1,24 @@
 # E2E full stack : Cypress derrière le gateway
 
 **But** : faire tourner Cypress sur le jeu branché aux vrais micro-services derrière Traefik
-(player, combat, dungeon, reward, sans leaderboard). On reprend la mécanique de Mawster :
-sharding, scripts Python, boot en arrière-plan et health checks, sur une matrice de 2 runners.
+(player, combat, dungeon, reward, sans leaderboard), avec des specs réparties sur une matrice de
+2 runners, une stack démarrée en arrière-plan et des health checks avant les tests.
 
 Décidé le 2026-11-24. Aujourd'hui, le job `e2e` de `ci.yml` ne lance que le build Nuxt et
 `shell.cy.ts`, sans aucun backend.
 
 ## Choix retenus
 
-| Sujet               | Choix                                                                                       | Fiche                            |
-| ------------------- | ------------------------------------------------------------------------------------------- | -------------------------------- |
-| Services            | traefik, postgres, rabbitmq, player, combat, dungeon, reward. **Pas leaderboard.**          | [stack.md](stack.md)             |
-| Source des backends | Build depuis les sources (`Dockerfile.dev`, repos publics, aucun secret)                    | [stack.md](stack.md)             |
-| Partage des images  | Un job `e2e-build-backends` : `docker save`, artefact, puis `docker load` sur chaque runner | [stack.md](stack.md)             |
-| Front               | Build Nuxt sur l'hôte, `node .output/server/index.mjs` sur :3000                            | [stack.md](stack.md)             |
-| Matrice             | 2 runners × 1 worker                                                                        | [sharding.md](sharding.md)       |
-| Orchestration       | Python, porté depuis `Mawster/scripts/e2e`                                                  | [sharding.md](sharding.md)       |
-| Identité            | Vrai Keycloak : un user par test (API admin + password grant), tokens en sessionStorage     | [identite.md](identite.md)       |
-| Specs de départ     | `shell.cy.ts` + 1 parcours réel (play → lobby solo → run de donjon)                         | [sharding.md](sharding.md#specs) |
+| Sujet               | Choix                                                                                        | Fiche                            |
+| ------------------- | -------------------------------------------------------------------------------------------- | -------------------------------- |
+| Services            | traefik, keycloak, postgres, rabbitmq, player, combat, dungeon, reward. **Pas leaderboard.** | [stack.md](stack.md)             |
+| Source des backends | Build depuis les sources (`Dockerfile.dev`, repos publics, aucun secret)                     | [stack.md](stack.md)             |
+| Partage des images  | Un job `e2e-build-backends` : `docker save`, artefact, puis `docker load` sur chaque runner  | [stack.md](stack.md)             |
+| Front               | Build Nuxt sur l'hôte, `node .output/server/index.mjs` sur :3000                             | [stack.md](stack.md)             |
+| Matrice             | 2 runners × 1 worker                                                                         | [sharding.md](sharding.md)       |
+| Orchestration       | Scripts Python dans `scripts/e2e/` (planner, boot, health checks, Cypress par lane)          | [sharding.md](sharding.md)       |
+| Identité            | Vrai Keycloak : un user par test (API admin + password grant), tokens en sessionStorage      | [identite.md](identite.md)       |
+| Specs de départ     | `shell.cy.ts` + 1 parcours réel (play → lobby solo → run de donjon)                          | [sharding.md](sharding.md#specs) |
 
 ## Fiches
 
@@ -35,6 +35,6 @@ Décidé le 2026-11-24. Aujourd'hui, le job `e2e` de `ci.yml` ne lance que le bu
 - **Lane** : la liste de specs d'un worker, calculée par le planner.
 - **Password grant** : obtention d'un token Keycloak par identifiant et mot de passe, sans passer par la page de login. Activé seulement sur la stack E2E.
 
-## Prochaine étape
+## En local
 
-Implémenter, avec `flow:feature`. L'ordre est donné dans [sharding.md](sharding.md#plan-dimplémentation).
+Lancer la suite en local : voir [local-stack.md](../local-stack.md#tests-end-to-end).
