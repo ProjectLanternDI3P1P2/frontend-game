@@ -4,12 +4,12 @@ http:
     rewards-owned-api:
       rule: Path(`/api/rewards`) || PathPrefix(`/api/rewards/`) || Path(`/api/v1/rewards`) || PathPrefix(`/api/v1/rewards/`)
       priority: 200
-      middlewares: [authenticated, owner-api-prefix]
+      middlewares: [authenticated, rewards-api-prefix]
       service: reward
-    progression-owned-api:
-      rule: Path(`/api/progression`) || PathPrefix(`/api/progression/`) || Path(`/api/v1/progression`) || PathPrefix(`/api/v1/progression/`)
-      priority: 200
-      middlewares: [authenticated, owner-api-prefix]
+    leaderboard-api:
+      rule: Path(`/api/leaderboard/v1`) || PathPrefix(`/api/leaderboard/v1/`)
+      priority: 100
+      middlewares: [authenticated]
       service: leaderboard
     dungeon-api:
       rule: Path(`/api/v1/dungeons`) || PathPrefix(`/api/v1/dungeons/`) || Path(`/api/v1/dungeon-runs`) || PathPrefix(`/api/v1/dungeon-runs/`) || Path(`/hubs/dungeons`) || PathPrefix(`/hubs/dungeons/`)
@@ -51,11 +51,6 @@ http:
       priority: 200
       middlewares: [authenticated, strip-service-prefix]
       service: reward
-    leaderboard-service:
-      rule: Path(`/services/leaderboard`) || PathPrefix(`/services/leaderboard/`)
-      priority: 200
-      middlewares: [authenticated, strip-service-prefix]
-      service: leaderboard
 
   middlewares:
     authenticated:
@@ -73,14 +68,16 @@ http:
           headerMap:
             X-User-Id: sub
             X-Username: preferred_username
+            # The plugin forwards this nested Keycloak claim as JSON.
+            X-Roles: realm_access
           removeMissingHeaders: true
           parameterName: access_token
           forwardToken: false
-    # Rewards and Progression still expose their native routes below the owner prefix.
-    owner-api-prefix:
+    # Rewrite the Rewards owner route to its backend route.
+    rewards-api-prefix:
       replacePathRegex:
-        regex: "^/api/(v1/)?(rewards|progression)(/|$)"
-        replacement: "/api/v1${3}"
+        regex: "^/api/(v1/)?rewards(/|$)"
+        replacement: "/api/v1${2}"
     remove-external-identity:
       headers:
         # Browser clients run on these origins in backend-only development.
@@ -107,13 +104,7 @@ http:
     strip-service-prefix:
       stripPrefix:
         prefixes:
-          [
-            /services/player,
-            /services/combat,
-            /services/dungeon,
-            /services/reward,
-            /services/leaderboard,
-          ]
+          [/services/player, /services/combat, /services/dungeon, /services/reward]
 
   services:
     player:

@@ -137,23 +137,23 @@ Après modification des fichiers de routage, utiliser
 restart traefik` en mode complet). Docker Desktop peut ne pas transmettre les
 notifications de changement des fichiers montés depuis Windows.
 
-| Route native, via les ports Traefik du mode choisi               | Service                                                     |
-| ---------------------------------------------------------------- | ----------------------------------------------------------- |
-| `/api/v1/players[/...]`, `/api/v1/hero-classes[/...]`            | Player                                                      |
-| `/hubs/player[/...]` (négociation et WebSocket)                  | Player                                                      |
-| `/api/v1/monster-types[/...]`, `/api/v1/heroes/{id}/combat-data` | Combat                                                      |
-| `/hubs/combats[/...]`                                            | Combat                                                      |
-| `/hubs/dungeons[/...]`                                           | Dungeon                                                     |
-| `/api/v1/player/...`, `/api/player/...`                          | Player, préfixe remplacé par `/api/v1`                      |
-| `/api/v1/rewards/...`, `/api/rewards/...`                        | Rewards, préfixe remplacé par `/api/v1`                     |
-| `/api/v1/progression/...`, `/api/progression/...`                | Progression (`leaderboard`), préfixe remplacé par `/api/v1` |
-| `/api/v1/heroes/{id}/inventory[/...]`                            | Reward                                                      |
-| `/services/{service}/...`                                        | Service nommé, préfixe retiré                               |
+| Route native, via les ports Traefik du mode choisi                    | Service                                   |
+| --------------------------------------------------------------------- | ----------------------------------------- |
+| `/api/player/v1/hero-classes[/...]`, `/api/player/v1/me/heroes[/...]` | Player                                    |
+| `/hubs/player[/...]` (négociation et WebSocket)                       | Player                                    |
+| `/api/v1/monster-types[/...]`, `/api/v1/heroes/{id}/combat-data`      | Combat                                    |
+| `/hubs/combats[/...]`                                                 | Combat                                    |
+| `/hubs/dungeons[/...]`                                                | Dungeon                                   |
+| `/api/player/v1/...`                                                  | Player, route native sans réécriture      |
+| `/api/v1/rewards/...`, `/api/rewards/...`                             | Rewards, préfixe remplacé par `/api/v1`   |
+| `/api/leaderboard/v1/...`                                             | Leaderboard, route native sans réécriture |
+| `/api/v1/heroes/{id}/inventory[/...]`                                 | Reward                                    |
+| `/services/{service}/...`                                             | Service nommé, préfixe retiré             |
 
-`service` vaut `player`, `combat`, `dungeon`, `reward` ou `leaderboard`.
+`service` vaut `player`, `combat`, `dungeon` ou `reward`.
 Par exemple, `/services/dungeon/health/ready` devient `/health/ready` dans
-Dungeon. Ces préfixes locaux donnent accès aux cinq services sans collision :
-Dungeon et Leaderboard exposent encore des contrôleurs de template
+Dungeon. Ces préfixes locaux donnent accès à quatre services sans collision :
+Dungeon expose encore des contrôleurs de template
 `/api/v1/players`. Les routes de diagnostic préfixées ne constituent pas un
 nouveau contrat d'API de production. Les URLs natives du front restent intactes.
 
@@ -200,8 +200,11 @@ La topologie RabbitMQ est importée automatiquement via un hook Compose après
 le démarrage normal du broker : les utilisateurs existants sont conservés.
 Les backends attendent la fin de cet import avant de démarrer. Les bindings
 et la politique de redélivrance figurent dans
-`deploy/rabbitmq/definitions.json`. Les trois files de consommation et leurs
-dead-letter queues sont durables. Modifier la topologie puis recréer le broker
+`deploy/rabbitmq/definitions.json`. Les files Player, Rewards et Progression
+sont préconfigurées ; celle de Progression et ses 15 bindings restent réservés
+à un futur consommateur. Leaderboard déclare sa propre file
+`leaderboard.raw-events` et sa file de rejet au démarrage. Toutes sont durables.
+Modifier la topologie puis recréer le broker
 (`docker compose -f compose.backend.yaml up -d --force-recreate rabbitmq`)
 réimporte les définitions sans supprimer le volume.
 
@@ -222,15 +225,21 @@ commande `make` : PostgreSQL exécute automatiquement le script monté dans
 `/docker-entrypoint-initdb.d`. Comme le précise l'[image officielle PostgreSQL](https://hub.docker.com/_/postgres),
 les scripts d'initialisation ne sont exécutés que sur un volume vide.
 Changer les variables de mot de passe ne modifie donc pas les rôles existants.
-Le même principe s'applique aux identifiants initiaux RabbitMQ.
+Le même principe s'applique aux identifiants initiaux RabbitMQ. MongoDB 8
+fonctionne en replica set local `rs0` pour le magasin d'événements bruts de
+Leaderboard, avec un volume `mongo-data` dédié.
 
-Les backends attendent PostgreSQL et RabbitMQ en bonne santé, puis appliquent
+Les backends attendent PostgreSQL et RabbitMQ en bonne santé ; Leaderboard
+attend aussi MongoDB. Ils appliquent ensuite
 leurs migrations et données de développement via leur démarrage existant
 (`ASPNETCORE_ENVIRONMENT=Development`). Chaque API et front possède un contrôle
 HTTP ; Traefik vérifie aussi les destinations. `/health/ready` reste le contrôle
 existant des backends, qui ne teste pas toutes leurs dépendances métier.
+L'image minimale de Leaderboard ne contient pas de shell : son contrôle Compose
+appelle `Leaderboard.Presentation.dll --healthcheck`, qui interroge
+`/health/ready`. Traefik vérifie aussi cette route.
 
-Les volumes `postgres-data` et `rabbitmq-data` persistent après un arrêt :
+Les volumes `postgres-data`, `rabbitmq-data` et `mongo-data` persistent après un arrêt :
 
 ```sh
 docker compose logs --tail=100 player traefik
@@ -246,12 +255,11 @@ ne doit pas être utilisée pour un simple redémarrage.
 ```sh
 curl http://localhost:3000/healthz
 curl http://localhost:3001/healthz
-curl http://localhost:3000/api/v1/hero-classes
+curl http://localhost:3000/api/player/v1/hero-classes
 curl http://localhost:3000/services/player/health/ready
 curl http://localhost:3000/services/combat/health/ready
 curl http://localhost:3000/services/dungeon/health/ready
 curl http://localhost:3000/services/reward/health/ready
-curl http://localhost:3000/services/leaderboard/health/ready
 curl -X POST "http://localhost:3000/hubs/player/negotiate?negotiateVersion=1"
 ```
 
