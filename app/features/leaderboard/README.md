@@ -7,9 +7,9 @@
 A player sees the cumulated value of every catalogue statistic for one of
 their heroes (F01), and the ranking of heroes by total XP with their own heroes
 (F00, decision D8: one row per hero, filters, pagination by 10, trend,
-statuses). The leaderboard service consolidates about every 5 minutes; until it
-publishes its contract, the pages run on simulated data behind the same
-interface (decision D1).
+statuses). The pages now read the leaderboard backend. In local Development,
+that service seeds 220 demonstration heroes in PostgreSQL. Hero event
+projection remains to be implemented.
 
 F00 lays the shared foundation (contract, clients, simulated data, pure rules,
 `RankingRowDetail.vue` placeholder). `/leaderboard` only shows the first page
@@ -25,19 +25,19 @@ detail and facts, F04 the public `/rankings` page.
 
 Both are declared in `nuxt.config.ts` → `routeRules` and justified in
 `docs/rendering-modes.md`. After the `dev` authentication merge, the private
-`/leaderboard` page uses the Player route alias `me` for its simulated heroes.
-The public `/rankings` page remains available without signing in. The source
-switch remains `LeaderboardSource.SIMULATED`; no leaderboard backend is called.
+`/leaderboard` uses the Player route alias `me` for its own hero rows.
+The public `/rankings` page remains available without signing in. The running
+application reads the backend; Vitest scenarios use the simulated client.
 
-### APIs consumed (provisional contract, `types.ts`)
+### APIs consumed (`types.ts`)
 
-| Call                   | Gateway route                                                                                | Resolved at                         |
-| ---------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------- |
-| `getHeroStatistics`    | `GET /api/v1/progression/players/:playerId/heroes/:heroId/statistics`                        | Each visit                          |
-| `getRanking`           | `GET /api/v1/progression/leaderboard/heroes?playerId&class&period&search&sort&page&pageSize` | Each visit, "Refresh", query change |
-| `getRankingHeroDetail` | `GET /api/v1/progression/leaderboard/heroes/:heroId`                                         | Row expanded (F03)                  |
-| `getRankingHeroFacts`  | `GET /api/v1/progression/leaderboard/heroes/:heroId/facts`                                   | Facts drawer (F03)                  |
-| `getPublicRanking`     | `GET /api/v1/progression/leaderboard/public`                                                 | `/rankings` (F04)                   |
+| Call                   | Gateway route                                                           | Resolved at                         |
+| ---------------------- | ----------------------------------------------------------------------- | ----------------------------------- |
+| `getHeroStatistics`    | `GET /api/leaderboard/v1/players/:playerId/heroes/:heroId/statistics`   | Each visit                          |
+| `getRanking`           | `GET /api/leaderboard/v1/heroes?class&period&search&sort&page&pageSize` | Each visit, "Refresh", query change |
+| `getRankingHeroDetail` | `GET /api/leaderboard/v1/heroes/:heroId`                                | Row expanded (F03)                  |
+| `getRankingHeroFacts`  | `GET /api/leaderboard/v1/heroes/:heroId/facts`                          | Facts drawer (F03)                  |
+| `getPublicRanking`     | `GET /api/leaderboard/v1/public`                                        | `/rankings` (F04)                   |
 
 Path segments are URL-encoded; `class` is left out for "all classes" (`null`)
 and `search` when blank. No client cache: every visit re-reads, the backend
@@ -47,8 +47,8 @@ owns the figures (D3).
 
 `api/leaderboardSource.ts` is the only place that chooses the source:
 
-- `LEADERBOARD_SOURCE = LeaderboardSource.SIMULATED` (today) or
-  `LeaderboardSource.GATEWAY` (when the service is live). Nothing else changes.
+- The running app uses `LeaderboardSource.GATEWAY`; Vitest retains
+  `LeaderboardSource.SIMULATED` for deterministic scenario tests.
 - In simulated mode, `?mock=` picks the scenario (default `played`, also for
   an unknown value), answered after ~300 ms (`delayMs: 0` in tests):
   - `played`: ranking LIVE; every statistic has a value.

@@ -1,9 +1,7 @@
 /**
  * Leaderboard capability's typed boundary to the API Gateway (ADR-FE-011).
  *
- * PROVISIONAL (decisions D1, D8): written against the draft contract in
- * `types.ts`. `progression/...` resolves to `/api/v1/progression/...`, which
- * Traefik routes to the leaderboard service.
+ * The backend owns the hero ranking contract at `/api/leaderboard/v1`.
  */
 import type {
   HeroStatisticsResponse,
@@ -16,7 +14,7 @@ import type {
 } from "../types";
 import type { GatewayClient, GatewayRequest } from "~/shared/utils/gateway";
 
-const RANKING_HEROES = "progression/leaderboard/heroes";
+const RANKING_HEROES = "leaderboard/heroes";
 
 function heroPath(heroId: string): string {
   return `${RANKING_HEROES}/${encodeURIComponent(heroId)}`;
@@ -28,7 +26,6 @@ export function toRankingRequestQuery(
 ): NonNullable<GatewayRequest["query"]> {
   const search = query.search.trim();
   return {
-    playerId: query.playerId,
     ...(query.heroClass ? { class: query.heroClass } : {}),
     period: query.period,
     ...(search ? { search } : {}),
@@ -47,7 +44,7 @@ export function createLeaderboardApi(client: GatewayClient): LeaderboardApi {
       signal?: AbortSignal,
     ): Promise<HeroStatisticsResponse> {
       return client.get<HeroStatisticsResponse>(
-        `progression/players/${encodeURIComponent(playerId)}/heroes/${encodeURIComponent(heroId)}/statistics`,
+        `leaderboard/players/${encodeURIComponent(playerId)}/heroes/${encodeURIComponent(heroId)}/statistics`,
         { signal },
       );
     },
@@ -74,7 +71,7 @@ export function createLeaderboardApi(client: GatewayClient): LeaderboardApi {
     },
 
     getPublicRanking(signal?: AbortSignal): Promise<PublicRankingResponse> {
-      return client.get<PublicRankingResponse>("progression/leaderboard/public", {
+      return client.get<PublicRankingResponse>("leaderboard/public", {
         signal,
       });
     },

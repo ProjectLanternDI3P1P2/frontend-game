@@ -26,7 +26,7 @@ afterEach(() => {
 });
 
 describe("leaderboard data source", () => {
-  it("is simulated until the leaderboard service publishes its contract", () => {
+  it("keeps the deterministic source for unit scenarios", () => {
     expect(LEADERBOARD_SOURCE).toBe(LeaderboardSource.SIMULATED);
   });
 
@@ -50,10 +50,7 @@ describe("leaderboard data source", () => {
     await selectLeaderboardApi(LeaderboardSource.GATEWAY, { gateway }).getRanking(
       QUERY,
     );
-    expect(get).toHaveBeenCalledWith(
-      "progression/leaderboard/heroes",
-      expect.anything(),
-    );
+    expect(get).toHaveBeenCalledWith("leaderboard/heroes", expect.anything());
   });
 });
 

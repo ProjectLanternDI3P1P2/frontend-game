@@ -1,13 +1,10 @@
 /**
  * Leaderboard capability — hand-written types (ADR-FE-011).
  *
- * PROVISIONAL CONTRACT (decisions D1, D8): the leaderboard service has not
- * published its Gateway contract yet. The response shapes below mirror the
- * agreed draft (sheet F00) and are the only thing to update, together with
- * `api/leaderboardApi.ts`, when the real contract lands.
+ * The leaderboard backend owns the HTTP response shapes used here.
  */
 
-/** GET progression/players/{playerId}/heroes/{heroId}/statistics */
+/** GET leaderboard/players/{playerId}/heroes/{heroId}/statistics */
 export interface HeroStatisticsResponse {
   heroId: string;
   /** ISO 8601, null when the hero has never been consolidated. */
@@ -23,8 +20,7 @@ export interface HeroStatisticValue {
 }
 
 // ------------------------------------------------------------------ ranking
-// PROVISIONAL CONTRACT (decisions D1, D8): one row per hero. Shared by F02, F03
-// and F04; change it only together with `api/leaderboardApi.ts`.
+// One row per hero, shared by F02, F03 and F04.
 
 export enum HeroClass {
   WARRIOR = "warrior",
@@ -102,7 +98,7 @@ export interface RankingSeason {
   previousSeasonId: string | null;
 }
 
-// GET progression/leaderboard/heroes?playerId&class&period&search&sort&page&pageSize
+// GET leaderboard/heroes?class&period&search&sort&page&pageSize
 export interface RankingResponse {
   consolidatedAt: string | null;
   status: RankingStatus;
@@ -123,7 +119,7 @@ export interface RankingRun {
   xp: number;
   endedAt: string;
 }
-// GET progression/leaderboard/heroes/{heroId}
+// GET leaderboard/heroes/{heroId}
 export interface RankingHeroDetail {
   heroId: string;
   heroName: string;
@@ -147,7 +143,7 @@ export interface RankingFact {
   xp: number;
   reason: string | null;
 }
-// GET progression/leaderboard/heroes/{heroId}/facts
+// GET leaderboard/heroes/{heroId}/facts
 export interface RankingFactsResponse {
   heroId: string;
   xpFromFacts: number;
@@ -155,7 +151,7 @@ export interface RankingFactsResponse {
   facts: RankingFact[];
 }
 
-// GET progression/leaderboard/public
+// GET leaderboard/public
 export interface PublicRankingResponse {
   consolidatedAt: string | null;
   season: RankingSeason;

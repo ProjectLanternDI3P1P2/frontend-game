@@ -323,7 +323,7 @@ describe("F00", () => {
 
   // ================================================================== CA2
   describe("CA2 — Gateway client: contract routes, encoded segments, query", () => {
-    it("CA2: getRanking calls progression/leaderboard/heroes with every parameter", async () => {
+    it("CA2: getRanking calls leaderboard/heroes with every filter", async () => {
       const { client, get } = recordingClient();
       const signal = new AbortController().signal;
       await createLeaderboardApi(client).getRanking(
@@ -340,14 +340,13 @@ describe("F00", () => {
 
       expect(get).toHaveBeenCalledTimes(1);
       const [path, request] = get.mock.calls[0]!;
-      expect(path).toBe("progression/leaderboard/heroes");
+      expect(path).toBe("leaderboard/heroes");
       expect(request.signal).toBe(signal);
       expect(
         Object.fromEntries(
           Object.entries(request.query).map(([k, v]) => [k, String(v)]),
         ),
       ).toEqual({
-        playerId: ME,
         class: "shaman",
         period: "week",
         search: "Maelis",
@@ -361,12 +360,11 @@ describe("F00", () => {
       const { client, urls } = fetchingClient();
       await createLeaderboardApi(client).getRanking(query());
       const url = urls()[0]!;
-      expect(pathOf(url)).toBe("/api/v1/progression/leaderboard/heroes");
+      expect(pathOf(url)).toBe("/api/leaderboard/v1/heroes");
       const params = searchParams(url);
       expect(params.has("class")).toBe(false);
       expect(params.has("search")).toBe(false);
       expect(Object.fromEntries(params)).toEqual({
-        playerId: ME,
         period: "all-time",
         sort: "total-xp",
         page: "1",
@@ -380,14 +378,14 @@ describe("F00", () => {
       expect(searchParams(urls()[0]!).has("search")).toBe(false);
     });
 
-    it("CA2 (edge): special characters in search and playerId are URL-encoded", async () => {
+    it("CA2 (edge): special characters in search are URL-encoded; identity is not sent", async () => {
       const { client, urls } = fetchingClient();
       await createLeaderboardApi(client).getRanking(
         query({ playerId: "p&x=1", search: "a&b=c#d" }),
       );
       const params = searchParams(urls()[0]!);
       expect(params.get("search")).toBe("a&b=c#d");
-      expect(params.get("playerId")).toBe("p&x=1");
+      expect(params.has("playerId")).toBe(false);
       expect(params.has("x")).toBe(false);
     });
 
@@ -397,16 +395,14 @@ describe("F00", () => {
       await api.getRankingHeroDetail("a/b?c#d e");
       await api.getRankingHeroFacts("a/b?c#d e");
       const [detail, facts] = urls();
-      expect(detail).toBe("/api/v1/progression/leaderboard/heroes/a%2Fb%3Fc%23d%20e");
-      expect(facts).toBe(
-        "/api/v1/progression/leaderboard/heroes/a%2Fb%3Fc%23d%20e/facts",
-      );
+      expect(detail).toBe("/api/leaderboard/v1/heroes/a%2Fb%3Fc%23d%20e");
+      expect(facts).toBe("/api/leaderboard/v1/heroes/a%2Fb%3Fc%23d%20e/facts");
     });
 
-    it("CA2: getPublicRanking calls progression/leaderboard/public", async () => {
+    it("CA2: getPublicRanking calls leaderboard/public", async () => {
       const { client, urls } = fetchingClient();
       await createLeaderboardApi(client).getPublicRanking();
-      expect(urls()).toEqual(["/api/v1/progression/leaderboard/public"]);
+      expect(urls()).toEqual(["/api/leaderboard/v1/public"]);
     });
 
     it("CA2: signals reach the transport for detail, facts and public", async () => {
@@ -419,11 +415,11 @@ describe("F00", () => {
       for (const call of get.mock.calls) expect(call[1]?.signal).toBe(signal);
     });
 
-    it("CA2: getHeroStatistics (F01) keeps its route", async () => {
+    it("CA2: getHeroStatistics (F01) uses the leaderboard route", async () => {
       const { client, urls } = fetchingClient();
       await createLeaderboardApi(client).getHeroStatistics("p/1", "h 1");
       expect(urls()).toEqual([
-        "/api/v1/progression/players/p%2F1/heroes/h%201/statistics",
+        "/api/leaderboard/v1/players/p%2F1/heroes/h%201/statistics",
       ]);
     });
   });

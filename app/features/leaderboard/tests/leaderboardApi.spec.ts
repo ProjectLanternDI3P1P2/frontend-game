@@ -15,7 +15,7 @@ function gatewayStub(): GatewayClient {
 }
 
 describe("Leaderboard API", () => {
-  it("reads hero statistics on the provisional progression route", async () => {
+  it("reads hero statistics on the backend route", async () => {
     const gateway = gatewayStub();
     const signal = new AbortController().signal;
 
@@ -26,7 +26,7 @@ describe("Leaderboard API", () => {
     );
 
     expect(gateway.get).toHaveBeenCalledWith(
-      "progression/players/player%20id/heroes/hero%2Fid/statistics",
+      "leaderboard/players/player%20id/heroes/hero%2Fid/statistics",
       { signal },
     );
   });
@@ -47,9 +47,8 @@ describe("Leaderboard API", () => {
       signal,
     );
 
-    expect(gateway.get).toHaveBeenCalledWith("progression/leaderboard/heroes", {
+    expect(gateway.get).toHaveBeenCalledWith("leaderboard/heroes", {
       query: {
-        playerId: "player-1",
         class: "shaman",
         period: "week",
         search: "Brenna",
@@ -72,7 +71,6 @@ describe("Leaderboard API", () => {
     expect(options.query).not.toHaveProperty("class");
     expect(options.query).not.toHaveProperty("search");
     expect(options.query).toEqual({
-      playerId: "me-id",
       period: "all-time",
       sort: "total-xp",
       page: 1,
@@ -88,14 +86,12 @@ describe("Leaderboard API", () => {
     await api.getRankingHeroDetail("hero/1 2", signal);
     await api.getRankingHeroFacts("hero/1 2", signal);
 
-    expect(gateway.get).toHaveBeenNthCalledWith(
-      1,
-      "progression/leaderboard/heroes/hero%2F1%202",
-      { signal },
-    );
+    expect(gateway.get).toHaveBeenNthCalledWith(1, "leaderboard/heroes/hero%2F1%202", {
+      signal,
+    });
     expect(gateway.get).toHaveBeenNthCalledWith(
       2,
-      "progression/leaderboard/heroes/hero%2F1%202/facts",
+      "leaderboard/heroes/hero%2F1%202/facts",
       { signal },
     );
   });
@@ -105,7 +101,7 @@ describe("Leaderboard API", () => {
 
     await createLeaderboardApi(gateway).getPublicRanking();
 
-    expect(gateway.get).toHaveBeenCalledWith("progression/leaderboard/public", {
+    expect(gateway.get).toHaveBeenCalledWith("leaderboard/public", {
       signal: undefined,
     });
   });

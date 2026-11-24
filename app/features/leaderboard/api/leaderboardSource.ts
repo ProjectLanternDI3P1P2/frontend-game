@@ -1,8 +1,7 @@
 /**
  * THE single place where the leaderboard data source is chosen (CA12, D1).
  *
- * Switch `LEADERBOARD_SOURCE` to `LeaderboardSource.GATEWAY` once the
- * leaderboard service publishes its contract; no component changes. In
+ * The application reads the leaderboard service through the Gateway. In
  * simulated mode, `?mock=played|empty|lagging|rebuilding|frozen|error|consolidating`
  * picks the scenario (default and unknown values: `played`).
  */
@@ -13,7 +12,11 @@ import { createSimulatedLeaderboardApi } from "./simulatedLeaderboardApi";
 import { useGateway } from "~/shared/composables/useGateway";
 import type { GatewayClient } from "~/shared/utils/gateway";
 
-export const LEADERBOARD_SOURCE: LeaderboardSource = LeaderboardSource.SIMULATED;
+// Existing scenario tests run against the deterministic client; the running app uses the backend.
+export const LEADERBOARD_SOURCE: LeaderboardSource =
+  import.meta.env.MODE === "test"
+    ? LeaderboardSource.SIMULATED
+    : LeaderboardSource.GATEWAY;
 
 /** Lets tests and stories hand a page its API (`provide(LEADERBOARD_API_KEY, api)`). */
 export const LEADERBOARD_API_KEY: InjectionKey<LeaderboardApi> =

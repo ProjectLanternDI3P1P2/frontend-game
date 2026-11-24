@@ -417,7 +417,7 @@ function positiveInteger(value: number, fallback: number, max = Infinity): numbe
     : fallback;
 }
 
-/** GET progression/leaderboard/heroes, simulated. */
+/** GET leaderboard/heroes, simulated for unit scenarios. */
 export function simulatedRanking(
   scenario: MockScenario,
   query: RankingQuery,
@@ -447,7 +447,7 @@ export function simulatedRanking(
   };
 }
 
-/** GET progression/leaderboard/public, simulated: the default (all-time) ranking. */
+/** GET leaderboard/public, simulated: the default (all-time) ranking. */
 export function simulatedPublicRanking(
   scenario: MockScenario,
   now: Date,
@@ -513,7 +513,7 @@ function lastRuns(hero: SimulatedHero): RankingRun[] {
   });
 }
 
-/** GET progression/leaderboard/heroes/{heroId}, simulated; null when unknown. */
+/** GET leaderboard/heroes/{heroId}, simulated; null when unknown. */
 export function simulatedHeroDetail(
   scenario: MockScenario,
   heroId: string,
@@ -541,7 +541,7 @@ export function simulatedHeroDetail(
 }
 
 /**
- * GET progression/leaderboard/heroes/{heroId}/facts, simulated; null when
+ * GET leaderboard/heroes/{heroId}/facts, simulated; null when
  * unknown. The 6 latest facts, newest first: the newest is still pending for a
  * hero whose line is pending; one in five heroes (and my Warrior) has a
  * rejected duplicate. `xpFromFacts` is the all-time XP the ranking shows.
