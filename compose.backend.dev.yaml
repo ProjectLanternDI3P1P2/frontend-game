@@ -37,10 +37,8 @@ services:
     extends: { file: compose.backend.yaml, service: leaderboard }
     build:
       context: ../leaderboard-backend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
       secrets: !reset []
-      additional_contexts:
-        combat-contracts: ../combat-backend
 
 networks:
   web:

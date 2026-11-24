@@ -77,11 +77,12 @@ microservice concerné. Les autres chemins vont au front.
 
 ### Variante sans les fronts
 
-`compose.backend.yaml` démarre uniquement les cinq backends, PostgreSQL,
-RabbitMQ et Traefik. Il ne construit et ne lance aucun front :
+La superposition de `compose.backend.yaml` et `compose.backend.dev.yaml`
+démarre les cinq backends, PostgreSQL, RabbitMQ, MongoDB, Keycloak et Traefik.
+Elle ne construit et ne lance aucun front :
 
 ```sh
-docker compose -f compose.backend.yaml up -d --build --wait --wait-timeout 240
+docker compose --env-file .env.compose -f compose.backend.yaml -f compose.backend.dev.yaml up -d --build --wait --wait-timeout 240
 ```
 
 Dans cette variante, Traefik est publié sur `http://localhost:8088`
@@ -102,14 +103,15 @@ origines via CORS, notamment les requêtes de négociation SignalR. Adapter
 `GAME_PORT` et `PUBLIC_PORT` si les serveurs locaux utilisent d'autres ports.
 
 Le Compose complet réutilise les définitions de `compose.backend.yaml` via
-`extends`. Les deux modes partagent le projet `lantern-local` et ses volumes ;
-ce sont deux façons de lancer la même stack, pas deux stacks simultanées.
-Pour changer de mode, arrêter le mode courant avec sa commande `down`, sans
-`--volumes`, puis lancer l'autre. Exemple depuis le mode complet :
+`extends`. La variante locale de développement porte le nom de projet
+`lantern-local-dev` ; le Compose complet porte le nom `lantern-local`. Leurs
+volumes sont donc distincts. Arrêter un mode avec sa propre commande `down`
+avant de lancer l'autre, car ils publient les mêmes ports. Exemple depuis le
+mode complet :
 
 ```sh
 docker compose down
-docker compose -f compose.backend.yaml up -d --build --wait
+docker compose --env-file .env.compose -f compose.backend.yaml -f compose.backend.dev.yaml up -d --build --wait
 ```
 
 Pour changer les ports ou les identifiants locaux, copier `.env.compose.example`
@@ -242,8 +244,8 @@ appelle `Leaderboard.Presentation.dll --healthcheck`, qui interroge
 Les volumes `postgres-data`, `rabbitmq-data` et `mongo-data` persistent après un arrêt :
 
 ```sh
-docker compose logs --tail=100 player traefik
-docker compose down
+docker compose --env-file .env.compose -f compose.backend.yaml -f compose.backend.dev.yaml logs --tail=100 player traefik
+docker compose --env-file .env.compose -f compose.backend.yaml -f compose.backend.dev.yaml down
 ```
 
 Pour une remise à zéro **avec suppression de toutes les données de cette stack**,
@@ -281,22 +283,22 @@ API/SignalR ; les deux endpoints frontend `/healthz` ne sont pas disponibles.
   ADR. Les adaptateurs gRPC, consommateurs, outbox et instrumentation encore
   absents ne sont pas implémentés par ce travail. Le démarrage de la stack
   n'est pas un test de bout en bout des parcours métier.
-- Chaque backend utilise désormais son propre Dockerfile. Leaderboard restaure
-  systématiquement `Combat.Contracts` depuis GitHub Packages. Le build de
+- Chaque backend utilise désormais son propre Dockerfile. Leaderboard construit
+  ses contrats dans son dépôt et restaure depuis NuGet.org. Le build de
   `frontend-public` reste dans
   `deploy/frontend-public.Dockerfile`.
 
 ## Packages de contrats : local et GitHub
 
-Les commandes Compose locales construisent `Dungeon.Contracts` pour Player et
-`Combat.Contracts` pour Leaderboard depuis les sources des backends frÃ¨res.
-Elles ne demandent donc pas `GITHUB_PACKAGES_CREDENTIALS`. Les instructions
-d'authentification ci-dessous concernent seulement un build Docker standard,
-utilisÃ© en CI et en production.
+La commande locale superpose `compose.backend.dev.yaml` à
+`compose.backend.yaml`. Elle utilise les Dockerfile de développement des
+services qui en possèdent un ; Leaderboard utilise son `Dockerfile` standard,
+car il n'a pas de `Dockerfile.dev` et ne dépend plus de `Combat.Contracts`.
+Cette variante ne demande pas `GITHUB_PACKAGES_CREDENTIALS`.
 
-Les cinq backends ont un `NuGet.config` avec la source GitHub de l'organisation
-et une sélection explicite des packages de contrats. Les jetons sont transmis
-par secret BuildKit, jamais par ARG ni ENV persistant.
+Le build Docker standard des autres backends peut nécessiter les packages de
+contrats sur GitHub Packages. Les jetons sont transmis par secret BuildKit,
+jamais par ARG ni ENV persistant. Leaderboard n'en a pas besoin.
 
 Définir `GITHUB_PACKAGES_CREDENTIALS` dans
 le shell au format `Username=<login>;Password=<token>;ValidAuthenticationTypes=Basic`,
@@ -307,6 +309,4 @@ docker compose -f compose.backend.yaml up -d --build --wait
 ```
 
 Pour la stack complète, utiliser `docker compose up -d --build --wait` avec la
-même variable d'environnement. Leaderboard ne construit ni ne lit les sources
-locales du contrat Combat ; il restaure uniquement la version référencée par
-`PackageReference`.
+même variable d'environnement pour les services qui en ont besoin.
