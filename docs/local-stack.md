@@ -137,23 +137,23 @@ Après modification des fichiers de routage, utiliser
 restart traefik` en mode complet). Docker Desktop peut ne pas transmettre les
 notifications de changement des fichiers montés depuis Windows.
 
-| Route native, via les ports Traefik du mode choisi               | Service                                                     |
-| ---------------------------------------------------------------- | ----------------------------------------------------------- |
-| `/api/v1/players[/...]`, `/api/v1/hero-classes[/...]`            | Player                                                      |
-| `/hubs/player[/...]` (négociation et WebSocket)                  | Player                                                      |
-| `/api/v1/monster-types[/...]`, `/api/v1/heroes/{id}/combat-data` | Combat                                                      |
-| `/hubs/combats[/...]`                                            | Combat                                                      |
-| `/hubs/dungeons[/...]`                                           | Dungeon                                                     |
-| `/api/v1/player/...`, `/api/player/...`                          | Player, préfixe remplacé par `/api/v1`                      |
-| `/api/v1/rewards/...`, `/api/rewards/...`                        | Rewards, préfixe remplacé par `/api/v1`                     |
-| `/api/v1/progression/...`, `/api/progression/...`                | Progression (`leaderboard`), préfixe remplacé par `/api/v1` |
-| `/api/v1/heroes/{id}/inventory[/...]`                            | Reward                                                      |
-| `/services/{service}/...`                                        | Service nommé, préfixe retiré                               |
+| Route native, via les ports Traefik du mode choisi                    | Service                                   |
+| --------------------------------------------------------------------- | ----------------------------------------- |
+| `/api/player/v1/hero-classes[/...]`, `/api/player/v1/me/heroes[/...]` | Player                                    |
+| `/hubs/player[/...]` (négociation et WebSocket)                       | Player                                    |
+| `/api/v1/monster-types[/...]`, `/api/v1/heroes/{id}/combat-data`      | Combat                                    |
+| `/hubs/combats[/...]`                                                 | Combat                                    |
+| `/hubs/dungeons[/...]`                                                | Dungeon                                   |
+| `/api/player/v1/...`                                                  | Player, route native sans réécriture      |
+| `/api/v1/rewards/...`, `/api/rewards/...`                             | Rewards, préfixe remplacé par `/api/v1`   |
+| `/api/leaderboard/v1/...`                                             | Leaderboard, route native sans réécriture |
+| `/api/v1/heroes/{id}/inventory[/...]`                                 | Reward                                    |
+| `/services/{service}/...`                                             | Service nommé, préfixe retiré             |
 
-`service` vaut `player`, `combat`, `dungeon`, `reward` ou `leaderboard`.
+`service` vaut `player`, `combat`, `dungeon` ou `reward`.
 Par exemple, `/services/dungeon/health/ready` devient `/health/ready` dans
-Dungeon. Ces préfixes locaux donnent accès aux cinq services sans collision :
-Dungeon et Leaderboard exposent encore des contrôleurs de template
+Dungeon. Ces préfixes locaux donnent accès à quatre services sans collision :
+Dungeon expose encore des contrôleurs de template
 `/api/v1/players`. Les routes de diagnostic préfixées ne constituent pas un
 nouveau contrat d'API de production. Les URLs natives du front restent intactes.
 
@@ -246,12 +246,11 @@ ne doit pas être utilisée pour un simple redémarrage.
 ```sh
 curl http://localhost:3000/healthz
 curl http://localhost:3001/healthz
-curl http://localhost:3000/api/v1/hero-classes
+curl http://localhost:3000/api/player/v1/hero-classes
 curl http://localhost:3000/services/player/health/ready
 curl http://localhost:3000/services/combat/health/ready
 curl http://localhost:3000/services/dungeon/health/ready
 curl http://localhost:3000/services/reward/health/ready
-curl http://localhost:3000/services/leaderboard/health/ready
 curl -X POST "http://localhost:3000/hubs/player/negotiate?negotiateVersion=1"
 ```
 
