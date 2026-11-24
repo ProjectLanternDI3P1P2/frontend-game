@@ -13,6 +13,8 @@ services:
     extends: { file: compose.backend.dev.yaml, service: postgres }
   rabbitmq:
     extends: { file: compose.backend.dev.yaml, service: rabbitmq }
+  mongo:
+    extends: { file: compose.backend.dev.yaml, service: mongo }
   player:
     extends: { file: compose.backend.dev.yaml, service: player }
   combat:
@@ -31,3 +33,4 @@ networks:
 volumes:
   postgres-data:
   rabbitmq-data:
+  mongo-data:
