@@ -280,6 +280,43 @@ services:
       ConnectionStrings__Mongo: "mongodb://mongo:27017/?replicaSet=rs0&directConnection=true"
       OTEL_SERVICE_NAME: leaderboard
       RawEventConsumer__Enabled: "true"
+      # Reserved progression routes for future producers and consumers.
+      # The current Leaderboard consumer uses RawEventConsumer__QueueName.
+      RabbitMq__ExchangeName: progression.events
+      RabbitMq__QueueName: progression.events.v1
+      RabbitMq__PrefetchCount: ${RABBITMQ_PREFETCH_COUNT:-16}
+      RabbitMq__DeadLetterExchangeName: lantern.dead-letter
+      RabbitMq__DeadLetterQueueName: progression.events.v1.dead
+      RabbitMq__Subscriptions__0__ExchangeName: player.events
+      RabbitMq__Subscriptions__0__RoutingKey: player.game-session-started.v1
+      RabbitMq__Subscriptions__1__ExchangeName: player.events
+      RabbitMq__Subscriptions__1__RoutingKey: player.game-session-ended.v1
+      RabbitMq__Subscriptions__2__ExchangeName: player.events
+      RabbitMq__Subscriptions__2__RoutingKey: player.hero-created.v1
+      RabbitMq__Subscriptions__3__ExchangeName: player.events
+      RabbitMq__Subscriptions__3__RoutingKey: player.game-session-member-joined.v1
+      RabbitMq__Subscriptions__4__ExchangeName: dungeon.events
+      RabbitMq__Subscriptions__4__RoutingKey: dungeon.dungeon-run-started.v1
+      RabbitMq__Subscriptions__5__ExchangeName: dungeon.events
+      RabbitMq__Subscriptions__5__RoutingKey: dungeon.room-entered.v1
+      RabbitMq__Subscriptions__6__ExchangeName: dungeon.events
+      RabbitMq__Subscriptions__6__RoutingKey: dungeon.chest-opened.v1
+      RabbitMq__Subscriptions__7__ExchangeName: dungeon.events
+      RabbitMq__Subscriptions__7__RoutingKey: dungeon.dungeon-run-ended.v1
+      RabbitMq__Subscriptions__8__ExchangeName: combat.events
+      RabbitMq__Subscriptions__8__RoutingKey: combat.combat-started.v1
+      RabbitMq__Subscriptions__9__ExchangeName: combat.events
+      RabbitMq__Subscriptions__9__RoutingKey: combat.action-resolved.v1
+      RabbitMq__Subscriptions__10__ExchangeName: combat.events
+      RabbitMq__Subscriptions__10__RoutingKey: combat.combat-completed.v1
+      RabbitMq__Subscriptions__11__ExchangeName: rewards.events
+      RabbitMq__Subscriptions__11__RoutingKey: rewards.reward-granted.v1
+      RabbitMq__Subscriptions__12__ExchangeName: rewards.events
+      RabbitMq__Subscriptions__12__RoutingKey: rewards.inventory-item-consumed.v1
+      RabbitMq__Subscriptions__13__ExchangeName: rewards.events
+      RabbitMq__Subscriptions__13__RoutingKey: rewards.equipment-changed.v1
+      RabbitMq__Subscriptions__14__ExchangeName: rewards.events
+      RabbitMq__Subscriptions__14__RoutingKey: rewards.purchase-completed.v1
 
 networks:
   web:
