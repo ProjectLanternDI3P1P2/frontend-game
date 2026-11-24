@@ -6,13 +6,8 @@ http:
       priority: 200
       middlewares: [authenticated, rewards-api-prefix]
       service: reward
-    progression-owned-api:
-      rule: Path(`/api/progression`) || PathPrefix(`/api/progression/`) || Path(`/api/v1/progression`) || PathPrefix(`/api/v1/progression/`)
-      priority: 200
-      middlewares: [authenticated, progression-api-prefix]
-      service: leaderboard
     leaderboard-api:
-      rule: Path(`/api/leaderboard`) || PathPrefix(`/api/leaderboard/`)
+      rule: Path(`/api/leaderboard/v1`) || PathPrefix(`/api/leaderboard/v1/`)
       priority: 100
       middlewares: [authenticated]
       service: leaderboard
@@ -56,11 +51,6 @@ http:
       priority: 200
       middlewares: [authenticated, strip-service-prefix]
       service: reward
-    leaderboard-service:
-      rule: Path(`/services/leaderboard`) || PathPrefix(`/services/leaderboard/`)
-      priority: 200
-      middlewares: [authenticated, strip-service-prefix]
-      service: leaderboard
 
   middlewares:
     authenticated:
@@ -83,15 +73,11 @@ http:
           removeMissingHeaders: true
           parameterName: access_token
           forwardToken: false
-    # Preserve existing owner aliases while forwarding to each service's route.
+    # Rewrite the Rewards owner route to its backend route.
     rewards-api-prefix:
       replacePathRegex:
         regex: "^/api/(v1/)?rewards(/|$)"
         replacement: "/api/v1${2}"
-    progression-api-prefix:
-      replacePathRegex:
-        regex: "^/api/(v1/)?progression(/|$)"
-        replacement: "/api/leaderboard/v1${2}"
     remove-external-identity:
       headers:
         # Browser clients run on these origins in backend-only development.
@@ -118,13 +104,7 @@ http:
     strip-service-prefix:
       stripPrefix:
         prefixes:
-          [
-            /services/player,
-            /services/combat,
-            /services/dungeon,
-            /services/reward,
-            /services/leaderboard,
-          ]
+          [/services/player, /services/combat, /services/dungeon, /services/reward]
 
   services:
     player:
