@@ -74,7 +74,8 @@ def run_cypress(worker: int, specs: list[Path], stats: dict) -> int:
         "--spec",
         ",".join(str(s) for s in specs),
         "--config",
-        f"baseUrl={localhost_url(FRONT_PORT)},screenshotsFolder={screenshots_path}",
+        # app.baseURL is /game/: specs visit app routes ("/auth"), not "/game/auth".
+        f"baseUrl={localhost_url(FRONT_PORT, '/game')},screenshotsFolder={screenshots_path}",
         "--env",
         f"gatewayUrl={localhost_url(GATEWAY_PORT)},keycloakUrl={localhost_url(KEYCLOAK_PORT)}",
     ]
