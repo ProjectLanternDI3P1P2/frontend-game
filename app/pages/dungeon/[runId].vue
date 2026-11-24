@@ -90,7 +90,8 @@ function move(direction: Direction) {
 }
 
 function spawnAt(position: Position) {
-  if (isSandbox.value && !movementBlocked.value) explorer.spawn(spawnKind.value, position);
+  if (isSandbox.value && !movementBlocked.value)
+    explorer.spawn(spawnKind.value, position);
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -142,6 +143,7 @@ async function copyShareLink() {
         class="dungeon-page__board"
         role="application"
         aria-label="Dungeon"
+        data-cy="dungeon-view"
         aria-describedby="dungeon-help"
         tabindex="0"
         @keydown="onKeydown"

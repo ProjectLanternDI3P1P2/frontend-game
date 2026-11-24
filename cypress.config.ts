@@ -15,6 +15,9 @@ export default defineConfig({
     viewportWidth: 1280,
     viewportHeight: 800,
     retries: { runMode: 2, openMode: 0 },
+    // A journey step crosses several services (hub negotiation, run creation);
+    // the 4s default is too tight on a shared 4-vCPU CI runner.
+    defaultCommandTimeout: 10000,
     // scripts/e2e passes the same values with --env.
     env: {
       gatewayUrl: "http://localhost:8088",

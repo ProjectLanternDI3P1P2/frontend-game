@@ -69,7 +69,10 @@ async function createLobby(): Promise<void> {
   error.value = "";
   try {
     const config = useRuntimeConfig();
-    hub ??= new PlayerHubClient(playerHubUrl(config.public.apiGatewayUrl), () => undefined);
+    hub ??= new PlayerHubClient(
+      playerHubUrl(config.public.apiGatewayUrl),
+      () => undefined,
+    );
     const session = await hub.createSoloLobby({
       commandId: createIdempotencyKey(),
       heroId: hero.id,
@@ -181,6 +184,7 @@ onBeforeUnmount(() => void hub?.disconnect());
               :variant="ButtonVariant.PRIMARY"
               :busy="creating"
               :disabled="!canCreateLobby"
+              data-cy="create-lobby"
               @click="createLobby"
               >{{ creating ? "Creating…" : "Create lobby" }}</UiButton
             >

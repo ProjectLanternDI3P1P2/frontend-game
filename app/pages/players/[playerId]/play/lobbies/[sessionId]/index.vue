@@ -244,6 +244,7 @@ onBeforeUnmount(() => {
                 :size="ButtonSize.SM"
                 :variant="ButtonVariant.PRIMARY"
                 :busy="starting"
+                data-cy="start-game"
                 :disabled="!isCreator || session.state !== 'Lobby'"
                 @click="start"
                 >{{ starting ? "Starting…" : "Start game" }}</UiButton
