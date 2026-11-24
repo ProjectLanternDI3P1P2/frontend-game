@@ -1,36 +1,35 @@
 [← README](README.md)
 
-# Piste : une identité par test
+# Pistes d'identité non retenues
 
-**Statut : non retenue (2026-11-24).** On utilise une identité fixe posée par Traefik, voir
-[identite.md](identite.md).
+**Statut : non retenues (2026-11-24).** On utilise le vrai Keycloak avec un utilisateur par
+test, voir [identite.md](identite.md).
+
+## Identité fixe posée par Traefik
+
+C'était le premier choix, quand le front n'avait pas encore Keycloak. Un overlay
+`deploy/traefik/e2e/` forçait `X-User-Id: e2e-player` sur toutes les routes.
+
+**Verdict** : dépassé depuis l'arrivée de Keycloak sur `dev`. Ce choix contournait l'auth au
+lieu de la tester, et toutes les specs d'une lane partageaient le même joueur.
 
 ## Header par test via `cy.intercept`
 
-Le middleware `cy.intercept` de `cypress/support/e2e.ts` ajoute un `X-User-Id` unique par test,
-et player crée le joueur à la volée.
-
-**Verdict** : ça casse `PlayerHub`, parce que l'upgrade WebSocket ne passe pas par l'intercept.
-Or le parcours de départ (lobby solo) en dépend.
+**Verdict** : ça casse `PlayerHub`, parce que l'upgrade WebSocket ne passe pas par
+l'intercept. De toute façon, Traefik écrase maintenant `X-User-Id` depuis le JWT.
 
 ## Plugin Traefik cookie → header
 
-Un plugin local yaegi (`--experimental.localPlugins`) d'une quarantaine de lignes de Go. Il copie
-un cookie `lantern-e2e-user` dans `X-User-Id`. Les cookies `localhost` sont envoyés quel que soit
-le port, donc le cookie posé sur :3000 arrive sur :8088, WS compris.
+Un plugin local yaegi copiait un cookie dans `X-User-Id`.
 
-**Verdict** : l'isolation est parfaite, mais c'est du Go et un flag expérimental, pour un besoin
-qui n'existe pas tant qu'on reste à 1 worker par runner.
+**Verdict** : inutile, le plugin JWT lit déjà `access_token` en query pour le WS.
 
-**À revoir si** on passe à 2 workers par runner, ou si l'état partagé entre specs d'une lane rend
-des tests flaky.
+## Login UI via `cy.origin`
 
-## Keycloak dans la stack
+Cypress remplissait la vraie page de login Keycloak (`localhost:8081`), avec `cy.session` pour
+le cache.
 
-Un vrai IdP avec forwardAuth ou validation JWT au gateway.
+**Verdict** : plus lent et dépendant du thème `lantern`. On teste l'intégration avec le gateway,
+pas le formulaire Keycloak.
 
-**Verdict** : c'est le chantier auth du projet, pas celui de l'E2E. Il faut un conteneur de plus
-et un realm à provisionner, et le front n'a même pas encore de `getToken`.
-
-**À revoir quand** le front intègre Keycloak : l'E2E devra alors passer par le vrai login, et
-l'overlay d'identité disparaîtra.
+**À revoir si** un parcours « inscription » ou « connexion » doit lui-même être couvert en E2E.

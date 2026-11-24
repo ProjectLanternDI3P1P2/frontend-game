@@ -13,7 +13,8 @@
 
 | Service     | Dans l'E2E | Pourquoi                                                                                         |
 | ----------- | ---------- | ------------------------------------------------------------------------------------------------ |
-| traefik     | ★ oui      | Le gateway, avec l'overlay `deploy/traefik/e2e/` (voir [identite.md](identite.md))               |
+| traefik     | ★ oui      | Le gateway, avec sa config de base (`deploy/traefik/backend/`) et le plugin JWT                  |
+| keycloak    | ★ oui      | Le vrai IdP, realm importé (voir [identite.md](identite.md))                                     |
 | postgres    | ★ oui      | Une base par service, créée par `deploy/postgres/01-create-databases.sh`                         |
 | rabbitmq    | ★ oui      | Événements entre services (dungeon → player, combat → reward)                                    |
 | player      | ★ oui      | Profil, héros, lobbies, `PlayerHub`                                                              |
@@ -23,8 +24,8 @@
 | leaderboard | **non**    | Hors scope. Les routes `/api/progression` et `/services/leaderboard` répondent 502, c'est voulu. |
 
 On l'exclut en nommant les services : `docker compose -f compose.backend.dev.yaml up --wait
-traefik postgres rabbitmq player combat dungeon reward`. On ne touche ni au compose ni à la
-config Traefik partagée.
+traefik keycloak postgres rabbitmq player combat dungeon reward`. On ne touche ni au compose ni
+à la config Traefik partagée.
 
 ## Source des backends ★ build depuis les sources
 
@@ -55,12 +56,16 @@ et de `e2e-plan`, comme chez Mawster.
 ## Health checks
 
 1. `docker compose up --wait --wait-timeout 240` : les healthchecks compose existants
-   (`/health/ready` de chaque service .NET, `pg_isready`, la topologie RabbitMQ, le ping
-   Traefik) bloquent jusqu'à ce que tout soit vert.
-2. `wait_for_http` (porté de Mawster) sur `http://localhost:3000/healthz`.
-3. Une sonde à travers le gateway : `http://localhost:8088/services/player/health/ready` doit
-   répondre 200. Elle prouve que le routage Traefik vers les services fonctionne, pas seulement
-   les conteneurs.
+   (`/health/ready` de chaque service .NET et de Keycloak, `pg_isready`, la topologie RabbitMQ,
+   le ping Traefik) bloquent jusqu'à ce que tout soit vert.
+2. Le réglage `directAccessGrants` de Keycloak ([identite.md](identite.md)).
+3. `wait_for_http` (porté de Mawster) sur `http://localhost:3000/healthz`.
+
+Il n'y a pas de sonde à travers le gateway : toutes les routes exigent un JWT. La première spec
+authentifiée sert de preuve de routage.
+
+Le plugin JWT de Traefik est téléchargé depuis GitHub au démarrage (`experimental.plugins`).
+Un runner sans accès sortant ne démarrerait pas.
 
 ## Réserves
 

@@ -17,25 +17,23 @@ Décidé le 2026-11-24. Aujourd'hui, le job `e2e` de `ci.yml` ne lance que le bu
 | Front               | Build Nuxt sur l'hôte, `node .output/server/index.mjs` sur :3000                            | [stack.md](stack.md)             |
 | Matrice             | 2 runners × 1 worker                                                                        | [sharding.md](sharding.md)       |
 | Orchestration       | Python, porté depuis `Mawster/scripts/e2e`                                                  | [sharding.md](sharding.md)       |
-| Identité            | Overlay Traefik e2e qui force `X-User-Id: e2e-player` (HTTP et WS)                          | [identite.md](identite.md)       |
+| Identité            | Vrai Keycloak : un user par test (API admin + password grant), tokens en sessionStorage     | [identite.md](identite.md)       |
 | Specs de départ     | `shell.cy.ts` + 1 parcours réel (play → lobby solo → run de donjon)                         | [sharding.md](sharding.md#specs) |
 
 ## Fiches
 
 - [stack.md](stack.md) : quels services, comment ils sont buildés, servis et attendus.
 - [sharding.md](sharding.md) : planner, matrice, scripts, health checks, specs.
-- [identite.md](identite.md) : comment Cypress est authentifié sans Keycloak.
+- [identite.md](identite.md) : comment Cypress s'authentifie auprès du vrai Keycloak.
 - [piste-images.md](piste-images.md) : Harbor, self-hosted et GHCR, non retenus.
-- [piste-identite-par-test.md](piste-identite-par-test.md) : header par test, plugin cookie et
-  Keycloak, non retenus.
+- [piste-identite-par-test.md](piste-identite-par-test.md) : identité fixe, header par test, plugin cookie et login UI, non retenus.
 
 ## Glossaire
 
 - **Runner** : une machine de la matrice GitHub Actions (`ubuntu-latest`).
 - **Worker** : une instance Cypress avec sa propre stack. Ici, 1 par runner.
 - **Lane** : la liste de specs d'un worker, calculée par le planner.
-- **Overlay e2e** : la config Traefik dynamique propre à l'E2E (`deploy/traefik/e2e/`), qui
-  remplace `deploy/traefik/backend/`.
+- **Password grant** : obtention d'un token Keycloak par identifiant et mot de passe, sans passer par la page de login. Activé seulement sur la stack E2E.
 
 ## Prochaine étape
 

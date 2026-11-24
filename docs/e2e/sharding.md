@@ -9,11 +9,11 @@
 
 ## Matrice
 
-| Forme                  | Stacks/runner | RAM estimée | Verdict                                             |
-| ---------------------- | ------------- | ----------- | --------------------------------------------------- |
-| ★ 2 runners × 1 worker | 1             | ok          | Retenu                                              |
-| 2 runners × 2 workers  | 2             | serrée      | 8 .NET par runner, et l'identité fixe ne tient plus |
-| 1 runner × 2 workers   | 2             | serrée      | Ne teste pas la matrice                             |
+| Forme                  | Stacks/runner | RAM estimée | Verdict                 |
+| ---------------------- | ------------- | ----------- | ----------------------- |
+| ★ 2 runners × 1 worker | 1             | ok          | Retenu                  |
+| 2 runners × 2 workers  | 2             | serrée      | 8 .NET par runner       |
+| 1 runner × 2 workers   | 2             | serrée      | Ne teste pas la matrice |
 
 `E2E_RUNNERS: '2'`, `E2E_WORKERS: '1'` dans le workflow, lus par le planner.
 
@@ -59,8 +59,7 @@ Le job `e2e` actuel (build et start dans le même job) est remplacé.
 
 ## Plan d'implémentation
 
-1. `deploy/traefik/e2e/` : l'overlay d'identité ([identite.md](identite.md)) et un
-   `compose.e2e.yaml` qui monte cet overlay sur traefik.
+1. Auth E2E ([identite.md](identite.md)) : le réglage Keycloak au boot et `cy.login()`.
 2. `scripts/e2e/` : le portage Python. Vérifier en local avec les deux étapes de
    `e2e_parallel.py` (`backends` puis `tests`).
 3. `play-solo-run.cy.ts`, avec des sélecteurs `data-cy` et un nom de héros unique.
