@@ -73,6 +73,8 @@ http:
           headerMap:
             X-User-Id: sub
             X-Username: preferred_username
+            # The plugin forwards this nested Keycloak claim as JSON.
+            X-Roles: realm_access
           removeMissingHeaders: true
           parameterName: access_token
           forwardToken: false
