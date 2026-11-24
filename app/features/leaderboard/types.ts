@@ -10,6 +10,8 @@ export interface HeroStatisticsResponse {
   /** ISO 8601, null when the hero has never been consolidated. */
   consolidatedAt: string | null;
   isConsolidating: boolean;
+  /** True when these values were seeded for local development. */
+  isDemo?: boolean;
   /** Missing keys mean 0. */
   statistics: HeroStatisticValue[];
 }

@@ -32,6 +32,18 @@ function simulated(scenario: MockScenario) {
 }
 
 describe("HeroStatisticsView", () => {
+  it("identifies values seeded in the backend as demonstration data", async () => {
+    const api = simulated(MockScenario.PLAYED);
+    const response = await api.getHeroStatistics("p", "h");
+    vi.spyOn(api, "getHeroStatistics").mockResolvedValue({ ...response, isDemo: true });
+    const wrapper = mountWith(HeroStatisticsView, { playerId: "p", heroId: "h" }, api);
+    await settle();
+
+    expect(wrapper.text()).toContain(
+      "Demonstration statistics seeded in the leaderboard backend.",
+    );
+  });
+
   it("announces loading, then shows every catalogue statistic by category", async () => {
     const wrapper = mountWith(
       HeroStatisticsView,

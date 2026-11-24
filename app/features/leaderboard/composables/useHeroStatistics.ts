@@ -27,6 +27,7 @@ export function useHeroStatistics(
   const status = ref<LoadStatus>(LoadStatus.LOADING);
   const groups = ref<StatisticGroup[]>([]);
   const consolidation = ref<ConsolidationInfo | null>(null);
+  const isDemo = ref(false);
   const errorMessage = ref("");
   let controller: AbortController | null = null;
 
@@ -35,6 +36,7 @@ export function useHeroStatistics(
     const current = new AbortController();
     controller = current;
     status.value = LoadStatus.LOADING;
+    isDemo.value = false;
     errorMessage.value = "";
 
     try {
@@ -45,6 +47,7 @@ export function useHeroStatistics(
       );
       if (controller !== current) return;
       groups.value = groupHeroStatistics(response);
+      isDemo.value = response?.isDemo === true;
       consolidation.value = {
         consolidatedAt: response?.consolidatedAt ?? null,
         label: formatConsolidationAge(response?.consolidatedAt, now()),
@@ -66,5 +69,5 @@ export function useHeroStatistics(
     });
   }
 
-  return { status, groups, consolidation, errorMessage, load, retry: load };
+  return { status, groups, consolidation, isDemo, errorMessage, load, retry: load };
 }

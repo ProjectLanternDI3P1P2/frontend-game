@@ -289,13 +289,14 @@ describe("F00", () => {
       expect(code).not.toMatch(/\bLeaderboardRow\b/);
     });
 
-    it("CA1: F01 statistics types keep their shape", () => {
+    it("CA1: F01 statistics types include the backend demo marker", () => {
       const actual = declarations(types);
       expect(actual.get("HeroStatisticsResponse")).toBe(
         stripComments(`export interface HeroStatisticsResponse {
           heroId: string;
           consolidatedAt: string | null;
           isConsolidating: boolean;
+          isDemo?: boolean;
           statistics: HeroStatisticValue[];
         }`),
       );
@@ -309,6 +310,7 @@ describe("F00", () => {
         heroId: string;
         consolidatedAt: string | null;
         isConsolidating: boolean;
+        isDemo?: boolean;
         statistics: HeroStatisticValue[];
       }>();
       expectTypeOf<LeaderboardApi["getHeroStatistics"]>().toEqualTypeOf<

@@ -12,10 +12,11 @@ import LeaderboardLoadState from "./LeaderboardLoadState.vue";
 
 const props = defineProps<{ playerId: string; heroId: string }>();
 
-const { status, groups, consolidation, errorMessage, retry } = useHeroStatistics(
-  () => props.playerId,
-  () => props.heroId,
-);
+const { status, groups, consolidation, isDemo, errorMessage, retry } =
+  useHeroStatistics(
+    () => props.playerId,
+    () => props.heroId,
+  );
 
 const heroPath = computed(
   () =>
@@ -46,6 +47,9 @@ const heroPath = computed(
       @retry="retry"
     />
 
+    <p v-if="status === LoadStatus.READY && isDemo" class="hero-statistics__demo-note">
+      Demonstration statistics seeded in the leaderboard backend.
+    </p>
     <HeroStatisticsGroups v-if="status === LoadStatus.READY" :groups="groups" />
   </main>
 </template>
@@ -54,6 +58,12 @@ const heroPath = computed(
 .hero-statistics {
   display: grid;
   gap: var(--space-5);
+
+  &__demo-note {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+  }
 
   &__header {
     display: flex;

@@ -9,7 +9,8 @@ their heroes (F01), and the ranking of heroes by total XP with their own heroes
 (F00, decision D8: one row per hero, filters, pagination by 10, trend,
 statuses). The pages now read the leaderboard backend. In local Development,
 that service seeds 220 demonstration heroes in PostgreSQL. Hero event
-projection remains to be implemented.
+projection remains to be implemented. `My progression` reads persisted hero
+statistics from the backend and labels seeded values as demonstration data.
 
 F00 lays the shared foundation (contract, clients, simulated data, pure rules,
 `RankingRowDetail.vue` placeholder). `/leaderboard` only shows the first page
