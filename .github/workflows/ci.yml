@@ -16,6 +16,11 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # Read by the planner: specs are balanced across E2E_RUNNERS * E2E_WORKERS lanes.
+  E2E_RUNNERS: "2"
+  E2E_WORKERS: "1"
+
 jobs:
   quality:
     name: Lint, types, unit tests
@@ -34,40 +39,181 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:unit
 
-  # e2e:
-  #   name: End-to-end journeys
-  #   runs-on: ubuntu-latest
-  #   needs: quality
-  #   steps:
-  #     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-  #       with:
-  #         persist-credentials: false
-  #     - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-  #       with:
-  #         node-version: 24
-  #         cache: npm
-  #     - run: npm ci
+  # The E2E suite runs against the real stack (docs/e2e/stack.md), sharded across
+  # a matrix of runners (docs/e2e/sharding.md).
+  e2e-plan:
+    name: E2E — Plan spec distribution
+    runs-on: ubuntu-latest
+    needs: quality
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - id: plan
+        run: echo "matrix=$(python3 scripts/e2e/spec_planner.py --runners "$E2E_RUNNERS" --workers "$E2E_WORKERS")" >> "$GITHUB_OUTPUT"
 
-  #     # The build carries its own identity, as the cycle 1 delivery gate asks.
-  #     - name: Build
-  #       run: npm run build
-  #       env:
-  #         NUXT_PUBLIC_APP_VERSION: ${{ github.ref_name }}
-  #         NUXT_PUBLIC_COMMIT_SHA: ${{ github.sha }}
-  #         NUXT_PUBLIC_BUILT_AT: ${{ github.event.repository.updated_at }}
+  e2e-build:
+    name: E2E — Build frontend
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      # The build never runs Cypress: skip its binary download.
+      - run: npm ci
+        env:
+          CYPRESS_INSTALL_BINARY: "0"
 
-  #     - name: Start the built application
-  #       run: node .output/server/index.mjs &
-  #     - name: Wait for the application
-  #       run: npx wait-on http://localhost:3000/healthz --timeout 60000
+      # The build carries its own identity, as the cycle 1 delivery gate asks.
+      - name: Build
+        run: npm run build
+        env:
+          NUXT_PUBLIC_APP_VERSION: ${{ github.ref_name }}
+          NUXT_PUBLIC_COMMIT_SHA: ${{ github.sha }}
+          NUXT_PUBLIC_BUILT_AT: ${{ github.event.repository.updated_at }}
+      - run: tar -czf /tmp/nuxt-e2e-build.tar.gz .output
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nuxt-e2e-build
+          path: /tmp/nuxt-e2e-build.tar.gz
+          retention-days: 1
+          if-no-files-found: error
 
-  #     - name: Cypress
-  #       run: npm run test:e2e
-  #       env:
-  #         CYPRESS_BASE_URL: http://localhost:3000
+  # Built once per run, loaded by every runner. The compose build contexts are the
+  # backend repos checked out next to this one.
+  e2e-build-backends:
+    name: E2E — Build backends
+    runs-on: ubuntu-latest
+    needs: quality
+    defaults:
+      run:
+        working-directory: frontend-game
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: frontend-game
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: ProjectLanternDI3P1P2/player-backend
+          ref: dev
+          path: player-backend
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: ProjectLanternDI3P1P2/combat-backend
+          ref: dev
+          path: combat-backend
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: ProjectLanternDI3P1P2/dungeon-backend
+          ref: dev
+          path: dungeon-backend
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: ProjectLanternDI3P1P2/reward-backend
+          ref: dev
+          path: reward-backend
+          persist-credentials: false
 
-  #     - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-  #       if: failure()
-  #       with:
-  #         name: cypress-screenshots
-  #         path: cypress/screenshots
+      - run: docker compose -f compose.backend.dev.yaml build player combat dungeon reward
+      # Named after the compose project: `up --no-build` on the runners finds them by these names.
+      - name: Save the images
+        shell: bash
+        run: |
+          docker save \
+            lantern-local-dev-player \
+            lantern-local-dev-combat \
+            lantern-local-dev-dungeon \
+            lantern-local-dev-reward \
+            | gzip > /tmp/backend-images.tar.gz
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: backend-images
+          path: /tmp/backend-images.tar.gz
+          retention-days: 1
+          if-no-files-found: error
+
+  e2e:
+    name: E2E Tests (runner ${{ matrix.runner }})
+    runs-on: ubuntu-latest
+    needs: [e2e-plan, e2e-build, e2e-build-backends]
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.e2e-plan.outputs.matrix) }}
+    defaults:
+      run:
+        working-directory: frontend-game
+    env:
+      SPECS: ${{ matrix.specs }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: frontend-game
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: ProjectLanternDI3P1P2/player-backend
+          ref: dev
+          path: player-backend
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: ProjectLanternDI3P1P2/combat-backend
+          ref: dev
+          path: combat-backend
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: ProjectLanternDI3P1P2/dungeon-backend
+          ref: dev
+          path: dungeon-backend
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: ProjectLanternDI3P1P2/reward-backend
+          ref: dev
+          path: reward-backend
+          persist-credentials: false
+
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: backend-images
+          path: /tmp
+      - run: docker load -i /tmp/backend-images.tar.gz
+      # The stack boots while the frontend is set up below.
+      - name: Start the backend stack in the background
+        run: python3 scripts/e2e/e2e_parallel.py backends --spec "$SPECS"
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend-game/package-lock.json
+      - run: npm ci
+      # Verified once here, behind the remaining steps, instead of at each `cypress run` launch.
+      - name: Verify Cypress in the background
+        run: nohup npx cypress verify >/dev/null 2>&1 &
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: nuxt-e2e-build
+          path: /tmp
+      - run: tar -xzf /tmp/nuxt-e2e-build.tar.gz
+
+      - name: Run Cypress E2E tests (runner ${{ matrix.runner }})
+        run: python3 scripts/e2e/e2e_parallel.py tests --spec "$SPECS"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: cypress-results-runner-${{ matrix.runner }}
+          path: frontend-game/cypress/results
