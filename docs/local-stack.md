@@ -200,9 +200,11 @@ La topologie RabbitMQ est importée automatiquement via un hook Compose après
 le démarrage normal du broker : les utilisateurs existants sont conservés.
 Les backends attendent la fin de cet import avant de démarrer. Les bindings
 et la politique de redélivrance figurent dans
-`deploy/rabbitmq/definitions.json`. Les files Player et Rewards sont
-préconfigurées ; Leaderboard déclare sa propre file `leaderboard.raw-events`
-et sa file de rejet au démarrage. Toutes sont durables. Modifier la topologie puis recréer le broker
+`deploy/rabbitmq/definitions.json`. Les files Player, Rewards et Progression
+sont préconfigurées ; celle de Progression et ses 15 bindings restent réservés
+à un futur consommateur. Leaderboard déclare sa propre file
+`leaderboard.raw-events` et sa file de rejet au démarrage. Toutes sont durables.
+Modifier la topologie puis recréer le broker
 (`docker compose -f compose.backend.yaml up -d --force-recreate rabbitmq`)
 réimporte les définitions sans supprimer le volume.
 
