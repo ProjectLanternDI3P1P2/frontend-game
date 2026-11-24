@@ -4,12 +4,17 @@ http:
     rewards-owned-api:
       rule: Path(`/api/rewards`) || PathPrefix(`/api/rewards/`) || Path(`/api/v1/rewards`) || PathPrefix(`/api/v1/rewards/`)
       priority: 200
-      middlewares: [authenticated, owner-api-prefix]
+      middlewares: [authenticated, rewards-api-prefix]
       service: reward
     progression-owned-api:
       rule: Path(`/api/progression`) || PathPrefix(`/api/progression/`) || Path(`/api/v1/progression`) || PathPrefix(`/api/v1/progression/`)
       priority: 200
-      middlewares: [authenticated, owner-api-prefix]
+      middlewares: [authenticated, progression-api-prefix]
+      service: leaderboard
+    leaderboard-api:
+      rule: Path(`/api/leaderboard`) || PathPrefix(`/api/leaderboard/`)
+      priority: 100
+      middlewares: [authenticated]
       service: leaderboard
     dungeon-api:
       rule: Path(`/api/v1/dungeons`) || PathPrefix(`/api/v1/dungeons/`) || Path(`/api/v1/dungeon-runs`) || PathPrefix(`/api/v1/dungeon-runs/`) || Path(`/hubs/dungeons`) || PathPrefix(`/hubs/dungeons/`)
@@ -78,11 +83,15 @@ http:
           removeMissingHeaders: true
           parameterName: access_token
           forwardToken: false
-    # Rewards and Progression still expose their native routes below the owner prefix.
-    owner-api-prefix:
+    # Preserve existing owner aliases while forwarding to each service's route.
+    rewards-api-prefix:
       replacePathRegex:
-        regex: "^/api/(v1/)?(rewards|progression)(/|$)"
-        replacement: "/api/v1${3}"
+        regex: "^/api/(v1/)?rewards(/|$)"
+        replacement: "/api/v1${2}"
+    progression-api-prefix:
+      replacePathRegex:
+        regex: "^/api/(v1/)?progression(/|$)"
+        replacement: "/api/leaderboard/v1${2}"
     remove-external-identity:
       headers:
         # Browser clients run on these origins in backend-only development.
