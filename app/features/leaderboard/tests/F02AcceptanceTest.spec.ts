@@ -104,7 +104,7 @@ describe("F02", () => {
       expect(tabs[0]!.attributes("aria-selected")).toBe("true");
       expect(tabs[1]!.attributes("disabled")).toBeUndefined();
       expect(tabs[2]!.attributes("disabled")).toBeDefined();
-      expect(wrapper.text()).toContain("Signed in as MaelisRune");
+      expect(wrapper.text()).toContain("Signed in as Player");
 
       await tabs[1]!.trigger("click");
       expect(navigate).toHaveBeenCalledWith(
@@ -112,7 +112,7 @@ describe("F02", () => {
       );
     });
 
-    it("CA1: without any hero of mine, My progression is disabled and the demo name shows", async () => {
+    it("CA1: the header does not claim a ranking row is the signed-in account", async () => {
       const wrapper = mountPage(
         apiStub({
           getRanking: vi
@@ -123,12 +123,12 @@ describe("F02", () => {
         }),
       );
       await settle();
-      expect(wrapper.text()).toContain("Signed in as Other");
+      expect(wrapper.text()).toContain("Signed in as Player");
 
       const empty = mountPage(apiStub());
       await settle();
       expect(empty.findAll('[role="tab"]')[1]!.attributes("disabled")).toBeDefined();
-      expect(empty.text()).toContain("Signed in as MaelisRune");
+      expect(empty.text()).toContain("Signed in as Player");
     });
   });
 
@@ -488,7 +488,7 @@ describe("F02", () => {
 
       await wrapper.findAll('[role="tab"]')[1]!.trigger("click");
       expect(navigate).toHaveBeenCalledWith(`/players/${ME}/heroes/best/statistics`);
-      expect(wrapper.text()).toContain("Signed in as Kael");
+      expect(wrapper.text()).toContain("Signed in as Player");
     });
 
     it("CA2: each column shows its value (class, level, XP, runs, win rate, last activity)", async () => {

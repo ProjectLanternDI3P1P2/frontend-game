@@ -26,6 +26,7 @@ detail and facts, F04 the public `/rankings` page.
 Both are declared in `nuxt.config.ts` → `routeRules` and justified in
 `docs/rendering-modes.md`. After the `dev` authentication merge, the private
 `/leaderboard` uses the Player route alias `me` for its own hero rows.
+The signed-in name comes from Keycloak, not from the ranking row's player name.
 The public `/rankings` page remains available without signing in. The running
 application reads the backend; Vitest scenarios use the simulated client.
 

@@ -15,7 +15,6 @@ import {
   type RankingUrlState,
 } from "../leaderboardRules";
 import {
-  DEMO_PLAYER_NAME,
   EmptyReason,
   classFilterHidesMe,
   clearedFilters,
@@ -47,7 +46,7 @@ import RankingPagination from "./RankingPagination.vue";
 import RankingSkeleton from "./RankingSkeleton.vue";
 import RankingStatusBanner from "./RankingStatusBanner.vue";
 
-const props = defineProps<{ currentPlayerId: string }>();
+const props = defineProps<{ currentPlayerId: string; currentPlayerName?: string }>();
 
 const query = defineModel<RankingUrlState>("query", {
   default: () => ({ ...DEFAULT_RANKING_STATE }),
@@ -93,7 +92,7 @@ function clearFilters(): void {
 // ------------------------------------------------------------------ header
 
 const best = computed(() => me.value[0] ?? null);
-const playerName = computed(() => best.value?.playerName?.trim() || DEMO_PLAYER_NAME);
+const playerName = computed(() => props.currentPlayerName?.trim() || "Player");
 
 const tabs = computed<Tab[]>(() => [
   { id: "ranking", label: "Ranking" },

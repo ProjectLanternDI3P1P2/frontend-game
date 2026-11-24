@@ -17,9 +17,6 @@ import {
   type RankingQuery,
 } from "./types";
 
-/** Display name of the seeded demo player (D5), used before any hero is ranked. */
-export const DEMO_PLAYER_NAME = "MaelisRune";
-
 /** Debounce of the display-name search, in milliseconds. */
 export const SEARCH_DEBOUNCE_MS = 300;
 

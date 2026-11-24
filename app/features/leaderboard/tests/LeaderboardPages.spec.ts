@@ -115,6 +115,18 @@ describe("LeaderboardLoadState", () => {
 });
 
 describe("LeaderboardView", () => {
+  it("shows the authenticated name instead of the seeded ranking owner", async () => {
+    const wrapper = mountWith(
+      LeaderboardView,
+      { currentPlayerId: SIMULATED_PLAYER_ID, currentPlayerName: "demo" },
+      simulated(MockScenario.PLAYED),
+    );
+    await settle();
+
+    expect(wrapper.text()).toContain("Signed in as demo");
+    expect(wrapper.text()).not.toContain("Signed in as MaelisRune");
+  });
+
   it("shows the first page, my hero, the consolidation age and Refresh view", async () => {
     const api = simulated(MockScenario.PLAYED);
     const spy = vi.spyOn(api, "getRanking");
