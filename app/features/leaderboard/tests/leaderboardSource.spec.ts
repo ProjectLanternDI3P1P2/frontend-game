@@ -12,10 +12,10 @@ import { defaultRankingQuery } from "../leaderboardRules";
 import { STATISTICS_CATALOGUE } from "../statisticsCatalogue";
 import { LeaderboardSource, MockScenario, RankingStatus } from "../types";
 import { GatewayError, type GatewayClient } from "~/shared/utils/gateway";
-import { SEEDED_PLAYER_ID } from "~/features/player/seededPlayer";
+import { SIMULATED_PLAYER_ID } from "~/features/leaderboard/simulatedIdentity";
 
 const NOW = new Date("2026-10-21T12:00:00Z");
-const QUERY = defaultRankingQuery(SEEDED_PLAYER_ID);
+const QUERY = defaultRankingQuery(SIMULATED_PLAYER_ID);
 
 function simulated(scenario: MockScenario) {
   return createSimulatedLeaderboardApi({ scenario, delayMs: 0, now: () => NOW });

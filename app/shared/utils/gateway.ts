@@ -68,6 +68,11 @@ export interface GatewayClientOptions {
   fetchImpl?: typeof fetch;
   /** Injected for tests; defaults to crypto.randomUUID. */
   correlationIdFactory?: () => string;
+  /**
+   * Refreshes the session after a 401. Returns true when the request can be
+   * retried once; false means the application invalidated the session.
+   */
+  onUnauthorized?: (afterRefreshRetry: boolean) => boolean | Promise<boolean>;
 }
 
 export interface GatewayClient {
@@ -114,8 +119,8 @@ export function buildGatewayUrl(
   const isRelativeBase = normalisedBase === "" || normalisedBase.startsWith("/");
   const [service, ...servicePath] = normalisedPath.split("/");
   const apiPath =
-    service === "player"
-      ? `/api/player/${apiVersion}/${servicePath.join("/")}`
+    service === "player" || service === "leaderboard"
+      ? `/api/${service}/${apiVersion}/${servicePath.join("/")}`
       : `/api/${apiVersion}/${normalisedPath}`;
   const url = new URL(`${normalisedBase}${apiPath}`, "http://local-gateway.invalid");
 
@@ -129,7 +134,10 @@ export function createGatewayClient(options: GatewayClientOptions): GatewayClien
   const doFetch = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
   const newCorrelationId = options.correlationIdFactory ?? defaultCorrelationId;
 
-  async function request<TResponse>(req: GatewayRequest): Promise<TResponse> {
+  async function request<TResponse>(
+    req: GatewayRequest,
+    afterRefreshRetry = false,
+  ): Promise<TResponse> {
     const method = req.method ?? "GET";
     const correlationId = newCorrelationId();
     const token = req.token !== undefined ? req.token : (options.getToken?.() ?? null);
@@ -170,6 +178,12 @@ export function createGatewayClient(options: GatewayClientOptions): GatewayClien
     const payload = await response.json().catch(() => null);
 
     if (!response.ok) {
+      if (response.status === 401) {
+        const refreshed = await options.onUnauthorized?.(afterRefreshRetry);
+        if (refreshed && !afterRefreshRetry) {
+          return request<TResponse>(req, true);
+        }
+      }
       const body: GatewayErrorBody = isErrorBody(payload)
         ? payload
         : isProblemDetails(payload)

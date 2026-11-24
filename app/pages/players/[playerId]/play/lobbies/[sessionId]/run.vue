@@ -18,7 +18,7 @@ onMounted(async () => {
     hub = new PlayerHubClient(playerHubUrl(config.public.apiGatewayUrl), (snapshot) => {
       session.value = snapshot;
     });
-    session.value = await hub.getSessionSnapshot(playerId.value, sessionId.value);
+    session.value = await hub.getSessionSnapshot(sessionId.value);
   } catch (cause) {
     error.value =
       cause instanceof PlayerHubError ? cause.message : "Unable to load the run.";

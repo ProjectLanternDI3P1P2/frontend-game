@@ -22,9 +22,11 @@
     "test:e2e:open": "cypress open",
     "test": "npm run test:unit && npm run test:e2e",
     "assets:dungeon": "node scripts/dungeon-atlas/build.mjs",
+    "assets:audio": "node scripts/audio/build.mjs",
     "prepare": "husky"
   },
   "dependencies": {
+    "keycloak-js": "^26.2.4",
     "nuxt": "^4.0.0",
     "oxlint-tsgolint": "^7.0.2002",
     "vue": "^3.5.0",
@@ -43,6 +45,7 @@
     "eslint": "^9.0.0",
     "eslint-plugin-vuejs-accessibility": "^2.4.1",
     "happy-dom": "^20.0.0",
+    "sass": "^1.105.1",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
     "prettier": "3.5.3",
@@ -60,5 +63,6 @@
   "lint-staged": {
     "*.{js,mjs,ts,vue}": "eslint --fix",
     "*": "prettier --write --ignore-unknown"
-  }
+  },
+  "version": "0.3.0"
 }

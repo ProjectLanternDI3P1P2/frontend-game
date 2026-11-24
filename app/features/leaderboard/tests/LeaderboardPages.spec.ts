@@ -7,7 +7,7 @@ import LeaderboardView from "../components/LeaderboardView.vue";
 import { STATISTICS_CATALOGUE } from "../statisticsCatalogue";
 import { MockScenario, type LeaderboardApi } from "../types";
 import { GatewayError } from "~/shared/utils/gateway";
-import { SEEDED_PLAYER_ID } from "~/features/player/seededPlayer";
+import { SIMULATED_PLAYER_ID } from "~/features/leaderboard/simulatedIdentity";
 
 const stubs = {
   NuxtLink: { props: ["to"], template: '<a :href="to"><slot /></a>' },
@@ -120,7 +120,7 @@ describe("LeaderboardView", () => {
     const spy = vi.spyOn(api, "getRanking");
     const wrapper = mountWith(
       LeaderboardView,
-      { currentPlayerId: SEEDED_PLAYER_ID },
+      { currentPlayerId: SIMULATED_PLAYER_ID },
       api,
     );
     await settle();
@@ -145,7 +145,7 @@ describe("LeaderboardView", () => {
     async (scenario) => {
       const wrapper = mountWith(
         LeaderboardView,
-        { currentPlayerId: SEEDED_PLAYER_ID },
+        { currentPlayerId: SIMULATED_PLAYER_ID },
         simulated(scenario),
       );
       await settle();

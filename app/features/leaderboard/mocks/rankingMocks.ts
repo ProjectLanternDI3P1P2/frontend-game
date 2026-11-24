@@ -7,7 +7,7 @@
  *   heroes who only played earlier seasons. The rank shown is always the rank
  *   by XP over the selected period (all time, season or week), whatever the
  *   class filter, the search or the sort.
- * - The current player (`SEEDED_PLAYER_ID`, D5) owns a Warrior ranked 7th, a
+ * - The simulated current player (`SIMULATED_PLAYER_ID`) owns a Warrior ranked 7th, a
  *   Shaman ranked 58th and a Mage ranked 210th all time, the Mage being absent
  *   from the current season.
  * - Deleted players (`playerId`/`playerName` null), `rankDelta` null (NEW) or
@@ -18,7 +18,7 @@
  * (it only matters for the hero statistics of F01); `error` is handled by the
  * simulated API.
  */
-import { SEEDED_PLAYER_ID } from "~/features/player/seededPlayer";
+import { SIMULATED_PLAYER_ID } from "../simulatedIdentity";
 import {
   FactStatus,
   HeroClass,
@@ -186,7 +186,7 @@ function allTimeXp(rank: number): number {
 
 function owner(rank: number): Pick<SimulatedHero, "playerId" | "playerName"> {
   if (MY_RANKS.has(rank))
-    return { playerId: SEEDED_PLAYER_ID, playerName: MY_PLAYER_NAME };
+    return { playerId: SIMULATED_PLAYER_ID, playerName: MY_PLAYER_NAME };
   if (DELETED_PLAYER_RANKS.includes(rank)) return { playerId: null, playerName: null };
   const index = (rank * 17) % 70;
   const name = PLAYER_NAMES[index % PLAYER_NAMES.length]!;

@@ -11,7 +11,7 @@ import {
   type RankingQuery,
 } from "../types";
 import { GatewayError } from "~/shared/utils/gateway";
-import { SEEDED_PLAYER_ID } from "~/features/player/seededPlayer";
+import { SIMULATED_PLAYER_ID } from "~/features/leaderboard/simulatedIdentity";
 
 const NOW = new Date("2026-10-21T12:00:00Z");
 /** The simulated API caps the page size at 100. */
@@ -23,7 +23,7 @@ function api(scenario = MockScenario.PLAYED) {
 
 function read(overrides: Partial<RankingQuery> = {}, scenario = MockScenario.PLAYED) {
   return api(scenario).getRanking({
-    ...defaultRankingQuery(SEEDED_PLAYER_ID),
+    ...defaultRankingQuery(SIMULATED_PLAYER_ID),
     ...overrides,
   });
 }
@@ -64,7 +64,7 @@ describe("simulated ranking data", () => {
       [HeroClass.SHAMAN, 58],
       [HeroClass.MAGE, 210],
     ]);
-    expect(me.every((entry) => entry.playerId === SEEDED_PLAYER_ID)).toBe(true);
+    expect(me.every((entry) => entry.playerId === SIMULATED_PLAYER_ID)).toBe(true);
 
     const season = (await read({ period: RankingPeriod.SEASON })).me;
     expect(season.map((entry) => entry.heroClass)).toEqual([
@@ -196,7 +196,7 @@ describe("simulated hero detail, facts and public rankings", () => {
       heroName: warrior!.heroName,
       heroClass: warrior!.heroClass,
       level: warrior!.level,
-      playerId: SEEDED_PLAYER_ID,
+      playerId: SIMULATED_PLAYER_ID,
     });
     expect(detail.lastRuns.length).toBeLessThanOrEqual(4);
     expect(detail.lastRuns.length).toBeGreaterThan(0);

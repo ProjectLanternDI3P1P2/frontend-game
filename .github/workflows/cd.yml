@@ -12,15 +12,20 @@ concurrency:
 
 jobs:
   delivery:
-    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/dev'
+    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: read
-    uses: ProjectLanternDI3P1P2/platform-gitops/.github/workflows/publish-and-promote.yaml@06761f0b31acaa488e39c909bcb422a1649924d7 # main
+    uses: ProjectLanternDI3P1P2/platform-gitops/.github/workflows/publish-and-promote.yaml@d71638559bfe1b1d2cc6edd0a181cc011ed16bb0 # PR #55: accept public Docker build arguments
     with:
       application: frontend-game
-      image: registry.lantern.diiage/lantern/frontend-game
+      image: 10.4.111.200:18443/lantern/frontend-game
       prebuild_on_github: true
+      # Nuxt embeds public config in prerendered HTML during the Docker build.
+      # Keep this public, same-origin gateway URL in sync with GitOps env.yaml.
+      build_args: |
+        NUXT_PUBLIC_API_GATEWAY_URL=https://groupe7.diiage.org
+        NUXT_PUBLIC_SITE_URL=https://groupe7.diiage.org/game
     secrets:
       HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
       HARBOR_TOKEN: ${{ secrets.HARBOR_TOKEN }}

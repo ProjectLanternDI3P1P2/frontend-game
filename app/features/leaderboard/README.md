@@ -24,7 +24,10 @@ detail and facts, F04 the public `/rankings` page.
 | `/players/:playerId/heroes/:heroId/statistics` | CSR       | Personal hero data, changes after every game, no SEO value (D2). |
 
 Both are declared in `nuxt.config.ts` → `routeRules` and justified in
-`docs/rendering-modes.md`. "Me" is `SEEDED_PLAYER_ID` until Keycloak lands (D5).
+`docs/rendering-modes.md`. After the `dev` authentication merge, the private
+`/leaderboard` page uses the Player route alias `me` for its simulated heroes.
+The public `/rankings` page remains available without signing in. The source
+switch remains `LeaderboardSource.SIMULATED`; no leaderboard backend is called.
 
 ### APIs consumed (provisional contract, `types.ts`)
 
@@ -74,7 +77,7 @@ and the pagination for real; `totalCount` and `me` follow the filters.
 - **Rank:** position by XP over the selected period (all time, season, week),
   among all classes. A class filter, a search or another sort never renumbers
   the lines. `totalXp` is the XP over the period.
-- **Me** (`SEEDED_PLAYER_ID`, D5, player "MaelisRune"): Warrior 7th (trend
+- **Me** (`SIMULATED_PLAYER_ID`, player "MaelisRune"): Warrior 7th (trend
   ▲ 3, XP pending, active 12 seconds ago, rejected and pending facts), Shaman
   58th, Mage 210th and absent from the season. In the season: Warrior 2nd,
   Shaman 7th.

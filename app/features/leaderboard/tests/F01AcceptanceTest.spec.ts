@@ -40,7 +40,7 @@ import LeaderboardPage from "~/pages/leaderboard.vue";
 import StatisticsPage from "~/pages/players/[playerId]/heroes/[heroId]/statistics.vue";
 import HeroPage from "~/pages/players/[playerId]/heroes/[heroId]/index.vue";
 import DefaultLayout from "~/layouts/default.vue";
-import { SEEDED_PLAYER_ID } from "~/features/player/seededPlayer";
+import { SIMULATED_PLAYER_ID } from "~/features/leaderboard/simulatedIdentity";
 
 const playerApiMock = vi.hoisted(() => ({
   getHeroSheet: vi.fn(),
@@ -54,6 +54,15 @@ const playerApiMock = vi.hoisted(() => ({
 vi.mock("~/features/player/api/playerApi", () => ({
   usePlayerApi: () => playerApiMock,
   createPlayerApi: () => playerApiMock,
+}));
+
+vi.mock("~/features/auth/composables/useAuth", () => ({
+  useAuth: () => ({
+    isAuthenticated: computed(() => true),
+    user: computed(() => ({ username: "demo" })),
+    login: vi.fn(),
+    logout: vi.fn(),
+  }),
 }));
 
 const ROOT = join(__dirname, "../../../..");
@@ -251,7 +260,7 @@ const BLANK_ERRORS: Array<[string, unknown]> = [
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
-    return statSync(path).isDirectory() ? walk(path) : [path];
+    return statSync(path).isDirectory() ? walk(path) : [path.replaceAll("\\", "/")];
   });
 }
 
@@ -790,7 +799,7 @@ describe("F01", () => {
 
       expect(api.getRanking).toHaveBeenCalledWith(
         {
-          playerId: SEEDED_PLAYER_ID,
+          playerId: SIMULATED_PLAYER_ID,
           heroClass: null,
           period: RankingPeriod.ALL_TIME,
           search: "",
@@ -807,12 +816,12 @@ describe("F01", () => {
     function boardWithMineAt(...ranks: number[]) {
       const entries = Array.from({ length: 10 }, (_, index) =>
         ranks.includes(index + 1)
-          ? entry(index + 1, SEEDED_PLAYER_ID)
+          ? entry(index + 1, SIMULATED_PLAYER_ID)
           : entry(index + 1),
       );
       return board({
         entries,
-        me: entries.filter((e) => e.playerId === SEEDED_PLAYER_ID),
+        me: entries.filter((e) => e.playerId === SIMULATED_PLAYER_ID),
       });
     }
 
@@ -840,7 +849,7 @@ describe("F01", () => {
 
     it("CA8: my hero is recognised by its playerId even when the API sends me=[]", async () => {
       const entries = Array.from({ length: 10 }, (_, index) =>
-        index === 2 ? entry(3, SEEDED_PLAYER_ID) : entry(index + 1),
+        index === 2 ? entry(3, SIMULATED_PLAYER_ID) : entry(index + 1),
       );
       const api = apiStub({
         getRanking: vi.fn().mockResolvedValue(board({ entries })),
@@ -1080,7 +1089,7 @@ describe("F01", () => {
             source,
           );
         })
-        .map((file) => relative(ROOT, file))
+        .map((file) => relative(ROOT, file).replaceAll("\\", "/"))
         .filter(
           (file) =>
             ![
@@ -1096,7 +1105,7 @@ describe("F01", () => {
       const offenders = walk(join(ROOT, "app"))
         .filter((file) => /\.(ts|vue)$/.test(file) && !file.includes("/tests/"))
         .filter((file) => /from\s+["'][^"']*mocks\//.test(readFileSync(file, "utf8")))
-        .map((file) => relative(ROOT, file));
+        .map((file) => relative(ROOT, file).replaceAll("\\", "/"));
       expect(offenders).toEqual([
         "app/features/leaderboard/api/simulatedLeaderboardApi.ts",
       ]);
@@ -1222,7 +1231,7 @@ describe("F01", () => {
     });
 
     it('CA13: every list on both pages carries role="list"', async () => {
-      const me = [entry(87, SEEDED_PLAYER_ID)];
+      const me = [entry(87, SIMULATED_PLAYER_ID)];
       const stats = mountPage(StatisticsPage, apiStub());
       const ranking = mountPage(
         LeaderboardPage,
@@ -1242,7 +1251,7 @@ describe("F01", () => {
 
     it("CA13: my line is marked by text and aria-current, not only by colour", async () => {
       const entries = Array.from({ length: 10 }, (_, index) =>
-        index === 0 ? entry(1, SEEDED_PLAYER_ID) : entry(index + 1),
+        index === 0 ? entry(1, SIMULATED_PLAYER_ID) : entry(index + 1),
       );
       const api = apiStub({
         getRanking: vi.fn().mockResolvedValue(board({ entries, me: [entries[0]!] })),

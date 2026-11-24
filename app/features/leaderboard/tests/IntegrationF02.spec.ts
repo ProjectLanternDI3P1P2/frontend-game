@@ -26,9 +26,9 @@ import { apiStub, entry, ranking } from "./fixtures/leaderboardFixtures";
 import { heroDetail, heroFacts } from "./fixtures/rankingDetailFixtures";
 import LeaderboardPage from "~/pages/leaderboard.vue";
 import RankingsPage from "~/pages/rankings.vue";
-import { SEEDED_PLAYER_ID } from "~/features/player/seededPlayer";
+import { SIMULATED_PLAYER_ID } from "~/features/leaderboard/simulatedIdentity";
 
-const ME = SEEDED_PLAYER_ID;
+const ME = SIMULATED_PLAYER_ID;
 const NOW = new Date("2026-10-21T12:00:00Z");
 
 const NuxtLink = defineComponent({

@@ -44,6 +44,29 @@ x-api: &api
     start_period: 60s
 
 services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    restart: unless-stopped
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8081}:8080"
+    volumes:
+      - ./keycloak/realm:/opt/keycloak/data/import:ro
+      - ./keycloak/themes/lantern:/opt/keycloak/themes/lantern:ro
+    networks: [web]
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'exec 3<>/dev/tcp/127.0.0.1/9000; printf "GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3; read -r status <&3; [[ "$$status" == *" 200 "* ]]'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
   traefik:
     image: traefik:v3.6
     restart: unless-stopped
@@ -56,6 +79,8 @@ services:
       - --ping.entrypoint=health
       - --entrypoints.health.address=:8082
       - --log.level=INFO
+      - --experimental.plugins.keycloak-jwt.modulename=github.com/agilezebra/jwt-middleware
+      - --experimental.plugins.keycloak-jwt.version=v1.6.0
     ports:
       - "127.0.0.1:${API_PORT:-8088}:8080"
     volumes:
@@ -126,6 +151,25 @@ services:
       timeout: 5s
       retries: 12
       start_period: 20s
+
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    volumes:
+      - mongo-data:/data/db
+    networks: [backend]
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status() } catch (e) { rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongo:27017'}]}) }; db.hello().isWritablePrimary || quit(1)"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
   player:
     <<: *api
@@ -212,6 +256,20 @@ services:
 
   leaderboard:
     <<: *api
+    # The chiseled image has no shell; the app probes its HTTP readiness route.
+    healthcheck:
+      test: ["CMD", "dotnet", "Leaderboard.Presentation.dll", "--healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
     build:
       context: ../leaderboard-backend
       dockerfile: Dockerfile
@@ -219,7 +277,11 @@ services:
     environment:
       <<: *api-environment
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=leaderboard;Username=leaderboard;Password=${SERVICE_DB_PASSWORD:-lantern-local}"
-      OTEL_SERVICE_NAME: progression
+      ConnectionStrings__Mongo: "mongodb://mongo:27017/?replicaSet=rs0&directConnection=true"
+      OTEL_SERVICE_NAME: leaderboard
+      RawEventConsumer__Enabled: "true"
+      # Reserved progression routes for future producers and consumers.
+      # The current Leaderboard consumer uses RawEventConsumer__QueueName.
       RabbitMq__ExchangeName: progression.events
       RabbitMq__QueueName: progression.events.v1
       RabbitMq__PrefetchCount: ${RABBITMQ_PREFETCH_COUNT:-16}
@@ -263,6 +325,7 @@ networks:
 volumes:
   postgres-data:
   rabbitmq-data:
+  mongo-data:
 
 secrets:
   github_packages_credentials:

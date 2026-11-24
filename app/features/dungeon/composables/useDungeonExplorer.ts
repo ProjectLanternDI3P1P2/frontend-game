@@ -9,7 +9,13 @@
  * backend did not accept.
  */
 import { computed, ref, shallowRef, watch } from "vue";
-import { defeatFloorBoss, joinDungeon, moveHero } from "../api/dungeonApi";
+import {
+  defeatFloorBoss,
+  joinDungeon,
+  moveHero,
+  openChest as requestOpenChest,
+  spawnMob,
+} from "../api/dungeonApi";
 import type { DecodedFloor } from "../dungeonMap";
 import {
   Cell,
@@ -22,15 +28,21 @@ import {
   roomAt,
   step,
 } from "../dungeonMap";
+import { diffRunCues } from "../audio/diffRunCues";
+import type { DungeonSound } from "../audio/useDungeonAudio";
+import { SILENT_DUNGEON } from "../audio/useDungeonAudio";
 import { MOB_DEATH_MS, MOVE_COOLDOWN_MS, reveal } from "../dungeonRules";
 import { heroAppearanceOf } from "../tiles/hero";
 import type {
   Direction,
   DungeonElement,
+  DungeonRoom,
   DungeonRunResponse,
+  EnemyKindName,
   MobState,
   Position,
 } from "../types";
+import type { ChestLootInteraction } from "~/features/reward/types";
 import type { LoadedFloor } from "./useDungeonFloor";
 import { loadFloor, prefetchFloor } from "./useDungeonFloor";
 
@@ -39,7 +51,16 @@ const MAX_PENDING_MOVES = 4;
 
 export type ExplorerStatus = "loading" | "ready" | "error";
 
-export function useDungeonExplorer(runId: string) {
+export interface DungeonExplorerOptions {
+  /** ADR-FE-016: silent unless the page wires the dungeon's sounds. */
+  sound?: DungeonSound;
+}
+
+export function useDungeonExplorer(
+  runId: string,
+  options: DungeonExplorerOptions = {},
+) {
+  const sound = options.sound ?? SILENT_DUNGEON;
   const run = shallowRef<DungeonRunResponse | null>(null);
   const loaded = shallowRef<LoadedFloor | null>(null);
   const hero = ref<Position>({ x: 0, y: 0 });
@@ -48,6 +69,8 @@ export function useDungeonExplorer(runId: string) {
   const status = ref<ExplorerStatus>("loading");
   const errorMessage = ref<string | null>(null);
   const announcement = ref("");
+  /** Reward owns the presentation state; Dungeon owns when the interaction may start. */
+  const chestLoot = shallowRef<ChestLootInteraction | null>(null);
   /** Changes identity on every refused key, so the view can replay its bump. */
   const bump = shallowRef<{ direction: Direction; id: number } | null>(null);
   /** Where the hero last tried to go: the view turns it that way. */
@@ -63,6 +86,9 @@ export function useDungeonExplorer(runId: string) {
   let generation = 0;
   let bumpCount = 0;
   let isFighting = false;
+  let chestRequestGeneration = 0;
+  let chestAbortController: AbortController | null = null;
+  let disposed = false;
 
   const floor = computed<DecodedFloor | null>(() => loaded.value?.floor ?? null);
   const currentRoom = computed(() =>
@@ -77,6 +103,7 @@ export function useDungeonExplorer(runId: string) {
   const mobs = computed(() => run.value?.mobs ?? []);
   /** Mobs the last turn killed: they slide to where they fell, then fade out. */
   const dyingMobs = shallowRef<MobState[]>([]);
+  const movementBlocked = computed(() => disposed || chestLoot.value !== null);
 
   // The server dates each death: only a new turn brings new deaths to show.
   watch(
@@ -92,6 +119,15 @@ export function useDungeonExplorer(runId: string) {
     },
     { flush: "sync" },
   );
+  // ADR-FE-016: what the server confirms is heard from the snapshots alone.
+  watch(
+    run,
+    (next, previous) => {
+      if (disposed) return;
+      for (const cue of diffRunCues(previous ?? null, next)) sound.play(cue);
+    },
+    { flush: "sync" },
+  );
   /** In the boss room, boss still standing: the fight can start. */
   const canFightBoss = computed(
     () =>
@@ -99,15 +135,34 @@ export function useDungeonExplorer(runId: string) {
       !floorBossDefeated.value &&
       currentRoom.value?.type === "boss",
   );
+  const openableChest = computed<DungeonElement | null>(() => {
+    const state = run.value;
+    const current = floor.value;
+    if (state?.status !== "active" || !current) return null;
+    const opened = new Set(state.openedChestElementIds);
+    return (
+      current.elements.find(
+        (element) =>
+          element.type === "item" &&
+          !opened.has(element.id) &&
+          Math.abs(element.x - hero.value.x) <= 1 &&
+          Math.abs(element.y - hero.value.y) <= 1,
+      ) ?? null
+    );
+  });
+  const canOpenChest = computed(() => openableChest.value !== null);
 
   async function start(): Promise<void> {
+    disposed = false;
     status.value = "loading";
     errorMessage.value = null;
     try {
       const state = await joinDungeon(runId);
       await enterFloor(state);
+      if (disposed) return;
       status.value = "ready";
     } catch (error) {
+      if (disposed) return;
       status.value = "error";
       errorMessage.value = describe(error);
     }
@@ -115,6 +170,7 @@ export function useDungeonExplorer(runId: string) {
 
   async function enterFloor(state: DungeonRunResponse): Promise<void> {
     const next = await loadFloor(state.seed, state.currentFloor);
+    if (disposed) return;
     run.value = state;
     loaded.value = next;
     revealed.value = new Uint8Array(next.floor.width * next.floor.height);
@@ -164,6 +220,7 @@ export function useDungeonExplorer(runId: string) {
     const current = floor.value;
     const state = run.value;
     if (!current || state?.status !== "active") return;
+    if (movementBlocked.value) return;
     if (pendingMoves.value >= MAX_PENDING_MOVES) return;
     if (dyingMobs.value.length > 0) return;
 
@@ -184,20 +241,28 @@ export function useDungeonExplorer(runId: string) {
       // Same rule as the backend: no request for a move it would refuse.
       bump.value = { direction, id: ++bumpCount };
       const isGate = cellAt(current, target.x, target.y) === Cell.Gate;
-      announce(isGate ? "The gate is locked: defeat the boss of this floor first." : "Blocked.");
+      sound.play(isGate ? "gateLocked" : "bump");
+      announce(
+        isGate
+          ? "The gate is locked: defeat the boss of this floor first."
+          : "Blocked.",
+      );
       return;
     }
 
     // Same rule as the backend: a mob blocks the way.
     if (mobs.value.some((mob) => samePosition(mob, target))) {
       bump.value = { direction, id: ++bumpCount };
+      sound.play("bump");
       announce("A mob blocks the way.");
       return;
     }
 
     placeHero(target);
+    sound.play("step");
     const here = elementsAt(current, target);
-    if (here.length > 0) announce(`On this tile: ${here.map((e) => e.type).join(", ")}.`);
+    if (here.length > 0)
+      announce(`On this tile: ${here.map((e) => e.type).join(", ")}.`);
 
     pendingMoves.value++;
     const moveGeneration = generation;
@@ -271,8 +336,148 @@ export function useDungeonExplorer(runId: string) {
     }
   }
 
+  /**
+   * Opens the nearby item chest after all earlier movement has been confirmed.
+   * The modal appears immediately and blocks movement while Dungeon coordinates Reward.
+   */
+  function openChest(): void {
+    if (movementBlocked.value) return;
+    const chest = openableChest.value;
+    if (!chest) {
+      announce("There is no chest here.");
+      return;
+    }
+
+    const interaction: ChestLootInteraction = {
+      chestElementId: chest.id,
+      status: "loading",
+      result: null,
+      errorMessage: null,
+    };
+    chestLoot.value = interaction;
+    const openGeneration = generation;
+    queue = queue.then(async () => {
+      if (
+        disposed ||
+        openGeneration !== generation ||
+        chestLoot.value !== interaction ||
+        run.value?.status !== "active"
+      )
+        return;
+      await requestChestLoot(interaction);
+    });
+  }
+
+  /** Sends or retries the active interaction through Dungeon, never directly to Reward. */
+  async function requestChestLoot(interaction: ChestLootInteraction): Promise<void> {
+    const requestGeneration = ++chestRequestGeneration;
+    chestAbortController?.abort();
+    const controller = new AbortController();
+    chestAbortController = controller;
+    try {
+      const response = await requestOpenChest(
+        runId,
+        interaction.chestElementId,
+        controller.signal,
+      );
+      if (!isCurrentChestRequest(interaction, requestGeneration)) return;
+      run.value = response.run;
+      errorMessage.value = null;
+      chestLoot.value = {
+        ...interaction,
+        status: "success",
+        result: response.loot,
+        errorMessage: null,
+      };
+      announce(
+        response.loot.alreadyGenerated ? "Chest loot recalled." : "Chest opened.",
+      );
+    } catch (error) {
+      if (!isCurrentChestRequest(interaction, requestGeneration)) return;
+      chestLoot.value = {
+        ...interaction,
+        status: "error",
+        result: null,
+        errorMessage: describe(error),
+      };
+      await refreshRunAfterChestFailure();
+    } finally {
+      if (requestGeneration === chestRequestGeneration) chestAbortController = null;
+    }
+  }
+
+  function isCurrentChestRequest(
+    interaction: ChestLootInteraction,
+    requestGeneration: number,
+  ): boolean {
+    return (
+      !disposed &&
+      requestGeneration === chestRequestGeneration &&
+      chestLoot.value?.chestElementId === interaction.chestElementId
+    );
+  }
+
+  /** A retry targets the same chest; Dungeon derives the same stable Reward command id. */
+  function retryChestLoot(): void {
+    const interaction = chestLoot.value;
+    if (!interaction || interaction.status !== "error") return;
+    const loading: ChestLootInteraction = {
+      ...interaction,
+      status: "loading",
+      result: null,
+      errorMessage: null,
+    };
+    chestLoot.value = loading;
+    void requestChestLoot(loading);
+  }
+
+  function closeChestLoot(): void {
+    if (!chestLoot.value) return;
+    chestRequestGeneration++;
+    chestAbortController?.abort();
+    chestAbortController = null;
+    chestLoot.value = null;
+  }
+
+  /** Debug only: queues a mob spawn on a clicked tile in the sandbox. */
+  function spawn(kind: EnemyKindName, position: Position): void {
+    const spawnGeneration = generation;
+    queue = queue.then(async () => {
+      if (disposed || spawnGeneration !== generation) return;
+      try {
+        run.value = await spawnMob(runId, kind, position);
+      } catch (error) {
+        await resynchronise(error);
+      }
+    });
+  }
+
+  /** Invalidates in-flight responses when this explorer leaves the page. */
+  function dispose(): void {
+    disposed = true;
+    generation++;
+    closeChestLoot();
+  }
+
+  /** Re-reads the authoritative chest state while keeping Reward's error modal visible. */
+  async function refreshRunAfterChestFailure(): Promise<void> {
+    try {
+      const authoritative = await joinDungeon(runId);
+      if (disposed) return;
+      if (authoritative.currentFloor !== run.value?.currentFloor) {
+        await enterFloor(authoritative);
+      } else {
+        run.value = authoritative;
+        placeHero(authoritative.hero);
+      }
+    } catch {
+      // The actionable opening error is already displayed in the modal.
+    }
+  }
+
   /** The backend refused or the outcome is unknown: its state wins (ADR-FE-008). */
   async function resynchronise(error: unknown): Promise<void> {
+    if (disposed) return;
     generation++;
     errorMessage.value = describe(error);
     try {
@@ -315,9 +520,18 @@ export function useDungeonExplorer(runId: string) {
     mobs,
     dyingMobs,
     canFightBoss,
+    canOpenChest,
+    openableChest,
+    movementBlocked,
+    chestLoot,
     start,
     move,
     fightBoss,
+    openChest,
+    retryChestLoot,
+    closeChestLoot,
+    dispose,
+    spawn,
   };
 }
 
@@ -325,21 +539,45 @@ function samePosition(a: Position, b: Position): boolean {
   return a.x === b.x && a.y === b.y;
 }
 
-function describeRoom(floor: DecodedFloor, roomId: number): string {
+/** What the live region says on entering a room. */
+export function describeRoom(floor: DecodedFloor, roomId: number): string {
   const room = floor.rooms[roomId]!;
   const count = (type: DungeonElement["type"]) =>
-    floor.elements.filter((element) => element.roomId === roomId && element.type === type)
-      .length;
+    floor.elements.filter(
+      (element) => element.roomId === roomId && element.type === type,
+    ).length;
   const traps = count("trap");
   const details = [
     room.type === "combat" ? `${count("enemy")} enemies` : null,
     traps > 0 ? `beware of ${traps} spike traps` : null,
     room.type === "boss" ? describeBoss(floor) : null,
     room.type === "treasure" ? "a treasure lies here" : null,
+    room.type === "secret" ? describeEasterEgg(room.easterEgg) : null,
   ].filter(Boolean);
 
   const title = `Room ${room.id + 1} of ${floor.rooms.length}`;
   return details.length ? `${title}: ${details.join(", ")}.` : `${title}.`;
+}
+
+/**
+ * What a secret room holds, said in words: its look is never the only sign that it is a
+ * secret room, for those who cannot see the screen (ADR-FE-015).
+ */
+function describeEasterEgg(easterEgg: DungeonRoom["easterEgg"]): string {
+  switch (easterEgg) {
+    case "outerWildsShip":
+      return "a strange room: a little ship has landed here";
+    case "outerWildsCampfire":
+      return "a strange room: a campfire burns, a marshmallow roasting over it";
+    case "celeste":
+      return "a strange room: a winged strawberry floats in the air";
+    case "minecraft":
+      return "a strange room: a lone grass block stands in the middle of the dungeon";
+    case "portal":
+      return "a strange room: a blue and an orange portal hang on the back wall";
+    default:
+      return "a strange room";
+  }
 }
 
 function describeBoss(floor: DecodedFloor): string {

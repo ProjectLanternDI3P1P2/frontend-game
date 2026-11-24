@@ -52,13 +52,13 @@ import {
 import { GatewayError, createGatewayClient } from "~/shared/utils/gateway";
 import type { GatewayClient } from "~/shared/utils/gateway";
 import LeaderboardPage from "~/pages/leaderboard.vue";
-import { SEEDED_PLAYER_ID } from "~/features/player/seededPlayer";
+import { SIMULATED_PLAYER_ID } from "~/features/leaderboard/simulatedIdentity";
 
 const ROOT = join(__dirname, "../../../..");
 const FEATURE_DIR = join(ROOT, "app/features/leaderboard");
 const SHEET = join(ROOT, "docs/features/F00-leaderboard-ranking-foundation.md");
 const NOW = new Date("2026-10-21T12:00:00.000Z");
-const ME = SEEDED_PLAYER_ID;
+const ME = SIMULATED_PLAYER_ID;
 
 const stubs = {
   NuxtLink: { props: ["to"], template: '<a :href="to"><slot /></a>' },
@@ -159,7 +159,7 @@ function contractSource(): string {
   const sheet = readFileSync(SHEET, "utf8");
   const start = sheet.indexOf("### Contrat de données provisoire");
   expect(start, "contract section in the sheet").toBeGreaterThan(-1);
-  const block = sheet.slice(start).match(/```ts\n([\s\S]*?)```/);
+  const block = sheet.slice(start).match(/```ts\r?\n([\s\S]*?)```/);
   expect(block, "contract code block").not.toBeNull();
   return block![1]!;
 }
@@ -167,7 +167,7 @@ function contractSource(): string {
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
-    return statSync(path).isDirectory() ? walk(path) : [path];
+    return statSync(path).isDirectory() ? walk(path) : [path.replaceAll("\\", "/")];
   });
 }
 

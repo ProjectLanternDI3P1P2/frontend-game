@@ -23,9 +23,20 @@ export type HeroSlot = (typeof HERO_SLOTS)[number];
 
 /**
  * The pages of the art: `p1` stands, walks and runs without a weapon; `pONE1` to `pONE3`
- * fight with a weapon in one hand.
+ * fight with a weapon in one hand, `pBOW1` to `pBOW3` with a bow, `pPOL1` to `pPOL3` with a
+ * polearm (spear, halberd). The second page of each fighting style holds its idle and move.
  */
-export type HeroPage = "p1" | "pONE1" | "pONE2" | "pONE3";
+export type HeroPage =
+  | "p1"
+  | "pONE1"
+  | "pONE2"
+  | "pONE3"
+  | "pBOW1"
+  | "pBOW2"
+  | "pBOW3"
+  | "pPOL1"
+  | "pPOL2"
+  | "pPOL3";
 
 /** A piece of the art: its style (`humn`, `bob1`, `sw01`…) and its colour (v01, v02…). */
 export interface HeroPiece {
@@ -33,7 +44,10 @@ export interface HeroPiece {
   variant: number;
 }
 
-/** The art's code of each layer, in the names of its sheets. */
+/**
+ * The art's code of each layer, in the names of its sheets. `shield` is the off hand
+ * (`7tlb`): a shield with a one-handed weapon, a quiver with a bow.
+ */
 export const HERO_LAYER_CODES: Record<HeroSlot, string> = {
   body: "0bas",
   outfit: "1out",
@@ -59,13 +73,30 @@ export const HERO_CATALOGUE = {
     hair: { bob1: 13, dap1: 13 },
     hat: { pfht: 5, pnty: 5 },
   },
+  // The dungeon: on guard and moving, by fighting style (`features/dungeon/tiles/hero.ts`).
   pONE2: {
     body: { humn: 10 },
-    outfit: { fstr: 5, pfpn: 5 },
+    outfit: { undi: 1, boxr: 1, fstr: 5, pfpn: 5 },
     hair: { bob1: 13, dap1: 13 },
     hat: { pfht: 5, pnty: 5 },
-    weapon: { sw01: 5, ax01: 5, mc01: 5 },
+    weapon: { sw01: 5, sw02: 5, ax01: 5, mc01: 5, wand: 4 },
     shield: { sh01: 5, sh02: 5, sh03: 5 },
+  },
+  pBOW2: {
+    body: { humn: 10 },
+    outfit: { undi: 1, boxr: 1, fstr: 5, pfpn: 5 },
+    hair: { bob1: 13, dap1: 13 },
+    hat: { pfht: 5, pnty: 5 },
+    weapon: { bo01: 5, bo02: 5, bo03: 5 },
+    shield: { qv01: 8 },
+  },
+  // Held in both hands: no shield.
+  pPOL2: {
+    body: { humn: 10 },
+    outfit: { undi: 1, boxr: 1, fstr: 5, pfpn: 5 },
+    hair: { bob1: 13, dap1: 13 },
+    hat: { pfht: 5, pnty: 5 },
+    weapon: { sp01: 5, sp02: 5, hb01: 5 },
   },
 } satisfies Partial<Record<HeroPage, Partial<Record<HeroSlot, HeroStyles>>>>;
 

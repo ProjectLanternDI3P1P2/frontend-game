@@ -22,13 +22,14 @@ copying `app/features/dungeon/`, `app/pages/dungeon/` and the route rule.
 
 ### APIs consumed
 
-| Call               | Gateway route                                    | Cached                                 |
-| ------------------ | ------------------------------------------------ | -------------------------------------- |
-| `createDungeonRun` | `POST /api/v1/dungeon-runs`                      | never                                  |
-| `joinDungeon`      | SignalR `/hubs/dungeons` → `JoinDungeon`         | never: the run is mutable              |
-| `moveHero`         | SignalR `/hubs/dungeons` → `MoveHero`            | never                                  |
-| `defeatFloorBoss`  | `POST /api/v1/dungeon-runs/{runId}/boss-defeats` | never                                  |
-| `fetchDungeonMap`  | `GET /api/v1/dungeons/{seed}/map?floor=n`        | forever: a floor is immutable per seed |
+| Call               | Gateway route                                               | Cached                                 |
+| ------------------ | ----------------------------------------------------------- | -------------------------------------- |
+| `createDungeonRun` | `POST /api/v1/dungeon-runs`                                 | never                                  |
+| `joinDungeon`      | SignalR `/hubs/dungeons` → `JoinDungeon`                    | never: the run is mutable              |
+| `moveHero`         | SignalR `/hubs/dungeons` → `MoveHero`                       | never                                  |
+| `defeatFloorBoss`  | `POST /api/v1/dungeon-runs/{runId}/boss-defeats`            | never                                  |
+| `openChest`        | `POST /api/v1/dungeon-runs/{runId}/chests/{elementId:guid}/open` | never                                  |
+| `fetchDungeonMap`  | `GET /api/v1/dungeons/{seed}/map?floor=n`                   | forever: a floor is immutable per seed |
 
 The fog of war survives a reload: the run carries the tiles the hero stood on
 (`visitedTiles`), and the explorer reveals around each of them again on arrival
@@ -41,6 +42,27 @@ The Player lobby now owns the normal start flow: it creates the game session,
 passes an optional replay seed to Dungeon, then opens `/dungeon/:runId` after
 Player returns the created run. The standalone `/dungeon` launcher remains a
 development explorer for starting a run directly against Dungeon.
+
+### Chest interaction
+
+Press **E** or click **Open chest (E)** while standing on the chest or any of
+its eight neighbouring tiles (a 3 × 3 area). The compact prompt appears above
+the nearby unopened chest, with an entrance animation that respects reduced
+motion preferences.
+
+Opening is queued after earlier moves, which continue to use the Dungeon
+SignalR Hub. The chest action uses the REST endpoint listed above; the frontend
+never calls Reward directly. Dungeon returns `{ run, loot }` after Reward has
+generated or replayed the contents. The sprite changes to the matching open
+asset only from the confirmed `run.openedChestElementIds` state. Reloading
+restores that state; a failed request refreshes the authoritative run instead
+of keeping a predicted opening.
+
+While the request and its loading/result/error modal are visible, movement is
+blocked. Dungeon owns the interaction rule and transport; the Reward feature
+owns `ChestLootModal` and the reward result types. Retrying calls the same
+Dungeon chest route, whose stable server-side identity replays the same loot.
+No item is added automatically to an inventory.
 
 ### How it stays fast without an engine or a canvas (ADR-FE-005, ADR-FE-006)
 
@@ -57,26 +79,26 @@ development explorer for starting a run directly against Dungeon.
 
 ### Files
 
-| File                                | Responsibility                                                         |
-| ----------------------------------- | ---------------------------------------------------------------------- |
-| `types.ts`                          | Hand-written mirror of the Dungeon contract (ADR-FE-011).              |
-| `api/dungeonApi.ts`                 | The only file that reaches the Gateway.                                |
-| `dungeonMap.ts`                     | Decodes a floor; walkability, rooms and elements lookups. Pure.        |
-| `dungeonRules.ts`                   | Key mapping (physical keys: WASD = ZQSD), camera, fog of war. Pure.    |
-| `tiles/tileset.ts`                  | Sprite sheet geometry, themes. Data only.                              |
-| `tiles/atlas.generated.ts`          | Layout of the atlas, written by `npm run assets:dungeon`. Do not edit. |
-| `tiles/sprites.ts`                  | Animated sprites of the elements and boss gate. Data only.             |
+| File                                | Responsibility                                                                                              |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `types.ts`                          | Hand-written mirror of the Dungeon contract (ADR-FE-011).                                                   |
+| `api/dungeonApi.ts`                 | The only file that reaches the Gateway.                                                                     |
+| `dungeonMap.ts`                     | Decodes a floor; walkability, rooms and elements lookups. Pure.                                             |
+| `dungeonRules.ts`                   | Key mapping (physical keys: WASD = ZQSD), camera, fog of war. Pure.                                         |
+| `tiles/tileset.ts`                  | Sprite sheet geometry, themes. Data only.                                                                   |
+| `tiles/atlas.generated.ts`          | Layout of the atlas, written by `npm run assets:dungeon`. Do not edit.                                      |
+| `tiles/sprites.ts`                  | Animated sprites of the elements and boss gate. Data only.                                                  |
 | `tiles/hero.ts`                     | The hero's paper doll: random look, layers by facing. Its sheets come from `features/player/appearance.ts`. |
-| `tiles/autotile.ts`                 | Chooses the sprites of each tile from its neighbours. Deterministic.   |
-| `composables/useDungeonFloor.ts`    | Immutable per-seed floor cache.                                        |
-| `composables/useDungeonExplorer.ts` | Run state, predicted moves, fog, announcements.                        |
-| `composables/useDungeonLauncher.ts` | Starts or replays an exploration.                                      |
-| `components/DungeonViewport.vue`    | Draws the visible tiles and tokens.                                    |
-| `components/DungeonMinimap.vue`     | Room-level map, Isaac-style.                                           |
-| `components/DungeonControls.vue`    | On-screen directional pad.                                             |
-| `app/assets/dongeon/`               | Room kits (`kit/`), the atlases built from them, props and objects.    |
-| `app/assets/heroes/mana-seed/`      | The hero's sheets, one folder per layer; owned by the Player feature's catalogue. |
-| `scripts/dungeon-atlas/`            | Builds the atlases from the kits (`npm run assets:dungeon`).           |
+| `tiles/autotile.ts`                 | Chooses the sprites of each tile from its neighbours. Deterministic.                                        |
+| `composables/useDungeonFloor.ts`    | Immutable per-seed floor cache.                                                                             |
+| `composables/useDungeonExplorer.ts` | Run state, predicted moves, fog, announcements.                                                             |
+| `composables/useDungeonLauncher.ts` | Starts or replays an exploration.                                                                           |
+| `components/DungeonViewport.vue`    | Draws the visible tiles and tokens.                                                                         |
+| `components/DungeonMinimap.vue`     | Room-level map, Isaac-style.                                                                                |
+| `components/DungeonControls.vue`    | On-screen directional pad.                                                                                  |
+| `app/assets/dongeon/`               | Room kits (`kit/`), the atlases built from them, props and objects.                                         |
+| `app/assets/heroes/mana-seed/`      | The hero's sheets, one folder per layer; owned by the Player feature's catalogue.                           |
+| `scripts/dungeon-atlas/`            | Builds the atlases from the kits (`npm run assets:dungeon`).                                                |
 
 ### How walls are drawn
 
@@ -152,7 +174,7 @@ never half pixels.
 
 ### Floors, bosses and doors
 
-There are no buttons and no stairs: everything happens by walking.
+Floor progression happens by walking into the boss and then its open gate.
 
 - The party arrives on a floor down a ladder, in the middle of the start room
   (`entrance` in the map). The start room has no door of its own.
@@ -169,11 +191,14 @@ There are no buttons and no stairs: everything happens by walking.
 - Defeating the boss of the last floor, which has no gate, wins the run.
 
 The hero is a Mana Seed paper doll (`tiles/hero.ts`): a body, an outfit, hair,
-maybe a hat, a weapon and a shield, each on its own sheet, stacked in one window
-that plays the same frames. It stands on guard and shuffles between tiles with
-its weapon drawn, facing the way it last tried to go in all four directions; the
-weapon and the shield pass in front of or behind the body with the facing, as
-the art's layer order guides say. Headwear hides the hair, which would stick out
+maybe a hat, a weapon and what its other hand holds, each on its own sheet,
+stacked in one window that plays the same frames. It fights in one of three
+styles, each drawn from its own page of the art: a one-handed weapon and a
+shield (`pONE2`), a bow and a quiver (`pBOW2`), or a spear or halberd in both
+hands (`pPOL2`). It stands on guard and shuffles between tiles with its weapon
+drawn, facing the way it last tried to go in all four directions; the weapon
+and the off hand pass in front of or behind the body with the facing, as the
+art's layer order guides say. Headwear hides the hair, which would stick out
 of it. Until the run receives the hero from the
 Player service, its look is drawn at random from the run id
 (`heroAppearanceOf`): a new dungeon, a new hero, the same one on every floor and
@@ -183,6 +208,37 @@ Other characters come from the objects sheet: items are chests, chosen by
 the element's id, and traps spikes. Every enemy, the boss included (twice the
 size), is the art team's `placeholder_mob.png` for now: a single image, so it
 floats above its tile over a shadow that stays on the floor.
+
+### Easter-egg rooms
+
+Once in a long while (the odds are the Dungeon service's `EasterEggOneIn`), an
+empty room is a `secret` one: a tribute, decorations only. The Outer Wilds
+ship, its campfire, a Celeste strawberry, a Minecraft grass block, or the two
+Portal portals on the back wall, each in its own room. Its `easterEgg` names it
+(`outerWildsShip`, `outerWildsCampfire`, `celeste`, `minecraft`, `portal`), and
+each decoration is an element of type `decoration` whose `kind` says what it
+shows.
+
+- The sprites are original pixel art in one sheet,
+  `app/assets/dongeon/easter-eggs.png` (200 x 64), drawn by the scripts in
+  `scripts/easter-eggs/` (`python3 final.py <out.png>`); it can also be edited by
+  hand in Aseprite or Piskel. `DECORATIONS` in `tiles/sprites.ts` cuts it.
+- A decoration stands on the first tile of its footprint, in reading order; the
+  ground under it (`decoration` cells) blocks movement and gets no furniture.
+  The portals stand on the top row, walkable, and hang on the wall above it.
+- The walls and the floor of a secret room stay bare (no litter, no candles at the foot of
+  the walls, nothing hung on them), so that nothing overlaps the portals on the wall.
+- A decoration whose kind the client does not know (a newer service, a typo) is drawn as
+  `MISSING_DECORATION`, a violet and black checkerboard in the sheet, like Minecraft's
+  missing texture, rather than leaving a hole in the room.
+- Entering a secret room is announced like any room, with what it holds.
+- To add one: draw it in the sheet, add its kind to `DecorationKindName` and
+  `DECORATIONS`, add the game to `EasterEggName` and its announcement, then its
+  room template on the Dungeon service.
+- To see them: the dev sandbox seed `0000000SANDBX` stacks the five rooms north
+  of its bare ones; `0S8QMP5GDPJ11` (ship), `0EANG6PJ9ZAV7` (campfire),
+  `0XBWXVS90496E` (Celeste), `01GWTHZB70BF7` (Minecraft) and `0CR57NSZKFK60`
+  (Portal) hide one on their first floor.
 
 ### Accessibility (ADR-FE-015)
 
@@ -198,14 +254,14 @@ HUD, the minimap and the actions float over the board.
 
 ### Test coverage
 
-| Level | File                               | What it proves                                                                                                                                                                                                                |
-| ----- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unit  | `tests/dungeonMap.spec.ts`         | Decoding of real backend payloads, contract drift detection, walkability rule.                                                                                                                                                |
-| Unit  | `tests/autotile.spec.ts`           | Deterministic visuals, a rim above every face, walls two tiles high, closed corners, nothing below south walls, hangings on tall walls only, torches by the gate, pools and their banks, tombs, rooms dressed for their kind. |
-| Unit  | `tests/sprites.spec.ts`            | Animated sprites: chests only for items, the boss, the doors.                  |
-| Unit  | `tests/hero.spec.ts`               | One look per run, pieces from the catalogue only, layer order by facing, rows and feet. |
-| Unit  | `tests/dungeonRules.spec.ts`       | Key mapping, camera clamping, fog of war (void under the walls included).       |
-| Unit  | `tests/useDungeonExplorer.spec.ts` | Fog and minimap rebuilt from the visited tiles, predicted moves in order, no request into a wall or a locked gate, boss fight opens the gate, resync on refusal, one fetch per floor. |
+| Level | File                               | What it proves                                                                                                                                                                                                                                                 |
+| ----- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit  | `tests/dungeonMap.spec.ts`         | Decoding of real backend payloads, contract drift detection, walkability rule.                                                                                                                                                                                 |
+| Unit  | `tests/autotile.spec.ts`           | Deterministic visuals, a rim above every face, walls two tiles high, closed corners, nothing below south walls, hangings on tall walls only, torches by the gate, pools and their banks, tombs, rooms dressed for their kind.                                  |
+| Unit  | `tests/sprites.spec.ts`            | Animated sprites: chests only for items, the boss, the doors.                                                                                                                                                                                                  |
+| Unit  | `tests/hero.spec.ts`               | One look per run, pieces from the catalogue only, layer order by facing, rows and feet.                                                                                                                                                                        |
+| Unit  | `tests/dungeonRules.spec.ts`       | Key mapping, camera clamping, fog of war (void under the walls included).                                                                                                                                                                                      |
+| Unit  | `tests/useDungeonExplorer.spec.ts` | Fog and minimap rebuilt from the visited tiles, predicted moves in order, no request into a wall or a locked gate, boss fight opens the gate, nearby chest interaction through Dungeon, modal movement lock and retry, resync on refusal, one fetch per floor. |
 
 The fixtures in `tests/fixtures/` were produced by the Dungeon service's query
 handlers: regenerate them when the contract changes.

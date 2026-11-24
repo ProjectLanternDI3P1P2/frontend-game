@@ -14,11 +14,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 
 COPY . .
-# Nuxt embeds public config in prerendered HTML during this build.
-# Compose overrides this default with '/' so browser requests use Traefik
-# on the frontend's origin. Runtime ENV alone cannot rewrite static HTML.
-ARG NUXT_PUBLIC_API_GATEWAY_URL=http://localhost:8080
-ENV NUXT_PUBLIC_API_GATEWAY_URL=$NUXT_PUBLIC_API_GATEWAY_URL
+# Public deployment settings are supplied when the Node server starts. Keeping
+# them out of the build stage makes one image usable in every environment.
 RUN npm run build
 
 FROM node:24-bookworm-slim AS runtime

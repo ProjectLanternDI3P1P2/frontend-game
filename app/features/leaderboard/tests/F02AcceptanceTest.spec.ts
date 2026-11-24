@@ -18,9 +18,9 @@ import {
 } from "../types";
 import { apiStub, entry, ranking } from "./fixtures/leaderboardFixtures";
 import LeaderboardPage from "~/pages/leaderboard.vue";
-import { SEEDED_PLAYER_ID } from "~/features/player/seededPlayer";
+import { SIMULATED_PLAYER_ID } from "~/features/leaderboard/simulatedIdentity";
 
-const ME = SEEDED_PLAYER_ID;
+const ME = SIMULATED_PLAYER_ID;
 const stubs = {
   NuxtLink: { props: ["to"], template: '<a :href="to"><slot /></a>' },
   UiIconButton: true,

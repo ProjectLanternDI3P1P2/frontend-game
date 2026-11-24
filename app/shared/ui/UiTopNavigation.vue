@@ -20,6 +20,9 @@ defineProps<{
           {{ item.label }}
         </NuxtLink>
       </nav>
+      <div v-if="$slots.actions" class="top-navigation__actions">
+        <slot name="actions" />
+      </div>
     </div>
   </header>
 </template>
@@ -66,6 +69,12 @@ defineProps<{
       color: var(--color-text-highlight);
     }
   }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
 }
 
 @media (max-width: 36rem) {
@@ -80,6 +89,10 @@ defineProps<{
       width: 100%;
       justify-content: space-between;
       gap: var(--space-2);
+    }
+
+    &__actions {
+      align-self: flex-end;
     }
   }
 }
