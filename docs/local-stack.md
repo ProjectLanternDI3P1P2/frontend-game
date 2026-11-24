@@ -267,6 +267,36 @@ Sous Windows PowerShell, utiliser `curl.exe` pour ces commandes.
 En mode sans fronts, utiliser `http://localhost:8088` pour les vérifications
 API/SignalR ; les deux endpoints frontend `/healthz` ne sont pas disponibles.
 
+## Tests end-to-end
+
+La suite Cypress tourne contre la variante sans les fronts : Traefik, Keycloak,
+PostgreSQL, RabbitMQ, Player, Combat, Dungeon et Reward. Leaderboard n'est ni
+construit ni démarré. Le jeu est servi depuis son build Nuxt sur le port 3000.
+Les décisions sont dans [e2e/README.md](e2e/README.md).
+
+Depuis `frontend-game`, avec Python 3.12 (`py` sous Windows) :
+
+```sh
+docker compose -f compose.backend.dev.yaml build player combat dungeon reward
+npm run build
+python3 scripts/e2e/e2e_parallel.py backends --spec cypress/e2e/play-solo-run.cy.ts
+python3 scripts/e2e/e2e_parallel.py tests --spec cypress/e2e/play-solo-run.cy.ts
+```
+
+- `backends` lance la stack en arrière-plan et rend la main tout de suite ;
+  `tests` attend que les huit services soient sains, active le password grant
+  sur le client `lantern-public` (stack E2E uniquement), démarre le front puis
+  Cypress.
+- Ports : front 3000 (jeu sous `/game/`), Traefik 8088, Keycloak 8081.
+- Chaque test crée son propre utilisateur Keycloak : aucune base n'est vidée.
+  Pour repartir de zéro : `docker compose -f compose.backend.dev.yaml down -v`.
+- Logs et rapport : `cypress/results/workers/worker-0/` (`backend.log`,
+  `frontend.log`, `cypress.log`) et `cypress/results/report.json`.
+- Sous Windows, le front démarré par `tests` survit au script : libérer le
+  port 3000 avant un nouveau run.
+- En local, lancer une spec à la fois : Chrome headless plante quand un même
+  run enchaîne plusieurs specs.
+
 ## Portée et écarts actuels
 
 - ADR-GLOB-002, 003, 005 et 010 : RabbitMQ, entrée unique, bases possédées par
