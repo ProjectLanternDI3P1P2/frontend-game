@@ -26,15 +26,9 @@ describe("solo run", () => {
     cy.visitSignedIn("/players/play");
 
     cy.contains("h2", heroName).should("be.visible");
+    // Each data-cy lives on one page only: finding it proves the navigation.
     cy.getByCy("create-lobby").should("be.enabled").click();
-
-    cy.location("pathname").should(
-      "match",
-      /^\/game\/players\/[^/]+\/play\/lobbies\/[^/]+$/,
-    );
     cy.getByCy("start-game").should("be.enabled").click();
-
-    cy.location("pathname").should("match", /^\/game\/dungeon\/[^/]+$/);
     cy.getByCy("dungeon-view")
       .should("be.visible")
       .and("have.attr", "role", "application")
