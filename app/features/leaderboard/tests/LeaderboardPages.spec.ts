@@ -1,5 +1,5 @@
 import { flushPromises, mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { LEADERBOARD_API_KEY } from "../api/leaderboardSource";
 import { createSimulatedLeaderboardApi } from "../api/simulatedLeaderboardApi";
 import HeroStatisticsView from "../components/HeroStatisticsView.vue";
@@ -13,6 +13,8 @@ const stubs = {
   NuxtLink: { props: ["to"], template: '<a :href="to"><slot /></a>' },
   UiIconButton: true,
 };
+
+afterEach(() => vi.unstubAllGlobals());
 
 function mountWith(component: object, props: object, api: LeaderboardApi) {
   return mount(component, {
@@ -127,6 +129,33 @@ describe("LeaderboardLoadState", () => {
 });
 
 describe("LeaderboardView", () => {
+  it("opens the selected Player hero instead of a seeded ranking hero", async () => {
+    const navigate = vi.fn();
+    vi.stubGlobal("navigateTo", navigate);
+    const selectedHeroId = "00000000-0000-0000-0000-000000000103";
+    const wrapper = mountWith(
+      LeaderboardView,
+      { currentPlayerId: "me", progressionHeroId: selectedHeroId },
+      simulated(MockScenario.PLAYED),
+    );
+    await settle();
+
+    await wrapper.findAll('[role="tab"]')[1]!.trigger("click");
+    expect(navigate).toHaveBeenCalledWith(
+      `/players/me/heroes/${selectedHeroId}/statistics`,
+    );
+  });
+
+  it("disables progression when Player has no hero, even if the ranking has demo rows", async () => {
+    const wrapper = mountWith(
+      LeaderboardView,
+      { currentPlayerId: "me", progressionHeroId: null },
+      simulated(MockScenario.PLAYED),
+    );
+    await settle();
+    expect(wrapper.findAll('[role="tab"]')[1]!.attributes("disabled")).toBeDefined();
+  });
+
   it("shows the authenticated name instead of the seeded ranking owner", async () => {
     const wrapper = mountWith(
       LeaderboardView,

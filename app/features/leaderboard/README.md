@@ -10,7 +10,10 @@ their heroes (F01), and the ranking of heroes by total XP with their own heroes
 statuses). The pages now read the leaderboard backend. In local Development,
 that service seeds 220 demonstration heroes in PostgreSQL. Hero event
 projection remains to be implemented. `My progression` reads persisted hero
-statistics from the backend and labels seeded values as demonstration data.
+statistics from the backend and labels seeded values as demonstration data. The
+tab resolves the selected hero from Player's `GET /player/me/heroes`; when no
+hero is selected, it uses the first hero in that roster. The tab is disabled
+when Player has no hero or its roster cannot be read.
 
 F00 lays the shared foundation (contract, clients, simulated data, pure rules,
 `RankingRowDetail.vue` placeholder). `/leaderboard` only shows the first page

@@ -20,6 +20,15 @@ import { apiStub, entry, ranking } from "./fixtures/leaderboardFixtures";
 import LeaderboardPage from "~/pages/leaderboard.vue";
 import { SIMULATED_PLAYER_ID } from "~/features/leaderboard/simulatedIdentity";
 
+const playerHero = vi.hoisted(() => ({ selectedId: "simulated-hero-007" }));
+
+vi.mock("~/features/player/api/playerApi", () => ({
+  usePlayerApi: () => ({
+    listHeroes: () =>
+      Promise.resolve([{ id: playerHero.selectedId, isSelected: true }]),
+  }),
+}));
+
 const ME = SIMULATED_PLAYER_ID;
 const stubs = {
   NuxtLink: { props: ["to"], template: '<a :href="to"><slot /></a>' },
@@ -31,6 +40,7 @@ let navigate: ReturnType<typeof vi.fn>;
 const mounted: VueWrapper[] = [];
 
 beforeEach(() => {
+  playerHero.selectedId = "simulated-hero-007";
   route = reactive({ params: {}, query: {} });
   // Behaves like the router: a query change updates the route.
   navigate = vi.fn((to: unknown) => {
@@ -89,6 +99,17 @@ async function myHeroes() {
 
 describe("F02", () => {
   describe("CA1 — header, tabs and signed-in player", () => {
+    it("CA1: My progression uses the Player roster even when ranking me has a demo ID", async () => {
+      playerHero.selectedId = "00000000-0000-0000-0000-000000000103";
+      const wrapper = mountPage();
+      await settle();
+
+      await wrapper.findAll('[role="tab"]')[1]!.trigger("click");
+      expect(navigate).toHaveBeenCalledWith(
+        `/players/${ME}/heroes/${playerHero.selectedId}/statistics`,
+      );
+    });
+
     it("CA1: one h1, Ranking active, My progression to my best hero, Run history coming soon", async () => {
       const wrapper = mountPage();
       await settle();
@@ -127,7 +148,7 @@ describe("F02", () => {
 
       const empty = mountPage(apiStub());
       await settle();
-      expect(empty.findAll('[role="tab"]')[1]!.attributes("disabled")).toBeDefined();
+      expect(empty.findAll('[role="tab"]')[1]!.attributes("disabled")).toBeUndefined();
       expect(empty.text()).toContain("Signed in as Player");
     });
   });
@@ -476,7 +497,7 @@ describe("F02", () => {
       expect(tabs[2]!.text()).toContain("Coming soon");
     });
 
-    it("CA1: My progression targets me[0]'s player and hero, not another hero of mine", async () => {
+    it("CA1: My progression targets the selected Player hero even when ranking has another best hero", async () => {
       const me = [
         entry(4, ME, { heroId: "best", playerName: "Kael" }),
         entry(90, ME, { heroId: "second", playerName: "Kael" }),
@@ -487,7 +508,9 @@ describe("F02", () => {
       await settle();
 
       await wrapper.findAll('[role="tab"]')[1]!.trigger("click");
-      expect(navigate).toHaveBeenCalledWith(`/players/${ME}/heroes/best/statistics`);
+      expect(navigate).toHaveBeenCalledWith(
+        `/players/${ME}/heroes/simulated-hero-007/statistics`,
+      );
       expect(wrapper.text()).toContain("Signed in as Player");
     });
 

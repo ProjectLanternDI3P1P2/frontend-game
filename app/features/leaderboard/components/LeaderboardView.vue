@@ -46,7 +46,12 @@ import RankingPagination from "./RankingPagination.vue";
 import RankingSkeleton from "./RankingSkeleton.vue";
 import RankingStatusBanner from "./RankingStatusBanner.vue";
 
-const props = defineProps<{ currentPlayerId: string; currentPlayerName?: string }>();
+const props = defineProps<{
+  currentPlayerId: string;
+  currentPlayerName?: string;
+  /** The selected hero returned by Player; null means the roster has no hero. */
+  progressionHeroId?: string | null;
+}>();
 
 const query = defineModel<RankingUrlState>("query", {
   default: () => ({ ...DEFAULT_RANKING_STATE }),
@@ -92,19 +97,22 @@ function clearFilters(): void {
 // ------------------------------------------------------------------ header
 
 const best = computed(() => me.value[0] ?? null);
+const progressionHeroId = computed(() =>
+  props.progressionHeroId === undefined
+    ? (best.value?.heroId ?? null)
+    : props.progressionHeroId,
+);
 const playerName = computed(() => props.currentPlayerName?.trim() || "Player");
 
 const tabs = computed<Tab[]>(() => [
   { id: "ranking", label: "Ranking" },
-  { id: "progression", label: "My progression", disabled: !best.value },
+  { id: "progression", label: "My progression", disabled: !progressionHeroId.value },
   { id: "history", label: "Run history (Coming soon)", disabled: true },
 ]);
 
 function selectTab(id: string): void {
-  if (id !== "progression" || !best.value) return;
-  void navigateTo(
-    progressionPath(best.value.playerId ?? props.currentPlayerId, best.value.heroId),
-  );
+  if (id !== "progression" || !progressionHeroId.value) return;
+  void navigateTo(progressionPath(props.currentPlayerId, progressionHeroId.value));
 }
 
 // ------------------------------------------------------------------ table
