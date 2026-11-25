@@ -66,10 +66,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      # The build never runs Cypress: skip its binary download.
-      - run: npm ci
-        env:
-          CYPRESS_INSTALL_BINARY: "0"
+      # No lifecycle scripts: `nuxt build` prepares the project itself.
+      - run: npm ci --ignore-scripts
 
       # The build carries its own identity, as the cycle 1 delivery gate asks.
       - name: Build
@@ -176,7 +174,9 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: frontend-game/package-lock.json
-      - run: npm ci
+      - run: npm ci --ignore-scripts
+      # --ignore-scripts skips the Cypress postinstall: fetch its binary explicitly.
+      - run: npx cypress install
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: nuxt-e2e-build
