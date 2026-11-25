@@ -13,7 +13,7 @@ import {
   CLOSED_LOBBY_REDIRECT_SECONDS,
   closedLobbyMessage,
   isClosedLobby,
-  joinGamePath,
+  JOIN_GAME_PATH,
 } from "~/features/player/lobbyClosure";
 import { createIdempotencyKey } from "~/shared/utils/idempotency";
 
@@ -56,7 +56,7 @@ watch(isClosed, (closed) => {
     if (redirectIn.value > 0) return;
     clearInterval(redirectTimer);
     redirectTimer = undefined;
-    void router.replace(joinGamePath(playerId.value));
+    void router.replace(JOIN_GAME_PATH);
   }, 1000);
 });
 
@@ -144,11 +144,7 @@ onBeforeUnmount(() => {
 <template>
   <div>
     <main id="main" class="lobby-page">
-      <NuxtLink
-        :to="`/players/${encodeURIComponent(playerId)}/play`"
-        class="lobby-page__back"
-        >← Join a game</NuxtLink
-      >
+      <NuxtLink :to="JOIN_GAME_PATH" class="lobby-page__back">← Join a game</NuxtLink>
       <p v-if="loading" class="lobby-page__notice">Loading lobby…</p>
       <p v-else-if="error" class="lobby-page__notice" role="alert">{{ error }}</p>
       <section
@@ -163,7 +159,7 @@ onBeforeUnmount(() => {
         <p class="lobby-page__hint" aria-live="polite">
           Back to “Join a game” in {{ redirectIn }} s.
         </p>
-        <NuxtLink :to="joinGamePath(playerId)">
+        <NuxtLink :to="JOIN_GAME_PATH">
           <UiButton :size="ButtonSize.SM" :variant="ButtonVariant.PRIMARY"
             >Join a game now</UiButton
           >

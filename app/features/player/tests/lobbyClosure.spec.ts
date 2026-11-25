@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { closedLobbyMessage, isClosedLobby, joinGamePath } from "../lobbyClosure";
+import { closedLobbyMessage, isClosedLobby, JOIN_GAME_PATH } from "../lobbyClosure";
 
 describe("lobby closure", () => {
   it("recognises only an abandoned lobby as closed", () => {
@@ -19,6 +19,6 @@ describe("lobby closure", () => {
   });
 
   it("sends the player back to Join a game", () => {
-    expect(joinGamePath("player 1")).toBe("/players/player%201/play");
+    expect(JOIN_GAME_PATH).toBe("/players/play");
   });
 });

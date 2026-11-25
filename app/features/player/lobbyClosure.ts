@@ -22,5 +22,5 @@ export function closedLobbyMessage(
     : "This lobby has been closed before its run started.";
 }
 
-export const joinGamePath = (playerId: string) =>
-  `/players/${encodeURIComponent(playerId)}/play`;
+/** The Join a game screen: one route for every player, not scoped by player id. */
+export const JOIN_GAME_PATH = "/players/play";

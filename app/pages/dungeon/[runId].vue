@@ -15,6 +15,7 @@ import {
   directionForKey,
 } from "~/features/dungeon/dungeonRules";
 import { SANDBOX_SEED } from "~/features/dungeon/seed";
+import { JOIN_GAME_PATH } from "~/features/player/lobbyClosure";
 import type { Direction, EnemyKindName, Position } from "~/features/dungeon/types";
 import ChestLootModal from "~/features/reward/components/ChestLootModal.vue";
 import AudioMuteToggle from "~/shared/audio/AudioMuteToggle.vue";
@@ -114,7 +115,7 @@ function onKeydown(event: KeyboardEvent) {
 async function copyShareLink() {
   if (!run.value) return;
   const path = playerId.value
-    ? `/players/${encodeURIComponent(playerId.value)}/play?seed=${encodeURIComponent(run.value.seed)}`
+    ? `${JOIN_GAME_PATH}?seed=${encodeURIComponent(run.value.seed)}`
     : `/dungeon?seed=${encodeURIComponent(run.value.seed)}`;
   const url = `${window.location.origin}${path}`;
   await navigator.clipboard.writeText(url);
