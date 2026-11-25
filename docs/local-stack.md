@@ -291,10 +291,12 @@ API/SignalR ; les deux endpoints frontend `/healthz` ne sont pas disponibles.
 ## Packages de contrats : local et GitHub
 
 La commande locale superpose `compose.backend.dev.yaml` à
-`compose.backend.yaml`. Elle utilise les Dockerfile de développement des
-services qui en possèdent un ; Leaderboard utilise son `Dockerfile` standard,
-car il n'a pas de `Dockerfile.dev` et ne dépend plus de `Combat.Contracts`.
-Cette variante ne demande pas `GITHUB_PACKAGES_CREDENTIALS`.
+`compose.backend.yaml`. Elle utilise les `Dockerfile.dev` des cinq backends.
+Celui de Leaderboard utilise les contrats de son propre dépôt et ne dépend
+pas de `Combat.Contracts`. Cette variante ne demande pas
+`GITHUB_PACKAGES_CREDENTIALS`. Comme les autres `Dockerfile.dev`, il publie
+l'application pendant le build ; une modification de code nécessite un
+nouveau `docker compose ... up -d --build leaderboard` pour être visible.
 
 Le build Docker standard des autres backends peut nécessiter les packages de
 contrats sur GitHub Packages. Les jetons sont transmis par secret BuildKit,
