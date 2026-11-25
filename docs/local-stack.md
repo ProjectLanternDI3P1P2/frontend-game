@@ -285,6 +285,9 @@ python3 scripts/e2e/e2e_parallel.py tests --spec cypress/e2e/play-solo-run.cy.ts
 
 Pour voir les tests tourner dans le navigateur, `open` remplace `tests` : il prépare
 la même stack puis ouvre l'application Cypress, où l'on choisit la spec à lancer.
+Il marque une pause d'1 s après chaque action (visit, click, type…) pour suivre le
+test à l'écran : `--slow-mo 500` la change, `--slow-mo 0` la retire. `tests` accepte
+la même option, sans pause par défaut.
 
 ```sh
 python3 scripts/e2e/e2e_parallel.py backends

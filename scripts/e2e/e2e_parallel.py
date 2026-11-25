@@ -10,6 +10,7 @@ Locally, `open` prepares the same stack, then opens the Cypress app to watch the
     python3 scripts/e2e/e2e_parallel.py backends
     python3 scripts/e2e/e2e_parallel.py open
 
+`open` pauses 1 s after every Cypress action to follow it on screen; --slow-mo 0 turns it off.
 Without --spec, every spec forms one lane.
 
 One runner holds one stack: the compose services (gateway on 8088, Keycloak on 8081) and the
@@ -170,6 +171,12 @@ def main() -> None:
             "spec in one lane. Ignored by `open`."
         ),
     )
+    parser.add_argument(
+        "--slow-mo",
+        type=int,
+        metavar="MS",
+        help="Pause after every Cypress action (default: 1000 for `open`, 0 for `tests`).",
+    )
     args = parser.parse_args()
 
     if args.step == "backends":
@@ -177,6 +184,9 @@ def main() -> None:
         return
 
     lanes = resolve_spec_lanes(args.spec) if args.spec else [get_spec_files()]
+    slow_mo = args.slow_mo if args.slow_mo is not None else (1000 if args.step == "open" else 0)
+    # Cypress reads CYPRESS_* variables into Cypress.env(); every Cypress below inherits it.
+    os.environ["CYPRESS_slowMo"] = str(slow_mo)
     front = prepare_stack()
     try:
         if args.step == "open":

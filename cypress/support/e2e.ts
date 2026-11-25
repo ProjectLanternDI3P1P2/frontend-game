@@ -18,6 +18,30 @@ const E2E_PASSWORD = "e2e-Password-1";
 const TOKENS_STORAGE_KEY = "lantern.keycloak.tokens";
 const SESSION_ALIAS = "session";
 
+// Watching aid for local runs: `slowMo` (ms, set by `e2e_parallel.py open`) pauses after
+// every action so each step can be followed on screen. Off when unset, as in CI.
+const slowMo = Number(Cypress.env("slowMo") ?? 0);
+if (slowMo > 0) {
+  for (const action of [
+    "visit",
+    "click",
+    "type",
+    "clear",
+    "check",
+    "select",
+  ] as const) {
+    const pauseAfter = (
+      originalFn: (...args: unknown[]) => unknown,
+      ...args: unknown[]
+    ) => {
+      const result = originalFn(...args);
+      return new Promise((resolve) => setTimeout(() => resolve(result), slowMo));
+    };
+    // The per-command overloads cannot type one wrapper shared by six commands.
+    Cypress.Commands.overwrite(action, pauseAfter as never);
+  }
+}
+
 const keycloakUrl = () => Cypress.env("keycloakUrl") as string;
 
 const passwordGrant = (realm: string, body: Record<string, string>) =>
