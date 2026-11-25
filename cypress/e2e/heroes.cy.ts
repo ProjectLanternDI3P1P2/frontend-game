@@ -27,13 +27,20 @@ describe("heroes", () => {
     preview().find("h2").should("have.text", name);
   });
 
-  it("keeps Confirm disabled until a class is chosen", () => {
+  it("keeps Confirm disabled until the name is valid", () => {
     cy.visitSignedIn("/players/me/heroes/new");
-    cy.get("#hero-name").type(heroName());
+    // The first class comes preselected: only the name gates the form.
+    cy.contains('[role="radio"]', "Chosen").should("be.visible");
     preview().contains("button", "Confirm").should("be.disabled");
-    cy.contains('[role="radio"] strong', "Warrior").click();
-    cy.contains('[role="radio"]', "Chosen").should("contain", "Warrior");
+    cy.get("#hero-name").type(heroName());
     preview().contains("button", "Confirm").should("be.enabled");
+  });
+
+  it("switches the chosen class", () => {
+    cy.visitSignedIn("/players/me/heroes/new");
+    cy.contains('[role="radio"] strong', "Mage").click();
+    cy.contains('[role="radio"]', "Chosen").should("contain", "Mage");
+    preview().should("contain", "Mage");
   });
 
   it("creates a hero from the form", () => {
