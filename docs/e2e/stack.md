@@ -29,8 +29,9 @@ traefik keycloak postgres rabbitmq player combat dungeon reward`. On ne touche n
 
 ## Source des backends ★ build depuis les sources
 
-- Les 4 repos sont **publics** : `actions/checkout` avec `repository:` et `path: ../<repo>`
-  suffit, sans token.
+- Les 4 repos sont **publics** : une boucle `git clone --depth 1 --branch dev` dans
+  `../<repo>` suffit, sans token. La liste `BACKENDS` du job pilote le clone, le build et le
+  `docker save`.
 - `compose.backend.dev.yaml` utilise les `Dockerfile.dev`, qui packent les contracts en local
   (`additional_contexts: dungeon-contracts`). Ils n'ont **pas besoin** de
   `GITHUB_PACKAGES_CREDENTIALS` (`secrets: !reset []`).

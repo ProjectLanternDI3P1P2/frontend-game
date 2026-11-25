@@ -85,7 +85,7 @@ jobs:
           if-no-files-found: error
 
   # Built once per run, loaded by every runner. The compose build contexts are the
-  # backend repos checked out next to this one.
+  # backend repos cloned next to this one.
   e2e-build-backends:
     name: E2E — Build backends
     runs-on: ubuntu-latest
@@ -93,47 +93,28 @@ jobs:
     defaults:
       run:
         working-directory: frontend-game
+    env:
+      # Every service behind the gateway except leaderboard (docs/e2e/stack.md).
+      BACKENDS: player combat dungeon reward
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           path: frontend-game
           persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          repository: ProjectLanternDI3P1P2/player-backend
-          ref: dev
-          path: player-backend
-          persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          repository: ProjectLanternDI3P1P2/combat-backend
-          ref: dev
-          path: combat-backend
-          persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          repository: ProjectLanternDI3P1P2/dungeon-backend
-          ref: dev
-          path: dungeon-backend
-          persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          repository: ProjectLanternDI3P1P2/reward-backend
-          ref: dev
-          path: reward-backend
-          persist-credentials: false
+      # Public repos: a shallow clone needs no credentials.
+      - name: Clone the backends
+        run: |
+          for backend in $BACKENDS; do
+            git clone --quiet --depth 1 --branch dev \
+              "https://github.com/ProjectLanternDI3P1P2/$backend-backend.git" "../$backend-backend"
+          done
 
-      - run: docker compose -f compose.backend.dev.yaml build player combat dungeon reward
+      - run: docker compose -f compose.backend.dev.yaml build $BACKENDS
       # Named after the compose project: `up --no-build` on the runners finds them by these names.
       - name: Save the images
+        # Explicit bash adds pipefail: a failed save must not ship an empty archive.
         shell: bash
-        run: |
-          docker save \
-            lantern-local-dev-player \
-            lantern-local-dev-combat \
-            lantern-local-dev-dungeon \
-            lantern-local-dev-reward \
-            | gzip > /tmp/backend-images.tar.gz
+        run: docker save $(printf 'lantern-local-dev-%s ' $BACKENDS) | gzip > /tmp/backend-images.tar.gz
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: backend-images
