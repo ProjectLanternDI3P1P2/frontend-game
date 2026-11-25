@@ -279,8 +279,16 @@ Depuis `frontend-game`, avec Python 3.12 (`py` sous Windows) :
 ```sh
 docker compose -f compose.backend.dev.yaml build player combat dungeon reward
 npm run build
-python3 scripts/e2e/e2e_parallel.py backends --spec cypress/e2e/play-solo-run.cy.ts
+python3 scripts/e2e/e2e_parallel.py backends
 python3 scripts/e2e/e2e_parallel.py tests --spec cypress/e2e/play-solo-run.cy.ts
+```
+
+Pour voir les tests tourner dans le navigateur, `open` remplace `tests` : il prépare
+la même stack puis ouvre l'application Cypress, où l'on choisit la spec à lancer.
+
+```sh
+python3 scripts/e2e/e2e_parallel.py backends
+python3 scripts/e2e/e2e_parallel.py open
 ```
 
 - `backends` lance la stack en arrière-plan et rend la main tout de suite ;
