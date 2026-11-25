@@ -66,6 +66,9 @@ export default defineNuxtConfig({
   },
 
   nitro: {
+    debug: false,
+    timing: false,
+    errorHandler: "./server/error-handler",
     // Do not turn linked CSR routes into static HTML implicitly. A future
     // static route must opt in with `prerender: true` and use only portable
     // (relative) public URLs.
@@ -114,7 +117,6 @@ export default defineNuxtConfig({
       // .env instead.
       apiGatewayUrl: "/",
       apiVersion: "v1",
-      telemetryEndpoint: "",
       appName: "game-client",
       appVersion: "dev",
       commitSha: "local",

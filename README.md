@@ -62,7 +62,6 @@ browser, so never put a secret in one of them.
 | `NUXT_PUBLIC_API_GATEWAY_URL`    | Yes                    | Public URL of the API Gateway, including the SignalR endpoint host. |
 | `NUXT_PUBLIC_API_VERSION`        | No                     | Gateway API version; defaults to `v1`.                              |
 | `NUXT_PUBLIC_SITE_URL`           | Yes                    | Public URL of this application, used for its canonical link.        |
-| `NUXT_PUBLIC_TELEMETRY_ENDPOINT` | No                     | Endpoint receiving browser telemetry; empty disables it.            |
 | `NUXT_PUBLIC_APP_NAME`           | No                     | Application name included in telemetry and `/healthz`.              |
 | `NUXT_PUBLIC_APP_VERSION`        | No                     | Release version included in telemetry and `/healthz`.               |
 | `NUXT_PUBLIC_COMMIT_SHA`         | No                     | Source revision exposed by `/healthz`.                              |
@@ -120,3 +119,8 @@ the reference for real user experience (ADR-FE-013, ADR-FE-014).
 
 The public site targets RGAA compliance with **no expected exception**: nothing
 here is a gameplay constraint. See [docs/accessibility.md](docs/accessibility.md).
+
+# Container logs
+
+The server and relayed browser event schema is documented in
+[docs/container-logging.md](docs/container-logging.md).
