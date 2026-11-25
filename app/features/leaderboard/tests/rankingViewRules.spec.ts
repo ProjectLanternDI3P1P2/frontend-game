@@ -28,6 +28,8 @@ describe("rankingViewRules", () => {
 
   it("previousSeasonLabel: unexpected ids read Previous season", () => {
     expect(previousSeasonLabel("season-03")).toBe("Season 3");
+    expect(previousSeasonLabel("season-03  ")).toBe("Season 3");
+    expect(previousSeasonLabel("season-3x")).toBe("Previous season");
     expect(previousSeasonLabel("legacy")).toBe("Previous season");
     expect(previousSeasonLabel("")).toBe("Previous season");
     expect(previousSeasonLabel(null)).toBe("Previous season");

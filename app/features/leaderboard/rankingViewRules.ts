@@ -200,8 +200,16 @@ export function progressionPath(playerId: string, heroId: string): string {
 export function previousSeasonLabel(
   previousSeasonId: string | null | undefined,
 ): string {
-  const number = /(\d+)\s*$/.exec(previousSeasonId ?? "")?.[1];
-  return number ? `Season ${Number(number)}` : "Previous season";
+  const value = previousSeasonId?.trimEnd() ?? "";
+  let start = value.length;
+  while (start > 0) {
+    const code = value.charCodeAt(start - 1);
+    if (code < 48 || code > 57) break;
+    start -= 1;
+  }
+  return start < value.length
+    ? `Season ${Number(value.slice(start))}`
+    : "Previous season";
 }
 
 /** "No ranked run in Season 4 yet" (a missing season reads "this season"). */
