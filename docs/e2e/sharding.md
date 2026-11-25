@@ -27,7 +27,6 @@ Dans `frontend-game/scripts/e2e/` (stdlib seule) :
 | `spec_planner.py` | Bin-packing des specs par nombre de `it(`, en lanes séparées par `\|`. Imprime la matrice JSON lue par la CI                         |
 | `servers.py`      | `docker compose up -d --wait <services>` détaché, attente des healthchecks, password grant Keycloak, `node .output/server/index.mjs` |
 | `e2e_parallel.py` | Deux étapes, `backends` puis `tests` ; un Cypress par lane                                                                           |
-| `report.py`       | Rapport fusionné dans `cypress/results`                                                                                              |
 
 Les étapes sont séparées pour le parallélisme : `backends` démarre la stack en arrière-plan
 **pendant** que le runner installe Node et Cypress, puis `tests` attend les health checks

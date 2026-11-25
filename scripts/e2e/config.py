@@ -4,7 +4,6 @@ from pathlib import Path
 
 # scripts/e2e/config.py -> scripts/e2e -> scripts -> repo root
 ROOT = Path(__file__).resolve().parents[2]
-FRONT_DIR = ROOT
 RESULTS_DIR = ROOT / "cypress" / "results"
 
 # Fixed: Keycloak's redirect URIs, the CORS origins and the JWT issuer all name these ports.

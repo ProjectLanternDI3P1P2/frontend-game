@@ -24,17 +24,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from config import (  # pylint: disable=import-error,wrong-import-position
     BASE_CDP_PORT,
-    FRONT_DIR,
+    ROOT,
     FRONT_PORT,
     GATEWAY_PORT,
     KEYCLOAK_PORT,
     log,
     worker_log_dir,
-)
-from report import (  # pylint: disable=import-error,wrong-import-position
-    build_merged_report,
-    merge_stats,
-    parse_cypress_stats,
 )
 from servers import (  # pylint: disable=import-error,wrong-import-position
     enable_password_grant,
@@ -50,11 +45,8 @@ from spec_planner import (  # pylint: disable=import-error,wrong-import-position
 )
 
 
-def run_cypress(worker: int, specs: list[Path], stats: dict) -> int:
-    """Run a Cypress instance for this worker on the given spec files.
-
-    Collects aggregated test counts into `stats` (passed by reference).
-    """
+def run_cypress(worker: int, specs: list[Path]) -> int:
+    """Run a Cypress instance for this worker on the given spec files."""
     screenshots_path = f"cypress/results/screenshots/screenshots-{worker}"
 
     log_dir = worker_log_dir(worker)
@@ -84,7 +76,7 @@ def run_cypress(worker: int, specs: list[Path], stats: dict) -> int:
     env = {**os.environ, "CYPRESS_REMOTE_DEBUGGING_PORT": str(BASE_CDP_PORT + worker)}
     proc = subprocess.Popen(
         cmd,
-        cwd=str(FRONT_DIR),
+        cwd=str(ROOT),
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -95,11 +87,8 @@ def run_cypress(worker: int, specs: list[Path], stats: dict) -> int:
         kwargs={"log_file": cypress_log},
     )
     output_thread.start()
-    worker_start = time.time()
     proc.wait()
     output_thread.join(timeout=5)
-    stats.update(parse_cypress_stats(cypress_log))
-    stats["duration_seconds"] = round(time.time() - worker_start, 1)
     log(f"Worker {worker}: Cypress finished with exit code {proc.returncode}")
 
     if proc.returncode != 0:
@@ -119,12 +108,11 @@ def run_tests(lanes: list[list[Path]]) -> int:
 
     log("All servers ready. Launching Cypress workers...")
     for i, lane in enumerate(lanes):
-        log(f"Worker {i} lane: {[str(s.relative_to(FRONT_DIR)) for s in lane]}")
+        log(f"Worker {i} lane: {[str(s.relative_to(ROOT)) for s in lane]}")
     results: list[int] = [0] * workers
-    worker_stats: list[dict] = [{} for _ in range(workers)]
 
     def cypress_worker(worker: int) -> None:
-        results[worker] = run_cypress(worker, lanes[worker], worker_stats[worker])
+        results[worker] = run_cypress(worker, lanes[worker])
 
     threads = [threading.Thread(target=cypress_worker, args=(i,)) for i in range(workers)]
     for t in threads:
@@ -133,8 +121,6 @@ def run_tests(lanes: list[list[Path]]) -> int:
         t.join()
 
     elapsed = time.time() - start_time
-    # Written even with 0 failures.
-    build_merged_report(merge_stats(worker_stats), worker_stats, elapsed)
     minutes, seconds = divmod(int(elapsed), 60)
     duration_str = f"{minutes}m{seconds:02d}s" if minutes else f"{seconds}s"
 

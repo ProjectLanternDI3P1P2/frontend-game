@@ -16,14 +16,13 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from config import (  # pylint: disable=import-error,wrong-import-position
     COMPOSE_FILE,
-    FRONT_DIR,
+    ROOT,
     FRONT_PORT,
     GATEWAY_PORT,
     HEALTH_TIMEOUT,
     KEYCLOAK_ADMIN,
     KEYCLOAK_ADMIN_PASSWORD,
     KEYCLOAK_PORT,
-    ROOT,
     SERVICES,
     log,
     worker_log_dir,
@@ -221,7 +220,7 @@ def start_frontend() -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
     proc = subprocess.Popen(
         ["node", ".output/server/index.mjs"],
-        cwd=str(FRONT_DIR),
+        cwd=str(ROOT),
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,

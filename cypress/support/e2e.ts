@@ -62,7 +62,6 @@ Cypress.Commands.add("login", () => {
         token: body.access_token,
         refreshToken: body.refresh_token,
         idToken: body.id_token,
-        username,
       }),
     );
 });

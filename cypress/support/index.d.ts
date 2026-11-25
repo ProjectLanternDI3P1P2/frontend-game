@@ -5,7 +5,6 @@ export interface KeycloakSession {
   token: string;
   refreshToken: string;
   idToken: string;
-  username: string;
 }
 
 declare global {

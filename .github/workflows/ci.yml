@@ -161,30 +161,6 @@ jobs:
         with:
           path: frontend-game
           persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          repository: ProjectLanternDI3P1P2/player-backend
-          ref: dev
-          path: player-backend
-          persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          repository: ProjectLanternDI3P1P2/combat-backend
-          ref: dev
-          path: combat-backend
-          persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          repository: ProjectLanternDI3P1P2/dungeon-backend
-          ref: dev
-          path: dungeon-backend
-          persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          repository: ProjectLanternDI3P1P2/reward-backend
-          ref: dev
-          path: reward-backend
-          persist-credentials: false
 
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
@@ -201,9 +177,6 @@ jobs:
           cache: npm
           cache-dependency-path: frontend-game/package-lock.json
       - run: npm ci
-      # Verified once here, behind the remaining steps, instead of at each `cypress run` launch.
-      - name: Verify Cypress in the background
-        run: nohup npx cypress verify >/dev/null 2>&1 &
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: nuxt-e2e-build

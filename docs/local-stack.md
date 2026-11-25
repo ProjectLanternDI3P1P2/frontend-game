@@ -290,8 +290,8 @@ python3 scripts/e2e/e2e_parallel.py tests --spec cypress/e2e/play-solo-run.cy.ts
 - Ports : front 3000 (jeu sous `/game/`), Traefik 8088, Keycloak 8081.
 - Chaque test crée son propre utilisateur Keycloak : aucune base n'est vidée.
   Pour repartir de zéro : `docker compose -f compose.backend.dev.yaml down -v`.
-- Logs et rapport : `cypress/results/workers/worker-0/` (`backend.log`,
-  `frontend.log`, `cypress.log`) et `cypress/results/report.json`.
+- Logs : `cypress/results/workers/worker-0/` (`backend.log`, `frontend.log`,
+  `cypress.log`) et captures dans `cypress/results/screenshots/`.
 - Sous Windows, le front démarré par `tests` survit au script : libérer le
   port 3000 avant un nouveau run.
 - En local, lancer une spec à la fois : Chrome headless plante quand un même
