@@ -3,9 +3,9 @@
 import json
 import os
 import re
+import socket
 import subprocess
 import sys
-import threading
 import time
 import urllib.error
 import urllib.parse
@@ -80,7 +80,6 @@ def wait_for_http(url: str, label: str, timeout: int = HEALTH_TIMEOUT) -> None:
 def pipe_output(
     stream,
     prefix: str,
-    quiet: bool = False,
     log_file: Path | None = None,
 ) -> None:
     """Read lines from a subprocess stream, print with prefix, and write to log file."""
@@ -89,8 +88,7 @@ def pipe_output(
         try:
             for line in iter(stream.readline, b""):
                 decoded = line.decode(errors="replace").rstrip()
-                if not quiet:
-                    print(f"{prefix} {decoded}")
+                print(f"{prefix} {decoded}")
                 if fh:
                     fh.write(ANSI_ESCAPE.sub("", decoded) + "\n")
         finally:
@@ -207,8 +205,14 @@ def enable_password_grant(timeout: int = HEALTH_TIMEOUT) -> None:
             time.sleep(2)
 
 
-def start_frontend() -> None:
-    """Serve the Nuxt build from the e2e-build job (`npm run build` locally)."""
+def start_frontend() -> subprocess.Popen:
+    """Serve the Nuxt build from the e2e-build job (`npm run build` locally).
+
+    The caller stops the returned process: a front left behind keeps the port.
+    """
+    with socket.socket() as probe:
+        if probe.connect_ex(("localhost", FRONT_PORT)) == 0:
+            sys.exit(f"port {FRONT_PORT} is already in use: stop the previous front first")
     env = {
         **os.environ,
         "PORT": str(FRONT_PORT),
@@ -218,19 +222,15 @@ def start_frontend() -> None:
     log(f"Starting frontend — PORT={FRONT_PORT}  GATEWAY={GATEWAY_PORT}  KEYCLOAK={KEYCLOAK_PORT}")
     log_dir = worker_log_dir(0)
     log_dir.mkdir(parents=True, exist_ok=True)
-    proc = subprocess.Popen(
-        ["node", ".output/server/index.mjs"],
-        cwd=str(ROOT),
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
-    threading.Thread(
-        target=pipe_output,
-        args=(proc.stdout, f"[front:{FRONT_PORT}]", True),
-        kwargs={"log_file": log_dir / "frontend.log"},
-        daemon=True,
-    ).start()
+    # Straight to the file: a pipe nobody reads any more fills up and freezes the server.
+    with (log_dir / "frontend.log").open("w", encoding="utf-8") as log_file:
+        return subprocess.Popen(
+            ["node", ".output/server/index.mjs"],
+            cwd=str(ROOT),
+            env=env,
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+        )
 
 
 def wait_for_servers() -> None:

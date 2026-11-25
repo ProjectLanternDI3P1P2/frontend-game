@@ -300,8 +300,8 @@ python3 scripts/e2e/e2e_parallel.py open
   Pour repartir de zéro : `docker compose -f compose.backend.dev.yaml down -v`.
 - Logs : `cypress/results/workers/worker-0/` (`backend.log`, `frontend.log`,
   `cypress.log`) et captures dans `cypress/results/screenshots/`.
-- Sous Windows, le front démarré par `tests` survit au script : libérer le
-  port 3000 avant un nouveau run.
+- `tests` et `open` arrêtent le front en sortant. Si le port 3000 est déjà pris,
+  ils s'arrêtent tout de suite au lieu de tester un autre serveur.
 - En local, lancer une spec à la fois : Chrome headless plante quand un même
   run enchaîne plusieurs specs.
 

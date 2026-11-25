@@ -68,17 +68,17 @@ def cypress_options(extra_config: str = "") -> list[str]:
     ]
 
 
-def prepare_stack() -> None:
-    """Wait for the backends, open the password grant, start the frontend."""
+def prepare_stack() -> subprocess.Popen:
+    """Wait for the backends, open the password grant, start the frontend and return it."""
     wait_for_backend()
     enable_password_grant()
-    start_frontend()
+    front = start_frontend()
     wait_for_servers()
+    return front
 
 
 def open_cypress() -> int:
     """Open the Cypress app on the ready stack: pick a spec and watch it run."""
-    prepare_stack()
     log("All servers ready. Opening Cypress...")
     return subprocess.call([NPX, "cypress", "open", "--e2e", *cypress_options()], cwd=str(ROOT))
 
@@ -129,11 +129,9 @@ def run_cypress(worker: int, specs: list[Path]) -> int:
 
 
 def run_tests(lanes: list[list[Path]]) -> int:
-    """Wait for the stack, open the password grant, start the frontend, run one Cypress per lane."""
+    """Run one Cypress per lane on the ready stack."""
     workers = len(lanes)
     start_time = time.time()
-    prepare_stack()
-
     log("All servers ready. Launching Cypress workers...")
     for i, lane in enumerate(lanes):
         log(f"Worker {i} lane: {[str(s.relative_to(ROOT)) for s in lane]}")
@@ -176,12 +174,18 @@ def main() -> None:
 
     if args.step == "backends":
         start_backend()
-    elif args.step == "open":
-        sys.exit(open_cypress())
-    else:
-        lanes = resolve_spec_lanes(args.spec) if args.spec else [get_spec_files()]
+        return
+
+    lanes = resolve_spec_lanes(args.spec) if args.spec else [get_spec_files()]
+    front = prepare_stack()
+    try:
+        if args.step == "open":
+            sys.exit(open_cypress())
         log(f"tests: {len(lanes)} worker(s)")
         sys.exit(run_tests(lanes))
+    finally:
+        # A front left running keeps the port for the next run.
+        front.terminate()
 
 
 if __name__ == "__main__":
