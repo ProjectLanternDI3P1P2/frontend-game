@@ -11,6 +11,11 @@ http:
       priority: 100
       middlewares: [authenticated]
       service: leaderboard
+    leaderboard-public-api:
+      rule: Path(`/api/leaderboard/v1/public`)
+      priority: 200
+      middlewares: [remove-external-identity]
+      service: leaderboard
     dungeon-api:
       rule: Path(`/api/v1/dungeons`) || PathPrefix(`/api/v1/dungeons/`) || Path(`/api/v1/dungeon-runs`) || PathPrefix(`/api/v1/dungeon-runs/`) || Path(`/hubs/dungeons`) || PathPrefix(`/hubs/dungeons/`)
       priority: 100
