@@ -7,6 +7,12 @@ export interface KeycloakSession {
   idToken: string;
 }
 
+/** A hero created through the Player API by `cy.createHero()`. */
+export interface CreatedHero {
+  id: string;
+  name: string;
+}
+
 declare global {
   namespace Cypress {
     interface Chainable {
@@ -33,6 +39,9 @@ declare global {
         path: string,
         body?: RequestBody,
       ): Chainable<Response<T>>;
+
+      /** Create a warrior for the `cy.login()` player, selected when `select` is set. */
+      createHero(options?: { select?: boolean }): Chainable<CreatedHero>;
     }
   }
 }

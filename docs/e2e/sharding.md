@@ -49,19 +49,19 @@ Le job `e2e` actuel (build et start dans le même job) est remplacé.
 ## Specs
 
 - `shell.cy.ts` : conservée (harness, axe, rendu sans JS).
-- `play-solo-run.cy.ts` (nouvelle) : `/players/<id>/play`, création d'un lobby solo
-  (`PlayerHub`), lancement du run (`DungeonHub`), première salle visible. Elle traverse player,
-  dungeon et combat derrière Traefik.
-- Les autres parcours restent aux squads qui livrent les routes (ADR-FE-012 : suite
-  volontairement petite).
-- Avec 2 specs et 2 runners, chaque runner en prend une. Le sharding est prouvé, pas encore
-  rentable.
+- `play-solo-run.cy.ts` : `/players/<id>/play`, création d'un lobby solo (`PlayerHub`),
+  lancement du run (`DungeonHub`), première salle visible. Elle traverse player, dungeon et
+  combat derrière Traefik.
+- Des specs courtes par écran : `auth`, `heroes` (liste, formulaire, fiche, suppression),
+  `lobby` (choix du héros, seed, lobby solo) et `dungeon` (saisie du seed, lancement).
+  `cy.createHero()` prépare un héros par l'API pour ne tester que l'écran visé.
+- Avec 6 specs et 2 runners, chaque runner en prend 3, équilibrées par nombre de `it(`.
 
 ## Réserves
 
 - En local, Cypress 15.21 avec Chrome 158 headless plante quand un même run enchaîne plusieurs
-  specs (`* is not a valid URL`). Avec 1 spec par lane, la CI n'est pas concernée. À revoir si
-  une lane reçoit plusieurs specs.
+  specs (`* is not a valid URL`). Les lanes CI en reçoivent maintenant 3 : à surveiller. En
+  local, `e2e_parallel.py open` lance une spec à la fois.
 
 ## Sources
 

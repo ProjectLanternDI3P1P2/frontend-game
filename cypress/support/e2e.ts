@@ -8,7 +8,8 @@
  * session is kept as an alias: `cy.visitSignedIn()` and `cy.api()` read it.
  */
 import "cypress-axe";
-import type { KeycloakSession } from "./index";
+import { heroName } from "./heroName";
+import type { CreatedHero, KeycloakSession } from "./index";
 
 // Same defaults as compose.backend.yaml and scripts/e2e/config.py.
 const KEYCLOAK_ADMIN = { username: "admin", password: "admin" };
@@ -95,3 +96,20 @@ Cypress.Commands.add(
       }),
     ),
 );
+
+const HEROES_PATH = "/api/player/v1/me/heroes";
+
+Cypress.Commands.add("createHero", ({ select = false } = {}) => {
+  const name = heroName();
+  return cy
+    .api<{ id: string }>("POST", HEROES_PATH, {
+      name,
+      classCode: "warrior",
+      idempotencyKey: crypto.randomUUID(),
+    })
+    .then(({ body }) => {
+      // A new hero is not selected: the play screen needs one to enable the lobby.
+      if (select) cy.api("PUT", `${HEROES_PATH}/${body.id}/selection`);
+      return cy.wrap<CreatedHero>({ id: body.id, name }, { log: false });
+    });
+});
