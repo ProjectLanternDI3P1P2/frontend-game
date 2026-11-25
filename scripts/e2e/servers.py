@@ -200,7 +200,7 @@ def enable_password_grant(timeout: int = HEALTH_TIMEOUT) -> None:
             keycloak_request(f"{clients_path}/{client['id']}", token, client, "PUT")
             log(f"Password grant enabled on {KEYCLOAK_CLIENT}")
             return
-        except (urllib.error.URLError, OSError, IndexError) as exc:
+        except (OSError, IndexError) as exc:  # URLError and HTTPError are OSErrors
             if time.time() >= deadline:
                 msg = f"could not enable the password grant within {timeout}s: {exc}"
                 raise TimeoutError(msg) from exc
