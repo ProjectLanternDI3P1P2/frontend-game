@@ -8,7 +8,8 @@
 
 describe("application shell", () => {
   it("boots and renders the shell landmarks for a signed-in player", () => {
-    cy.login().then((session) => cy.visitAs(session, "/"));
+    cy.login();
+    cy.visitSignedIn("/");
     cy.location("pathname").should("eq", "/game/");
     cy.get("main#main").should("exist");
     cy.contains("a", "Skip to main content").should("exist");

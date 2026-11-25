@@ -15,18 +15,15 @@ describe("solo run", () => {
   it("creates a lobby, starts the game and enters the dungeon", () => {
     const heroName = `Eto ${letters(8)}`;
 
-    cy.login().then((session) => {
-      cy.apiAs<{ id: string }>(session, "POST", heroesPath, {
-        name: heroName,
-        classCode: "warrior",
-        idempotencyKey: crypto.randomUUID(),
-      })
-        // A new hero is not selected: the play screen needs one to enable the lobby.
-        .then(({ body }) =>
-          cy.apiAs(session, "PUT", `${heroesPath}/${body.id}/selection`),
-        )
-        .then(() => cy.visitAs(session, "/players/play"));
-    });
+    cy.login();
+    cy.api<{ id: string }>("POST", heroesPath, {
+      name: heroName,
+      classCode: "warrior",
+      idempotencyKey: crypto.randomUUID(),
+    })
+      // A new hero is not selected: the play screen needs one to enable the lobby.
+      .then(({ body }) => cy.api("PUT", `${heroesPath}/${body.id}/selection`));
+    cy.visitSignedIn("/players/play");
 
     cy.contains("h2", heroName).should("be.visible");
     cy.getByCy("create-lobby").should("be.enabled").click();

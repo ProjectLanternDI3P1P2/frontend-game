@@ -4,7 +4,8 @@
  * accessibility check that is part of acceptance for the main journeys.
  *
  * Specs run against the real Gateway and Keycloak (docs/e2e/identite.md): each
- * test signs in a fresh user with `cy.login()`, so no state is shared.
+ * test signs in a fresh user with `cy.login()`, so no state is shared. The
+ * session is kept as an alias: `cy.visitSignedIn()` and `cy.api()` read it.
  */
 import "cypress-axe";
 import type { KeycloakSession } from "./index";
@@ -14,6 +15,7 @@ const KEYCLOAK_ADMIN = { username: "admin", password: "admin" };
 const E2E_PASSWORD = "e2e-Password-1";
 // Read by app/plugins/keycloak.client.ts to restore the session.
 const TOKENS_STORAGE_KEY = "lantern.keycloak.tokens";
+const SESSION_ALIAS = "session";
 
 const keycloakUrl = () => Cypress.env("keycloakUrl") as string;
 
@@ -30,7 +32,7 @@ Cypress.Commands.add("getByCy", (name: string) => cy.get(`[data-cy="${name}"]`))
 Cypress.Commands.add("login", () => {
   const username = `e2e-${crypto.randomUUID()}`;
 
-  return passwordGrant("master", { client_id: "admin-cli", ...KEYCLOAK_ADMIN })
+  passwordGrant("master", { client_id: "admin-cli", ...KEYCLOAK_ADMIN })
     .then(({ body }) =>
       cy.request({
         method: "POST",
@@ -57,39 +59,39 @@ Cypress.Commands.add("login", () => {
         password: E2E_PASSWORD,
       }),
     )
-    .then(
-      ({ body }): KeycloakSession => ({
+    .then(({ body }) => {
+      const session: KeycloakSession = {
         token: body.access_token,
         refreshToken: body.refresh_token,
         idToken: body.id_token,
-      }),
-    );
+      };
+      // Aliases are cleared between tests: a session never leaks into the next one.
+      cy.wrap(session, { log: false }).as(SESSION_ALIAS);
+    });
 });
 
-Cypress.Commands.add("visitAs", (session: KeycloakSession, path: string) =>
-  cy.visit(path, {
-    onBeforeLoad(win) {
-      const { token, refreshToken, idToken } = session;
-      win.sessionStorage.setItem(
-        TOKENS_STORAGE_KEY,
-        JSON.stringify({ token, refreshToken, idToken }),
-      );
-    },
-  }),
+const currentSession = () =>
+  cy.get<KeycloakSession>(`@${SESSION_ALIAS}`, { log: false });
+
+Cypress.Commands.add("visitSignedIn", (path: string) =>
+  currentSession().then((session) =>
+    cy.visit(path, {
+      onBeforeLoad(win) {
+        win.sessionStorage.setItem(TOKENS_STORAGE_KEY, JSON.stringify(session));
+      },
+    }),
+  ),
 );
 
 Cypress.Commands.add(
-  "apiAs",
-  (
-    session: KeycloakSession,
-    method: Cypress.HttpMethod,
-    path: string,
-    body?: Cypress.RequestBody,
-  ) =>
-    cy.request({
-      method,
-      url: `${Cypress.env("gatewayUrl")}${path}`,
-      headers: { Authorization: `Bearer ${session.token}` },
-      body,
-    }),
+  "api",
+  (method: Cypress.HttpMethod, path: string, body?: Cypress.RequestBody) =>
+    currentSession().then((session) =>
+      cy.request({
+        method,
+        url: `${Cypress.env("gatewayUrl")}${path}`,
+        headers: { Authorization: `Bearer ${session.token}` },
+        body,
+      }),
+    ),
 );

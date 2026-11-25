@@ -15,19 +15,20 @@ declare global {
 
       /**
        * Create a unique user in realm `lantern` through the Keycloak admin API, then
-       * sign it in with a password grant on `lantern-public`.
+       * sign it in with a password grant on `lantern-public`. The session is kept for
+       * the rest of the test, for `visitSignedIn` and `api`.
        */
-      login(): Chainable<KeycloakSession>;
+      login(): Chainable<void>;
 
       /**
        * Visit an app route (relative to `baseUrl`, which already holds `/game`) with the
-       * session restored from sessionStorage, as `plugins/keycloak.client.ts` reads it.
+       * `cy.login()` session restored from sessionStorage, as `plugins/keycloak.client.ts`
+       * reads it.
        */
-      visitAs(session: KeycloakSession, path: string): Chainable<AUTWindow>;
+      visitSignedIn(path: string): Chainable<AUTWindow>;
 
-      /** Call the Gateway (`gatewayUrl` + path) with the session's bearer token. */
-      apiAs<T = unknown>(
-        session: KeycloakSession,
+      /** Call the Gateway (`gatewayUrl` + path) with the `cy.login()` bearer token. */
+      api<T = unknown>(
         method: HttpMethod,
         path: string,
         body?: RequestBody,
