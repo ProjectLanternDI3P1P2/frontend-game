@@ -1059,9 +1059,11 @@ describe("F00", () => {
     it("CA7: renders a simple « Loading hero detail… » paragraph", () => {
       const wrapper = mount(RankingRowDetail, {
         props: { heroId: "simulated-hero-007", currentPlayerId: ME },
+        global: { provide: { [LEADERBOARD_API_KEY as symbol]: simulated() } },
       });
       expect(wrapper.get("p").text()).toBe("Loading hero detail…");
       expect(wrapper.emitted()).toEqual({});
+      wrapper.unmount();
     });
   });
 
