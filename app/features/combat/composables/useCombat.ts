@@ -69,6 +69,8 @@ export function useCombat(fightId: string) {
   /** Seconds left to the hero's turn, from the server deadline (the server clock decides). */
   const secondsLeft = ref<number | null>(null);
   let ticker: ReturnType<typeof setInterval> | null = null;
+  /** The last state pushed while a replay was running, applied once it is over. */
+  let latestPush: FightResponse | null = null;
   let resyncOnDeadline = false;
 
   function tick(): void {
@@ -91,9 +93,10 @@ export function useCombat(fightId: string) {
     errorMessage.value = null;
     try {
       onFightChanged((pushed) => {
-        // Another client or the server changed the fight: its state wins, unless this
-        // screen is replaying its own action (the answer will settle it).
-        if (!busy.value) show(pushed);
+        // Another client or the server changed the fight: its state wins. During a replay
+        // the screen is staging its own action: the latest push waits for the end of it.
+        if (busy.value) latestPush = pushed;
+        else show(pushed);
       });
       show(await fetchFight(fightId));
       status.value = "ready";
@@ -219,12 +222,28 @@ export function useCombat(fightId: string) {
         actorId: actor.combatantId,
       });
       await replay(updated);
+      applyLatestPush();
     } catch (error) {
       errorMessage.value = describe(error);
       await resynchronise();
     } finally {
       busy.value = false;
     }
+  }
+
+  /**
+   * A state pushed during the replay is newer than the answer when it moved on (a later
+   * turn, or the end of the fight): then it replaces what the replay settled on.
+   */
+  function applyLatestPush(): void {
+    const pushed = latestPush;
+    latestPush = null;
+    const current = fight.value;
+    if (!pushed || !current) return;
+    const movedOn =
+      pushed.turn > current.turn ||
+      (pushed.status !== "Active" && current.status === "Active");
+    if (movedOn) show(pushed);
   }
 
   /** Stages the events of the last action beat by beat, then settles on the new state. */
@@ -258,6 +277,7 @@ export function useCombat(fightId: string) {
 
   /** The service refused or the outcome is unknown: its state wins (ADR-FE-008). */
   async function resynchronise(): Promise<void> {
+    latestPush = null;
     try {
       show(await fetchFight(fightId));
     } catch (error) {
