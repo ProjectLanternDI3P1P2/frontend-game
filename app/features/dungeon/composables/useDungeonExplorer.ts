@@ -13,6 +13,7 @@ import {
   defeatFloorBoss,
   joinDungeon,
   moveHero,
+  retryEncounter,
   openChest as requestOpenChest,
   spawnMob,
 } from "../api/dungeonApi";
@@ -103,7 +104,19 @@ export function useDungeonExplorer(
   const mobs = computed(() => run.value?.mobs ?? []);
   /** Mobs the last turn killed: they slide to where they fell, then fade out. */
   const dyingMobs = shallowRef<MobState[]>([]);
-  const movementBlocked = computed(() => disposed || chestLoot.value !== null);
+  /** The fight in progress, or the one settled this turn (shown once). */
+  const encounter = computed(() => run.value?.encounter ?? null);
+  /** A fight is on or waiting: the party cannot move until Combat reports the outcome. */
+  const inCombat = computed(
+    () => encounter.value !== null && encounter.value.status !== "resolved",
+  );
+  /** Contacts open real fights in Combat (else the stand-in: a contact kills the mob). */
+  const combatEnabled = computed(() => run.value?.combatEnabled === true);
+  /** The run is over (lost, won, abandoned): the server accepts no action in it any more. */
+  const runOver = computed(() => run.value !== null && run.value.status !== "active");
+  const movementBlocked = computed(
+    () => disposed || chestLoot.value !== null || inCombat.value || runOver.value,
+  );
 
   // The server dates each death: only a new turn brings new deaths to show.
   watch(
@@ -229,7 +242,9 @@ export function useDungeonExplorer(
 
     // Walking into the boss starts the fight; into the open gate, the way down.
     if (bossAt(current, target)) {
-      void fightBoss();
+      // With Combat, the server opens the boss fight on the move; else the stand-in.
+      if (combatEnabled.value) sendContact(direction);
+      else void fightBoss();
       return;
     }
     if (goesDown(current, target, state.floorBossDefeated)) {
@@ -250,8 +265,12 @@ export function useDungeonExplorer(
       return;
     }
 
-    // Same rule as the backend: a mob blocks the way.
+    // Same rule as the backend: a mob blocks the way; with Combat, the step is a contact.
     if (mobs.value.some((mob) => samePosition(mob, target))) {
+      if (combatEnabled.value) {
+        sendContact(direction);
+        return;
+      }
       bump.value = { direction, id: ++bumpCount };
       sound.play("bump");
       announce("A mob blocks the way.");
@@ -281,6 +300,37 @@ export function useDungeonExplorer(
         pendingMoves.value--;
       }
     });
+  }
+
+  /**
+   * A step into a mob or the boss with Combat on: the hero stays where it stands and the
+   * server opens the fight, so nothing is predicted here.
+   */
+  function sendContact(direction: Direction): void {
+    pendingMoves.value++;
+    const moveGeneration = generation;
+    queue = queue.then(async () => {
+      try {
+        if (moveGeneration !== generation) return;
+        const updated = await moveHero(runId, direction);
+        run.value = updated;
+        placeHero(updated.hero);
+      } catch (error) {
+        await resynchronise(error);
+      } finally {
+        pendingMoves.value--;
+      }
+    });
+  }
+
+  /** Asks Combat again for the fight of a pending or failed encounter. */
+  async function retryFight(): Promise<void> {
+    errorMessage.value = null;
+    try {
+      run.value = await retryEncounter(runId);
+    } catch (error) {
+      await resynchronise(error);
+    }
   }
 
   /** The boss still standing on a tile, if any. */
@@ -488,6 +538,9 @@ export function useDungeonExplorer(
         run.value = authoritative;
         placeHero(authoritative.hero);
       }
+      // A run that ended (lost, won) refuses further actions: the page shows why, so the
+      // refusal itself is not an error to display.
+      if (authoritative.status !== "active") errorMessage.value = null;
     } catch (refreshError) {
       errorMessage.value = describe(refreshError);
     }
@@ -523,9 +576,14 @@ export function useDungeonExplorer(
     canOpenChest,
     openableChest,
     movementBlocked,
+    encounter,
+    inCombat,
+    combatEnabled,
+    runOver,
     chestLoot,
     start,
     move,
+    retryFight,
     fightBoss,
     openChest,
     retryChestLoot,

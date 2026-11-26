@@ -54,7 +54,53 @@ const {
   openableChest,
   movementBlocked,
   chestLoot,
+  encounter,
 } = explorer;
+
+/**
+ * A contact opened a fight: once Combat confirms it, the fight screen takes over, and
+ * comes back here when it is over. A reload in mid-fight lands here again and goes back
+ * to the same fight: the run snapshot carries its id.
+ */
+watch(
+  () => (encounter.value?.status === "active" ? encounter.value.combatId : null),
+  (combatId) => {
+    if (!combatId) return;
+    const back = `/dungeon/${encodeURIComponent(String(route.params.runId))}`;
+    void navigateTo({
+      path: `/combat/${encodeURIComponent(combatId)}`,
+      query: { returnTo: back },
+    });
+  },
+  { immediate: true },
+);
+
+/** The party fell in a fight: the run is lost, nothing can be done in it any more. */
+const isLost = computed(() => run.value?.status === "lost");
+const defeatContinue = ref<{ $el: HTMLElement } | null>(null);
+// A lost run blocks every action (the explorer's `runOver`); focus goes to the way out.
+watch(
+  isLost,
+  async (lost) => {
+    if (!lost) return;
+    await nextTick();
+    defeatContinue.value?.$el.focus();
+  },
+  { immediate: true },
+);
+
+const encounterMessage = computed(() => {
+  const current = encounter.value;
+  if (!current || current.status === "resolved" || current.status === "active")
+    return null;
+  const foes =
+    current.trigger === "boss"
+      ? "the boss"
+      : `${current.mobIds.length} monster${current.mobIds.length > 1 ? "s" : ""}`;
+  return current.status === "pending"
+    ? `A fight against ${foes} is starting…`
+    : `The fight against ${foes} could not start: the combat service is unavailable.`;
+});
 
 const board = ref<HTMLElement | null>(null);
 const viewport = useBoardViewport(board);
@@ -90,7 +136,8 @@ function move(direction: Direction) {
 }
 
 function spawnAt(position: Position) {
-  if (isSandbox.value && !movementBlocked.value) explorer.spawn(spawnKind.value, position);
+  if (isSandbox.value && !movementBlocked.value)
+    explorer.spawn(spawnKind.value, position);
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -233,6 +280,30 @@ async function copyShareLink() {
         >
           {{ errorMessage }}
         </p>
+        <p
+          v-if="run.status === 'active' && run.combatEnabled === false"
+          class="dungeon-page__panel dungeon-page__no-combat"
+          role="note"
+        >
+          No fight in this run: it was started without a hero, so touching a mob only
+          removes it. Start a new exploration with a hero selected to fight.
+        </p>
+        <div
+          v-if="encounterMessage"
+          class="dungeon-page__panel dungeon-page__encounter"
+          role="status"
+          aria-live="polite"
+        >
+          <p>{{ encounterMessage }}</p>
+          <button
+            v-if="encounter?.status === 'failed'"
+            type="button"
+            class="dungeon-page__retry"
+            @click="explorer.retryFight"
+          >
+            Retry
+          </button>
+        </div>
       </div>
 
       <DungeonControls
@@ -249,6 +320,29 @@ async function copyShareLink() {
       </p>
       <p class="visually-hidden" aria-live="polite">{{ announcement }}</p>
 
+      <div
+        v-if="isLost"
+        class="dungeon-page__defeat"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="dungeon-defeat-title"
+        aria-describedby="dungeon-defeat-text"
+      >
+        <div class="dungeon-page__defeat-card">
+          <h1 id="dungeon-defeat-title">Defeat…</h1>
+          <p id="dungeon-defeat-text">
+            Your party fell on floor {{ run.currentFloor + 1 }}. This exploration is
+            over.
+          </p>
+          <NuxtLink ref="defeatContinue" to="/" class="dungeon-page__defeat-link">
+            Back to the lobby
+          </NuxtLink>
+          <NuxtLink to="/dungeon" class="dungeon-page__defeat-link">
+            Start a new exploration
+          </NuxtLink>
+        </div>
+      </div>
+
       <ChestLootModal
         v-if="chestLoot"
         :interaction="chestLoot"
@@ -260,6 +354,82 @@ async function copyShareLink() {
 </template>
 
 <style scoped lang="scss">
+.dungeon-page__defeat {
+  position: absolute;
+  z-index: calc(var(--z-overlay) + 1);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 60%);
+}
+
+.dungeon-page__defeat-card {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+  padding: var(--space-6) var(--space-7);
+  border: 3px solid var(--palette-parchment-700);
+  border-radius: 18px;
+  background: var(--palette-parchment-300);
+  color: var(--palette-charcoal-700);
+  font-family: var(--font-family-display);
+  text-align: center;
+
+  h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    color: var(--palette-blood-600);
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.dungeon-page__defeat-link {
+  padding: var(--space-2) var(--space-5);
+  border: 2px solid var(--palette-charcoal-700);
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+
+  &:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+}
+
+.dungeon-page__no-combat {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.dungeon-page__encounter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+
+  p {
+    margin: 0;
+  }
+}
+
+.dungeon-page__retry {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-raised);
+  color: var(--color-text-primary);
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+}
+
 .dungeon-page {
   position: absolute;
   inset: 0;

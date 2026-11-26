@@ -49,6 +49,19 @@ export class DungeonHubClient {
     );
   }
 
+  /**
+   * Asks Combat again to open the fight of the encounter waiting in the run (pending or
+   * failed). Same idempotency key as the first attempt: never a second fight.
+   */
+  async retryEncounter(dungeonId: string): Promise<DungeonRunResponse> {
+    return this.accept(
+      await this.hub.invoke<DungeonAcknowledgement>("RetryEncounter", {
+        commandId: crypto.randomUUID(),
+        dungeonId,
+      }),
+    );
+  }
+
   /** Debug only: a mob on a tile of the sandbox dungeon. Refused on any other run. */
   async spawnMob(
     dungeonId: string,
