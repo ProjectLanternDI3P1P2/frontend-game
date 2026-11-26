@@ -135,7 +135,7 @@ jobs:
       - name: Request Keycloak theme promotion
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
-          github-token: ${{ secrets.GITOPS_DISPATCH_TOKEN }}
+          github-token: ${{ secrets.GITOPS_DISPATCH_TOKEN2 }}
           script: |
             await github.rest.repos.createDispatchEvent({
               owner: 'ProjectLanternDI3P1P2',
