@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import { useMotionPreference } from "../composables/useMotionPreference";
+
+// The flame's wobble is a SMIL animation: it ignores CSS, so it stops here when the
+// fight plays its reduced version (the HUD's choice, starting from the system's).
+const { reduced } = useMotionPreference();
+
 /**
  * The "shaders" of the fight, as SVG filters (ADR-FE-005/006: no canvas, no WebGL). They
  * are declared once here and applied from CSS with `filter: url(#…)`:
@@ -23,6 +29,7 @@
           result="noise"
         >
           <animate
+            v-if="!reduced"
             attributeName="baseFrequency"
             dur="1.4s"
             values="0.03 0.09;0.035 0.12;0.03 0.09"

@@ -15,6 +15,7 @@ import {
 } from "~/features/player/appearance";
 import type { HeroClassCode } from "~/features/player/types";
 import type { Stance } from "../composables/useBattleStage";
+import { useMotionPreference } from "../composables/useMotionPreference";
 
 const props = withDefaults(
   defineProps<{
@@ -101,9 +102,8 @@ function load(url: string): Promise<HTMLImageElement> {
 
 let timer: ReturnType<typeof setTimeout> | undefined;
 let generation = 0;
-const reducedMotion = () =>
-  typeof matchMedia === "function" &&
-  matchMedia("(prefers-reduced-motion: reduce)").matches;
+// The HUD's "Animations" choice (full or reduced), which starts from the system's.
+const { reduced } = useMotionPreference();
 
 async function play(): Promise<void> {
   clearTimeout(timer);
@@ -119,7 +119,7 @@ async function play(): Promise<void> {
   if (current !== generation) return;
 
   const { column, frameMs } = pose.value;
-  const animated = !reducedMotion() && props.stance !== "down";
+  const animated = !reduced.value && props.stance !== "down";
   let frame = 0;
   const draw = () => {
     if (current !== generation) return;
@@ -149,7 +149,8 @@ async function play(): Promise<void> {
 
 onMounted(() => void play());
 watch(
-  () => JSON.stringify([sheets.value, pose.value, props.stance === "down"]),
+  () =>
+    JSON.stringify([sheets.value, pose.value, props.stance === "down", reduced.value]),
   () => void play(),
   { flush: "post" },
 );
