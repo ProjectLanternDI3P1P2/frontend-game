@@ -49,6 +49,11 @@ export default defineNuxtConfig({
     // service (decision D11). Justified in docs/rendering-modes.md.
     "/rankings": { ssr: true, prerender: false, swr: 60 },
 
+    // A fight is per-player, turn-by-turn game state with no SEO value:
+    // client-rendered like the dungeon (ADR-FE-004).
+    "/combat": { ssr: false },
+    "/combat/**": { ssr: false },
+
     // A route that genuinely needs a request-time render is declared here, one
     // entry per route, and justified in docs/rendering-modes.md. Two shapes are
     // allowed:
