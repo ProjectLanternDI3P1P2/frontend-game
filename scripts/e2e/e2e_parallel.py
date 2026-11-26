@@ -184,7 +184,9 @@ def main() -> None:
         return
 
     lanes = resolve_spec_lanes(args.spec) if args.spec else [get_spec_files()]
-    slow_mo = args.slow_mo if args.slow_mo is not None else (1000 if args.step == "open" else 0)
+    slow_mo = args.slow_mo
+    if slow_mo is None:
+        slow_mo = 1000 if args.step == "open" else 0
     # Cypress reads CYPRESS_* variables into Cypress.env(); every Cypress below inherits it.
     os.environ["CYPRESS_slowMo"] = str(slow_mo)
     front = prepare_stack()
