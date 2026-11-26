@@ -6,7 +6,11 @@
 import CombatCommandPanel from "~/features/combat/components/CombatCommandPanel.vue";
 import CombatScene from "~/features/combat/components/CombatScene.vue";
 import CombatTurnOrder from "~/features/combat/components/CombatTurnOrder.vue";
-import { outcomeTitle } from "~/features/combat/combatRules";
+import {
+  continuePath,
+  outcomeTitle,
+  safeReturnPath,
+} from "~/features/combat/combatRules";
 import { useCombat } from "~/features/combat/composables/useCombat";
 import { useMotionPreference } from "~/features/combat/composables/useMotionPreference";
 
@@ -35,22 +39,35 @@ const {
 /**
  * Where to go once the fight is over: back to the run of the fight. Combat has already
  * reported the outcome to Dungeon, so the dungeon snapshot carries it (mobs gone, HP kept,
- * or the run lost): the client never applies an outcome itself (ADR-FE-008).
+ * or the run lost): the client never applies an outcome itself (ADR-FE-008). The `returnTo`
+ * of the URL is only followed when it is a path of this site; the way back names this fight
+ * so that the run does not send the player straight back into it.
  */
-const returnTo = computed(() => {
-  const target = route.query.returnTo;
-  if (
-    typeof target === "string" &&
-    target.startsWith("/") &&
-    !target.startsWith("//")
-  ) {
-    return target;
-  }
-  return fight.value ? `/dungeon/${encodeURIComponent(fight.value.dungeonRunId)}` : "/";
-});
+const returnTo = computed(() =>
+  safeReturnPath(
+    route.query.returnTo,
+    fight.value ? `/dungeon/${encodeURIComponent(fight.value.dungeonRunId)}` : "/",
+  ),
+);
+const continueTo = computed(() =>
+  continuePath(returnTo.value, String(route.params.fightId)),
+);
 
 const targetIds = computed(() => targets.value.map((c) => c.combatantId));
 const { reduced: reducedMotion, toggle: toggleMotion } = useMotionPreference();
+
+/** The end-of-fight dialog takes the focus, on its only way out. */
+const continueLink = ref<{ $el: HTMLElement } | null>(null);
+const showOutcome = computed(() => isOver.value && !busy.value);
+watch(
+  showOutcome,
+  async (shown) => {
+    if (!shown) return;
+    await nextTick();
+    continueLink.value?.$el.focus();
+  },
+  { flush: "post" },
+);
 
 onMounted(() => combat.start());
 </script>
@@ -124,7 +141,7 @@ onMounted(() => combat.start());
       </div>
 
       <div
-        v-if="isOver && !busy"
+        v-if="showOutcome"
         class="combat-page__outcome"
         role="dialog"
         aria-modal="true"
@@ -139,7 +156,9 @@ onMounted(() => combat.start());
             {{ fight.heroes.filter((h) => !h.isKnockedOut).length }} /
             {{ fight.heroes.length }} heroes standing after {{ fight.round }} rounds.
           </p>
-          <NuxtLink :to="returnTo" class="combat-page__continue">Continue</NuxtLink>
+          <NuxtLink ref="continueLink" :to="continueTo" class="combat-page__continue">
+            Continue
+          </NuxtLink>
         </div>
       </div>
 
@@ -276,6 +295,11 @@ onMounted(() => combat.start());
     color: inherit;
     font-weight: 700;
     text-decoration: none;
+
+    &:focus-visible {
+      outline: 3px solid var(--color-focus-ring);
+      outline-offset: 3px;
+    }
   }
 }
 </style>
