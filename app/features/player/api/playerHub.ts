@@ -8,8 +8,20 @@ import type { GameSessionSnapshot } from "../types";
 type SessionAcknowledgement = {
   accepted: boolean;
   session?: GameSessionSnapshot;
-  error?: { message?: string };
+  error?: { code?: string; message?: string; activeSessionId?: string };
 };
+
+/** A refused session command; `activeSessionId` is set when the hero is already in an open session. */
+export class PlayerCommandRejectedError extends SignalRHubError {
+  constructor(
+    message: string,
+    readonly code?: string,
+    readonly activeSessionId?: string,
+  ) {
+    super(message);
+    this.name = "PlayerCommandRejectedError";
+  }
+}
 
 export class PlayerHubClient {
   private readonly hub: SignalRHubClient;
@@ -67,8 +79,10 @@ export class PlayerHubClient {
 
   private accept(acknowledgement: SessionAcknowledgement): GameSessionSnapshot {
     if (!acknowledgement.accepted || !acknowledgement.session) {
-      throw new SignalRHubError(
+      throw new PlayerCommandRejectedError(
         acknowledgement.error?.message ?? "The session command was rejected.",
+        acknowledgement.error?.code,
+        acknowledgement.error?.activeSessionId,
       );
     }
     return acknowledgement.session;
