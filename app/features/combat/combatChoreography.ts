@@ -118,8 +118,10 @@ async function ability(beat: Beat, context: ChoreographyContext): Promise<void> 
   const { stage } = context;
   const { head } = beat;
   const caster = findCombatant(context.fight, head.actorId);
+  // The event carries the name shown; the ability itself (its code) comes from the
+  // caster's own list, so a renamed or translated label still gets its style.
   const known = caster?.abilities.find((a) => a.name === head.label);
-  const style = abilityStyle(head.label, known?.target);
+  const style = abilityStyle(known?.abilityId, known?.target);
 
   // Every ability starts by gathering power: a magic circle under the caster.
   stage.pose(head.actorId, "cast");
@@ -235,10 +237,9 @@ function react(
         stage.pop(effect.targetId, "Miss", "miss");
         break;
       case "Healed":
+        // Only the number: the visual belongs to the action that healed (the "heal"
+        // style of an ability, the "potion" of an item), played once by its head.
         stage.pop(effect.targetId, `+${effect.amount}`, "heal");
-        if (effect.label?.toLowerCase().includes("potion") === false) {
-          stage.play("heal", effect.targetId, 700);
-        }
         break;
       case "ManaRestored":
         stage.play("mana", effect.targetId, 700);

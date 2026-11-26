@@ -11,6 +11,7 @@ import {
   signalRHubUrl,
 } from "~/shared/api/signalRHubClient";
 import type { HeroAppearance, HeroHairStyle } from "~/features/player/appearance";
+import { FIGHT_EVENT_TYPES } from "../types";
 import type {
   CombatCommandResultWire,
   CombatEventWire,
@@ -119,7 +120,7 @@ export function toFight(
     upcomingTurns: snapshot.upcomingTurns,
     heroes: fighters.filter((fighter) => fighter.side === "Hero"),
     monsters: fighters.filter((fighter) => fighter.side === "Monster"),
-    events: events.map(toEvent),
+    events: events.flatMap((event) => toEvent(event) ?? []),
     deadlineUtc: snapshot.turn?.deadlineUtc ?? null,
     timeMaxSeconds: snapshot.turn?.timeMaxSeconds ?? 0,
   };
@@ -180,11 +181,20 @@ function toCombatant(fighter: CombatFighterWire): Combatant {
   };
 }
 
-function toEvent(event: CombatEventWire): FightEvent {
+const KNOWN_EVENT_TYPES: ReadonlySet<string> = new Set(FIGHT_EVENT_TYPES);
+
+/**
+ * The service names its events in camelCase. A type the screen does not know (the back
+ * added one) is dropped rather than cast: a staged event of an unknown type would reach
+ * `describeEvent` and the choreography with nothing to play.
+ */
+function toEvent(event: CombatEventWire): FightEvent | null {
+  const type = event.type.charAt(0).toUpperCase() + event.type.slice(1);
+  if (!KNOWN_EVENT_TYPES.has(type)) return null;
   return {
     sequence: event.sequence,
     turn: event.turn,
-    type: (event.type.charAt(0).toUpperCase() + event.type.slice(1)) as FightEventType,
+    type: type as FightEventType,
     actorId: event.actorId,
     targetId: event.targetId,
     amount: event.amount,

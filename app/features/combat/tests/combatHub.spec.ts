@@ -156,4 +156,33 @@ describe("toFight", () => {
       "TurnTimedOut",
     ]);
   });
+
+  it("drops an event type the screen does not know instead of staging it", () => {
+    const events: CombatEventWire[] = [
+      {
+        sequence: 1,
+        turn: 3,
+        type: "attacked",
+        actorId: "hero-f",
+        targetId: "m1",
+        amount: 0,
+        label: null,
+        isCritical: false,
+      },
+      {
+        sequence: 2,
+        turn: 3,
+        type: "somethingNew",
+        actorId: "hero-f",
+        targetId: null,
+        amount: 0,
+        label: null,
+        isCritical: false,
+      },
+    ];
+
+    expect(toFight(snapshot(), events).events.map((event) => event.type)).toEqual([
+      "Attacked",
+    ]);
+  });
 });

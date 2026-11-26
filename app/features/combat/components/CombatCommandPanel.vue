@@ -33,6 +33,14 @@ defineEmits<{
   pass: [];
 }>();
 
+/**
+ * The bag is only offered once Combat sends items: until the inventory is wired (Rewards),
+ * every hero enters the fight with an empty one and the button would lead nowhere.
+ */
+const hasItems = computed(() =>
+  props.fight.heroes.some((member) => member.items.length > 0),
+);
+
 const lastLine = computed(() => props.log.at(-1) ?? "");
 
 const prompt = computed(() => {
@@ -119,6 +127,7 @@ const percent = (value: number, max: number) =>
           Fight
         </button>
         <button
+          v-if="hasItems"
           type="button"
           class="combat-panel__button"
           :disabled="!hero"

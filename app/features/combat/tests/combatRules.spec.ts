@@ -3,10 +3,12 @@ import {
   abilityStyle,
   activeHero,
   applyEvent,
+  continuePath,
   describeEvent,
   gaugesOf,
   groupIntoBeats,
   isHeavyHit,
+  safeReturnPath,
   targetsFor,
 } from "../combatRules";
 import type { Combatant, FightEvent, FightResponse } from "../types";
@@ -158,17 +160,48 @@ describe("groupIntoBeats", () => {
 });
 
 describe("abilityStyle", () => {
-  it("knows the abilities of the mock heroes by name, whatever the case", () => {
-    expect(abilityStyle("Fireball", "SingleEnemy")).toBe("fireball");
-    expect(abilityStyle("FROST NOVA", "AllEnemies")).toBe("frost");
-    expect(abilityStyle("Backstab", "SingleEnemy")).toBe("melee");
+  it("knows the abilities by code, not by the label shown", () => {
+    expect(abilityStyle("mage-bolt", "SingleEnemy")).toBe("fireball");
+    expect(abilityStyle("warrior-strike", "SingleEnemy")).toBe("melee");
   });
 
   it("falls back on what an unknown ability targets", () => {
-    expect(abilityStyle("Holy Light", "SingleAlly")).toBe("heal");
-    expect(abilityStyle("Stone Skin", "Self")).toBe("shield");
-    expect(abilityStyle("Whirlwind", "AllEnemies")).toBe("frost");
+    expect(abilityStyle("holy-light", "SingleAlly")).toBe("heal");
+    expect(abilityStyle("stone-skin", "Self")).toBe("shield");
+    expect(abilityStyle("whirlwind", "AllEnemies")).toBe("frost");
     expect(abilityStyle(null, undefined)).toBe("melee");
+  });
+});
+
+describe("safeReturnPath", () => {
+  const fallback = "/dungeon/run-1";
+
+  it("keeps a path of this site, with its query", () => {
+    expect(safeReturnPath("/dungeon/abc", fallback)).toBe("/dungeon/abc");
+    expect(safeReturnPath("/dungeon/abc?x=1", fallback)).toBe("/dungeon/abc?x=1");
+  });
+
+  it.each([
+    ["an absent value", undefined],
+    ["an array", ["/a", "/b"]],
+    ["an empty value", ""],
+    ["a relative path", "dungeon/abc"],
+    ["a protocol-relative URL", "//x.com"],
+    ["a backslash read as a slash", "/\\x.com"],
+    ["an absolute URL", "https://x.com/dungeon"],
+    ["a tab stripped by the URL parser", "/\t/x.com"],
+    ["a newline", "/dungeon\n/x"],
+  ])("falls back on %s", (_name, value) => {
+    expect(safeReturnPath(value, fallback)).toBe(fallback);
+  });
+});
+
+describe("continuePath", () => {
+  it("flags the fight just left, after the existing query or not", () => {
+    expect(continuePath("/dungeon/abc", "f-1")).toBe("/dungeon/abc?fromCombat=f-1");
+    expect(continuePath("/dungeon/abc?x=1", "f-1")).toBe(
+      "/dungeon/abc?x=1&fromCombat=f-1",
+    );
   });
 });
 

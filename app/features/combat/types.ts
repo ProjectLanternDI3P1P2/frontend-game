@@ -24,26 +24,33 @@ export type AbilityTarget = "SingleEnemy" | "AllEnemies" | "SingleAlly" | "Self"
 
 export type ItemEffect = "RestoreHealth" | "RestoreMana";
 
-export type FightEventType =
-  | "TurnStarted"
-  | "Attacked"
-  | "AbilityUsed"
-  | "ItemUsed"
-  | "Damaged"
+/**
+ * Every event the Combat service sends. The list is also the whitelist of the Hub client:
+ * an event type the screen does not know is dropped, never staged.
+ */
+export const FIGHT_EVENT_TYPES = [
+  "TurnStarted",
+  "Attacked",
+  "AbilityUsed",
+  "ItemUsed",
+  "Damaged",
   /** The target sidestepped the blow: no damage. */
-  | "Missed"
-  | "Healed"
-  | "ManaRestored"
-  | "Defended"
-  | "FleeFailed"
+  "Missed",
+  "Healed",
+  "ManaRestored",
+  "Defended",
+  "FleeFailed",
   /** The hero passed its turn. */
-  | "Passed"
+  "Passed",
   /** The hero did not act before the deadline: the server passed the turn. */
-  | "TurnTimedOut"
-  | "Fled"
-  | "KnockedOut"
-  | "Victory"
-  | "Defeat";
+  "TurnTimedOut",
+  "Fled",
+  "KnockedOut",
+  "Victory",
+  "Defeat",
+] as const;
+
+export type FightEventType = (typeof FIGHT_EVENT_TYPES)[number];
 
 export interface Ability {
   abilityId: string;

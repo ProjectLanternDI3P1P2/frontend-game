@@ -212,21 +212,20 @@ export function groupIntoBeats(events: readonly FightEvent[]): Beat[] {
 /** How an ability looks on screen. */
 export type AbilityStyle = "melee" | "fireball" | "frost" | "heal" | "shield";
 
-/** Known abilities by name; the others by what they target. */
+/**
+ * Known abilities by code (the Player skill code, stable whatever the label shown); the
+ * others by what they target.
+ */
 const ABILITY_STYLES: Readonly<Record<string, AbilityStyle>> = {
-  fireball: "fireball",
-  "frost nova": "frost",
-  heal: "heal",
-  "shield wall": "shield",
-  "heavy strike": "melee",
-  backstab: "melee",
+  "warrior-strike": "melee",
+  "mage-bolt": "fireball",
 };
 
 export function abilityStyle(
-  name: string | null,
+  code: string | null | undefined,
   target: Ability["target"] | undefined,
 ): AbilityStyle {
-  const known = name ? ABILITY_STYLES[name.toLowerCase()] : undefined;
+  const known = code ? ABILITY_STYLES[code] : undefined;
   if (known) return known;
   switch (target) {
     case "AllEnemies":
@@ -238,6 +237,26 @@ export function abilityStyle(
     default:
       return "melee";
   }
+}
+
+/**
+ * The page to go back to once the fight is over, from the `returnTo` of the URL: only a
+ * path of this site. Anything that a browser could read as another site (`//x.com`,
+ * `/\x.com`, `https://x.com`, a control character stripped by the URL parser) or an absent
+ * value gives the fallback.
+ */
+export function safeReturnPath(value: unknown, fallback: string): string {
+  if (typeof value !== "string") return fallback;
+  if (!value.startsWith("/") || value.startsWith("//")) return fallback;
+  // eslint-disable-next-line no-control-regex
+  if (value.includes("\\") || /[\u0000-\u001f\u007f]/.test(value)) return fallback;
+  return value;
+}
+
+/** The way back to the run, flagged with the fight just left so that the run can tell. */
+export function continuePath(returnTo: string, fightId: string): string {
+  const separator = returnTo.includes("?") ? "&" : "?";
+  return `${returnTo}${separator}fromCombat=${encodeURIComponent(fightId)}`;
 }
 
 /** A hit worth shaking the screen: a fifth of the target's health or more. */
