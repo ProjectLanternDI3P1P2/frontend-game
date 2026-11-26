@@ -45,16 +45,17 @@ par les équipes ; ce travail ne modifie pas leur enregistrement.
 ## Entrées HTTP et SignalR
 
 - Player : `/api/v1/player/...` et alias documentaire `/api/player/...`.
-- Rewards : `/api/v1/rewards/...` et `/api/rewards/...`.
+- Rewards : `/api/rewards/v1/...`.
 - Progression : `/api/v1/progression/...` et `/api/progression/...`.
 - Hubs : `/hubs/player`, `/hubs/dungeons`, `/hubs/combats`.
 
-Le préfixe propriétaire est remplacé par `/api/v1` côté backend, conformément
-au versionnement des contrôleurs. Exemple :
-`/api/v1/player/hero-classes` → Player `/api/v1/hero-classes`.
-C'est la convention de réécriture locale pour les chemins abstraits des docs.
-Les routes natives actuelles restent routées, dont `/api/v1/players/...`,
-les routes Dungeon et l'inventaire Reward.
+Le préfixe Player `/api/player` et le préfixe Progression sont remplacés côté
+backend conformément à leurs routes natives. Exemple :
+`/api/v1/player/hero-classes` → Player `/api/v1/hero-classes`. Rewards conserve
+son préfixe versionné `/api/rewards/v1`, notamment pour l'inventaire à
+`/api/rewards/v1/heroes/{id}/inventory[/...]`.
+Les routes natives actuelles restent routées, dont `/api/v1/players/...` et
+les routes Dungeon.
 `/services/<service>/...` reste un accès de diagnostic local.
 Le code du backend doit implémenter la route finale ; Traefik ne crée pas de Hub.
 

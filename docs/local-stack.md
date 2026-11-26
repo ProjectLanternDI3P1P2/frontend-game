@@ -145,9 +145,8 @@ notifications de changement des fichiers montés depuis Windows.
 | `/hubs/combats[/...]`                                            | Combat                                                      |
 | `/hubs/dungeons[/...]`                                           | Dungeon                                                     |
 | `/api/v1/player/...`, `/api/player/...`                          | Player, préfixe remplacé par `/api/v1`                      |
-| `/api/v1/rewards/...`, `/api/rewards/...`                        | Rewards, préfixe remplacé par `/api/v1`                     |
+| `/api/rewards/v1/...`                                            | Rewards, route native                                       |
 | `/api/v1/progression/...`, `/api/progression/...`                | Progression (`leaderboard`), préfixe remplacé par `/api/v1` |
-| `/api/v1/heroes/{id}/inventory[/...]`                            | Reward                                                      |
 | `/services/{service}/...`                                        | Service nommé, préfixe retiré                               |
 
 `service` vaut `player`, `combat`, `dungeon`, `reward` ou `leaderboard`.
