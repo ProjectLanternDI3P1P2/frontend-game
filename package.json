@@ -40,7 +40,7 @@
     "@vitejs/plugin-vue": "^6.0.0",
     "@vue/test-utils": "^2.4.6",
     "axe-core": "^4.10.0",
-    "cypress": "^15.0.0",
+    "cypress": "^15.21.2",
     "cypress-axe": "^1.6.0",
     "eslint": "^9.0.0",
     "eslint-plugin-vuejs-accessibility": "^2.4.1",
@@ -55,7 +55,7 @@
     "vue-tsc": "^3.0.0"
   },
   "allowScripts": {
-    "cypress@15.21.1": true,
+    "cypress@15.21.2": true,
     "esbuild@0.28.2": true,
     "unrs-resolver@1.12.2": true,
     "@parcel/watcher@2.6.0": true

@@ -59,9 +59,9 @@ Le job `e2e` actuel (build et start dans le même job) est remplacé.
 
 ## Réserves
 
-- En local, Cypress 15.21 avec Chrome 158 headless plante quand un même run enchaîne plusieurs
-  specs (`* is not a valid URL`). Les lanes CI en reçoivent maintenant 3 : à surveiller. En
-  local, `e2e_parallel.py open` lance une spec à la fois.
+- Cypress 15.21.1 avec Chrome 158 plante dès qu'un run enchaîne plusieurs specs
+  (`* is not a valid URL`). Les runners GitHub reçoivent Chrome 157 ou 158 selon l'image.
+  Cypress 15.21.2 corrige le problème : ne pas redescendre en dessous.
 
 ## Sources
 

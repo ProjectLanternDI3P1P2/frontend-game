@@ -305,8 +305,7 @@ python3 scripts/e2e/e2e_parallel.py open
   `cypress.log`) et captures dans `cypress/results/screenshots/`.
 - `tests` et `open` arrêtent le front en sortant. Si le port 3000 est déjà pris,
   ils s'arrêtent tout de suite au lieu de tester un autre serveur.
-- En local, lancer une spec à la fois : Chrome headless plante quand un même
-  run enchaîne plusieurs specs.
+- Sans `--spec`, `tests` lance toutes les specs dans un même run.
 
 ## Portée et écarts actuels
 
