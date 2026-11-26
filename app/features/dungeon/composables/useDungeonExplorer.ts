@@ -323,13 +323,45 @@ export function useDungeonExplorer(
     });
   }
 
-  /** Asks Combat again for the fight of a pending or failed encounter. */
+  /** True while Combat is asked again: a second click does nothing. */
+  const isRetrying = ref(false);
+
+  /**
+   * Asks Combat again for the fight of a pending or failed encounter. The server's key is
+   * the encounter itself, so a retry never opens a second fight; the guard here only
+   * spares the useless second call of a double click.
+   */
   async function retryFight(): Promise<void> {
+    if (isRetrying.value) return;
+    isRetrying.value = true;
     errorMessage.value = null;
     try {
       run.value = await retryEncounter(runId);
     } catch (error) {
       await resynchronise(error);
+    } finally {
+      isRetrying.value = false;
+    }
+  }
+
+  /**
+   * Re-reads the run without touching the page's error state: used while waiting for the
+   * result of a fight Combat has not reported yet. A failure is not worth a message, the
+   * next attempt tries again.
+   */
+  async function refresh(): Promise<void> {
+    if (disposed) return;
+    try {
+      const authoritative = await joinDungeon(runId);
+      if (disposed) return;
+      if (authoritative.currentFloor !== run.value?.currentFloor) {
+        await enterFloor(authoritative);
+      } else {
+        run.value = authoritative;
+        placeHero(authoritative.hero);
+      }
+    } catch {
+      // Next tick.
     }
   }
 
@@ -584,6 +616,8 @@ export function useDungeonExplorer(
     start,
     move,
     retryFight,
+    isRetrying,
+    refresh,
     fightBoss,
     openChest,
     retryChestLoot,

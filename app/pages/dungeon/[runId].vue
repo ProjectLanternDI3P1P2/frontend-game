@@ -58,6 +58,18 @@ const {
 } = explorer;
 
 /**
+ * The fight the player has just left, named by the way back from the fight screen
+ * (`?fromCombat=`). Combat reports the outcome to Dungeon before the fight screen can be
+ * left, but if that report is late (Dungeon was down, it is retried every few seconds),
+ * the run still shows this fight as active: without this, the page would send the player
+ * straight back into a finished fight, again and again.
+ */
+const leftCombatId = computed(() => {
+  const value = route.query.fromCombat;
+  return typeof value === "string" ? value : null;
+});
+
+/**
  * A contact opened a fight: once Combat confirms it, the fight screen takes over, and
  * comes back here when it is over. A reload in mid-fight lands here again and goes back
  * to the same fight: the run snapshot carries its id.
@@ -65,7 +77,7 @@ const {
 watch(
   () => (encounter.value?.status === "active" ? encounter.value.combatId : null),
   (combatId) => {
-    if (!combatId) return;
+    if (!combatId || combatId === leftCombatId.value) return;
     const back = `/dungeon/${encodeURIComponent(String(route.params.runId))}`;
     void navigateTo({
       path: `/combat/${encodeURIComponent(combatId)}`,
@@ -74,6 +86,28 @@ watch(
   },
   { immediate: true },
 );
+
+/** The fight just left is not settled in the run yet: the page waits for its outcome. */
+const waitingForOutcome = computed(
+  () =>
+    encounter.value?.status === "active" &&
+    encounter.value.combatId !== null &&
+    encounter.value.combatId === leftCombatId.value,
+);
+let outcomePoll: ReturnType<typeof setInterval> | null = null;
+function stopWaiting(): void {
+  if (outcomePoll) clearInterval(outcomePoll);
+  outcomePoll = null;
+}
+watch(
+  waitingForOutcome,
+  (waiting) => {
+    stopWaiting();
+    if (waiting) outcomePoll = setInterval(() => void explorer.refresh(), 1500);
+  },
+  { immediate: true },
+);
+onBeforeUnmount(stopWaiting);
 
 /** The party fell in a fight: the run is lost, nothing can be done in it any more. */
 const isLost = computed(() => run.value?.status === "lost");
@@ -91,6 +125,7 @@ watch(
 
 const encounterMessage = computed(() => {
   const current = encounter.value;
+  if (waitingForOutcome.value) return "The result of the fight is being recorded…";
   if (!current || current.status === "resolved" || current.status === "active")
     return null;
   const foes =
@@ -299,6 +334,7 @@ async function copyShareLink() {
             v-if="encounter?.status === 'failed'"
             type="button"
             class="dungeon-page__retry"
+            :disabled="explorer.isRetrying.value"
             @click="explorer.retryFight"
           >
             Retry
