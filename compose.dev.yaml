@@ -1,6 +1,8 @@
 name: lantern-local-dev
 
 services:
+  keycloak:
+    extends: { file: compose.yaml, service: keycloak }
   traefik:
     extends: { file: compose.yaml, service: traefik }
   frontend-game:

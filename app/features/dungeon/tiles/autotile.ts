@@ -62,6 +62,22 @@ export interface TileLayer {
    * it, the hero and the mobs included, and is hidden by what stands in front of it.
    */
   upright?: boolean;
+  /**
+   * Part of a wall, which hides the hero, the mobs and the furniture behind it or beside it,
+   * so that their sprites, wider and taller than a tile, never stick out over the walls of a
+   * corridor. The lower half of a face hides what stands on its row: what stands below it
+   * is in front of the wall. The upper half of a face and the top of a wall hide what stands
+   * on their row and the row below, which is still the wall's (`WallDepth`).
+   */
+  wall?: WallDepth;
+}
+
+/** How far down a part of a wall hides what stands behind it (see `TileLayer.wall`). */
+export type WallDepth = "face" | "top";
+
+/** The same layers, as parts of a wall. */
+function asWall(layers: TileLayer[], wall: WallDepth): TileLayer[] {
+  return layers.map((layer) => ({ ...layer, wall }));
 }
 
 /** What the template renders: one absolutely positioned element per layer. */
@@ -97,6 +113,10 @@ const LITTER: Readonly<Record<RoomTypeName | "corridor", Partial<Record<Litter, 
   treasure: { coins: 45, note: 6, books: 8, potions: 10 },
   empty: { rubble: 30, bones: 8, note: 4, books: 10, potions: 3 },
   boss: { bones: 28, blood: 30, rubble: 10, help: 3 },
+  // An easter-egg room keeps its floor and its walls clean (no litter, no candles at the foot
+  // of the walls, nothing hung on them: see `canDecorate` and `litter`): the decorations are
+  // the show, and the portals hang on a bare wall.
+  secret: {},
   corridor: { rubble: 12, bones: 5 },
 };
 
@@ -389,6 +409,8 @@ class WallPlan {
   /** A face that can carry a decoration: a plain stretch of wall, between two faces. */
   private canDecorate(x: number, y: number): boolean {
     if (!this.isFace(x, y) || this.isThinWall(x, y) || this.isNextToDoor(x, y)) return false;
+    // Bare in an easter-egg room: the portals hang there, and nothing may overlap them.
+    if (this.roomType(x, y + 1) === "secret") return false;
     return (
       this.isFace(x - 1, y) &&
       this.isFace(x + 1, y) &&
@@ -491,7 +513,7 @@ export function planFloor(floor: DecodedFloor): TileLayer[][] {
 /** A wall tile: its rim, or the lower half of its face. */
 function wallLayers(plan: WallPlan, x: number, y: number, hash: number): TileLayer[] {
   if (plan.isRim(x, y) || plan.isThinWall(x, y)) {
-    return [atlas(rimSprite(plan.rimKey(x, y), roll(hash, 6) < CHANCE.jointedRim))];
+    return asWall([atlas(rimSprite(plan.rimKey(x, y), roll(hash, 6) < CHANCE.jointedRim))], "top");
   }
   return plan.isFace(x, y) ? lowerFaceLayers(plan, x, y) : [];
 }
@@ -517,13 +539,13 @@ function lowerFaceLayers(plan: WallPlan, x: number, y: number): TileLayer[] {
   const isTall = plan.isUpperFace(x, y - 1);
   const layers = [atlas(faceSprite(plan, isTall ? FACES.lower : FACES.short, x, y, plan.faceEnds(x, y)))];
   if (!isTall) layers.push(...wallDressing(plan, x, y, y, -TILE_SIZE));
-  return layers;
+  return asWall(layers, "face");
 }
 
 function upperFaceLayers(plan: WallPlan, x: number, y: number): TileLayer[] {
   const layers = [atlas(faceSprite(plan, FACES.upper, x, y + 1, plan.upperFaceEnds(x, y)))];
   layers.push(...wallDressing(plan, x, y, y + 1, 0));
-  return layers;
+  return asWall(layers, "top");
 }
 
 /**
@@ -665,7 +687,13 @@ function litter(
   const { entrance } = plan.floor;
   if (x === entrance.x && y >= entrance.y - 2 && y <= entrance.y) return [];
 
-  if (plan.isFace(x, y - 1) && !plan.isThinWall(x, y - 1) && roll(hash, 10) < CHANCE.wallFoot) {
+  // Not at the foot of the walls of an easter-egg room: the floor stays clean.
+  if (
+    roomType !== "secret" &&
+    plan.isFace(x, y - 1) &&
+    !plan.isThinWall(x, y - 1) &&
+    roll(hash, 10) < CHANCE.wallFoot
+  ) {
     return [standing("props", pick(WALL_FOOT, hash >>> 11), 1)];
   }
 
@@ -707,8 +735,8 @@ function spillsOnlyOnFloor(plan: WallPlan, x: number, y: number, layer: TileLaye
 }
 
 function render(layer: TileLayer, x: number, y: number): RenderedLayer {
-  const { sheet, sprite, dx, dy, transform, upright } = layer;
-  const modifiers = [transform, upright ? "upright" : undefined].filter(Boolean);
+  const { sheet, sprite, dx, dy, transform, upright, wall } = layer;
+  const modifiers = [transform, upright ? "upright" : undefined, wall ? `wall-${wall}` : undefined].filter(Boolean);
   return {
     className: ["dungeon-tile", `dungeon-tile--${sheet}`, ...modifiers.map((name) => `dungeon-tile--${name}`)].join(" "),
     style:

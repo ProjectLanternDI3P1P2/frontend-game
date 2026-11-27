@@ -13,6 +13,8 @@ const props = withDefaults(
   defineProps<{
     modelValue: boolean;
     title?: string;
+    /** Accessible name when the dialog renders its own heading instead of `title`. */
+    label?: string;
     size?: ModalSize;
     closeOnBackdrop?: boolean;
     closeOnEscape?: boolean;
@@ -24,6 +26,7 @@ const props = withDefaults(
   }>(),
   {
     title: "",
+    label: "",
     size: ModalSize.MD,
     closeOnBackdrop: true,
     closeOnEscape: true,
@@ -67,7 +70,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
           dialogClass,
           { 'ui-modal__dialog--fixed-body': !scrollBody },
         ]"
-        :aria-label="title"
+        :aria-label="title || label"
         :open="modelValue"
         tabindex="-1"
       >

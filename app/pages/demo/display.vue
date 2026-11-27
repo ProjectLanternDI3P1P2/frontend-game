@@ -12,7 +12,6 @@ import {
 useHead({ title: "Game data · UI kit" });
 const experience = ref(68);
 const selectedItem = ref("Azure Scepter");
-const heroFace = new URL("../../assets/heroes/dg_faceset.png", import.meta.url).href;
 </script>
 <template>
   <div class="demo-page">
@@ -38,7 +37,6 @@ const heroFace = new URL("../../assets/heroes/dg_faceset.png", import.meta.url).
     ><UiPanel title="UiAvatar & UiProgressBar" :heading-level="PanelHeadingLevel.TWO"
       ><div class="demo-page__hero">
         <UiAvatar
-          :src="heroFace"
           name="Mira the Scout"
           :status="AvatarStatus.ONLINE"
           :size="AvatarSize.LG"

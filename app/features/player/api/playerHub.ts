@@ -26,21 +26,17 @@ export class PlayerHubClient {
 
   async createSoloLobby(command: {
     commandId: string;
-    playerId: string;
     heroId: string;
+    dungeonSeed?: string;
   }): Promise<GameSessionSnapshot> {
     return this.accept(
       await this.hub.invoke<SessionAcknowledgement>("CreateSoloLobby", command),
     );
   }
 
-  async getSessionSnapshot(
-    playerId: string,
-    sessionId: string,
-  ): Promise<GameSessionSnapshot> {
+  async getSessionSnapshot(sessionId: string): Promise<GameSessionSnapshot> {
     return this.accept(
       await this.hub.invoke<SessionAcknowledgement>("GetSessionSnapshot", {
-        playerId,
         sessionId,
       }),
     );
@@ -48,7 +44,6 @@ export class PlayerHubClient {
 
   async startSession(command: {
     commandId: string;
-    playerId: string;
     sessionId: string;
   }): Promise<GameSessionSnapshot> {
     return this.accept(
@@ -58,7 +53,6 @@ export class PlayerHubClient {
 
   async changeSessionHero(command: {
     commandId: string;
-    playerId: string;
     sessionId: string;
     heroId: string;
   }): Promise<GameSessionSnapshot> {

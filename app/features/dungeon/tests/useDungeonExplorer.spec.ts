@@ -6,15 +6,21 @@ import { clearFloorCache } from "../composables/useDungeonFloor";
 import { useDungeonExplorer } from "../composables/useDungeonExplorer";
 import { MOB_DEATH_MS, MOVE_COOLDOWN_MS } from "../dungeonRules";
 import { Cell, cellAt, decodeFloor, gateOf, isWalkableAt, step } from "../dungeonMap";
-import type { Direction, DungeonMapResponse, DungeonRunResponse, Position } from "../types";
+import type {
+  Direction,
+  DungeonMapResponse,
+  DungeonRunResponse,
+  Position,
+} from "../types";
 import mapFixture from "./fixtures/map-DGPEAP9GWJKZF-f0.json";
 import runFixture from "./fixtures/run-DGPEAP9GWJKZF.json";
 
 vi.mock("../api/dungeonApi", () => ({
-  fetchDungeonRun: vi.fn(),
+  joinDungeon: vi.fn(),
   fetchDungeonMap: vi.fn(),
   moveHero: vi.fn(),
   defeatFloorBoss: vi.fn(),
+  openChest: vi.fn(),
   createDungeonRun: vi.fn(),
 }));
 
@@ -27,7 +33,12 @@ function serverAccepts() {
   let hero: Position = { ...initialRun.hero };
   let turn = 0;
   vi.mocked(api.moveHero).mockImplementation(async (_runId, direction: Direction) => {
-    const offsets = { north: [0, -1], east: [1, 0], south: [0, 1], west: [-1, 0] } as const;
+    const offsets = {
+      north: [0, -1],
+      east: [1, 0],
+      south: [0, 1],
+      west: [-1, 0],
+    } as const;
     hero = { x: hero.x + offsets[direction][0], y: hero.y + offsets[direction][1] };
     turn++;
     return { ...initialRun, hero, turn };
@@ -38,7 +49,7 @@ describe("useDungeonExplorer", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     clearFloorCache();
-    vi.mocked(api.fetchDungeonRun).mockResolvedValue(initialRun);
+    vi.mocked(api.joinDungeon).mockResolvedValue(initialRun);
     vi.mocked(api.fetchDungeonMap).mockResolvedValue(map);
   });
 
@@ -52,6 +63,25 @@ describe("useDungeonExplorer", () => {
     expect(explorer.revealed.value.some((tile) => tile === 1)).toBe(true);
   });
 
+  it("rebuilds the fog and the minimap from the tiles the server says were visited", async () => {
+    const farRoom = floor.rooms[floor.rooms.length - 1]!;
+    vi.mocked(api.joinDungeon).mockResolvedValue({
+      ...initialRun,
+      visitedTiles: encodeTiles([initialRun.hero, farRoom.center]),
+    });
+
+    const explorer = useDungeonExplorer(initialRun.id);
+    await explorer.start();
+
+    expect([...explorer.visitedRoomIds.value].sort((a, b) => a - b)).toEqual([
+      0,
+      farRoom.id,
+    ]);
+    expect(
+      explorer.revealed.value[farRoom.center.y * floor.width + farRoom.center.x],
+    ).toBe(1);
+  });
+
   it("moves the hero at once and confirms with the server, in order", async () => {
     serverAccepts();
     const explorer = useDungeonExplorer(initialRun.id);
@@ -60,13 +90,15 @@ describe("useDungeonExplorer", () => {
     // From below the entrance door, into the start room.
     explorer.move("south");
     explorer.move("south");
-    expect(explorer.hero.value).toEqual({ x: initialRun.hero.x, y: initialRun.hero.y + 2 });
+    expect(explorer.hero.value).toEqual({
+      x: initialRun.hero.x,
+      y: initialRun.hero.y + 2,
+    });
 
     await flushPromises();
-    expect(vi.mocked(api.moveHero).mock.calls.map(([, direction]) => direction)).toEqual([
-      "south",
-      "south",
-    ]);
+    expect(
+      vi.mocked(api.moveHero).mock.calls.map(([, direction]) => direction),
+    ).toEqual(["south", "south"]);
     expect(explorer.run.value?.turn).toBe(2);
     expect(explorer.pendingMoves.value).toBe(0);
   });
@@ -79,7 +111,9 @@ describe("useDungeonExplorer", () => {
     // Off the centre row of the start room, where the side doors are: walk to its wall.
     explorer.move("south");
     await flushPromises();
-    while (cellAt(floor, explorer.hero.value.x - 1, explorer.hero.value.y) === Cell.Floor) {
+    while (
+      cellAt(floor, explorer.hero.value.x - 1, explorer.hero.value.y) === Cell.Floor
+    ) {
       explorer.move("west");
       await flushPromises();
     }
@@ -97,7 +131,7 @@ describe("useDungeonExplorer", () => {
   it("sends no request for a move onto a known mob, and bumps", async () => {
     serverAccepts();
     const below = { x: initialRun.hero.x, y: initialRun.hero.y + 1 };
-    vi.mocked(api.fetchDungeonRun).mockResolvedValue({
+    vi.mocked(api.joinDungeon).mockResolvedValue({
       ...initialRun,
       mobs: [{ id: 99, kind: "zombie", ...below, aggro: true, nextTeleport: null }],
     });
@@ -115,9 +149,16 @@ describe("useDungeonExplorer", () => {
 
   it("lets a killed mob slide to where it fell, then fade out, holding the hero meanwhile", async () => {
     vi.useFakeTimers();
-    const zombie = { id: 7, kind: "zombie", x: 1, y: 1, aggro: true, nextTeleport: null } as const;
+    const zombie = {
+      id: 7,
+      kind: "zombie",
+      x: 1,
+      y: 1,
+      aggro: true,
+      nextTeleport: null,
+    } as const;
     const fallen = { ...zombie, x: 2, y: 1 };
-    vi.mocked(api.fetchDungeonRun).mockResolvedValue({ ...initialRun, mobs: [zombie] });
+    vi.mocked(api.joinDungeon).mockResolvedValue({ ...initialRun, mobs: [zombie] });
     vi.mocked(api.moveHero).mockImplementation(async () => ({
       ...initialRun,
       hero: { x: initialRun.hero.x, y: initialRun.hero.y + 1 },
@@ -167,7 +208,9 @@ describe("useDungeonExplorer", () => {
     ]);
 
     // Floor 0, and floor 1 prefetched once.
-    const floors = vi.mocked(api.fetchDungeonMap).mock.calls.map(([, floorIndex]) => floorIndex);
+    const floors = vi
+      .mocked(api.fetchDungeonMap)
+      .mock.calls.map(([, floorIndex]) => floorIndex);
     expect(floors.sort()).toEqual([0, 1]);
   });
 
@@ -178,8 +221,11 @@ describe("useDungeonExplorer", () => {
     )!;
     const nextToBoss = step(boss, opposite(direction));
     const run: DungeonRunResponse = { ...initialRun, hero: nextToBoss };
-    vi.mocked(api.fetchDungeonRun).mockResolvedValue(run);
-    vi.mocked(api.defeatFloorBoss).mockResolvedValue({ ...run, floorBossDefeated: true });
+    vi.mocked(api.joinDungeon).mockResolvedValue(run);
+    vi.mocked(api.defeatFloorBoss).mockResolvedValue({
+      ...run,
+      floorBossDefeated: true,
+    });
     const explorer = useDungeonExplorer(initialRun.id);
     await explorer.start();
 
@@ -192,11 +238,132 @@ describe("useDungeonExplorer", () => {
     expect(explorer.floorBossDefeated.value).toBe(true);
   });
 
+  it("opens a nearby chest and waits for the server state", async () => {
+    const chest = floor.elements.find((element) => element.type === "item")!;
+    const run: DungeonRunResponse = {
+      ...initialRun,
+      // The hero is diagonally adjacent: all eight neighbours are valid interaction cells.
+      hero: { x: chest.x - 1, y: chest.y - 1 },
+      elementsHere: [chest],
+      openedChestElementIds: [],
+    };
+    const openedRun = {
+      ...run,
+      turn: run.turn + 1,
+      openedChestElementIds: [chest.id],
+    };
+    vi.mocked(api.joinDungeon).mockResolvedValue(run);
+    vi.mocked(api.openChest).mockResolvedValue({
+      run: openedRun,
+      loot: {
+        rewardId: "22222222-2222-2222-2222-222222222222",
+        dungeonRunId: run.id,
+        chestId: "33333333-3333-3333-3333-333333333333",
+        floor: 1,
+        difficulty: "NORMAL",
+        alreadyGenerated: false,
+        items: [
+          {
+            itemId: "11111111-1111-1111-1111-111111111111",
+            name: "Iron key",
+            rarity: "COMMON",
+            quantity: 1,
+          },
+        ],
+      },
+    });
+    const explorer = useDungeonExplorer(initialRun.id);
+    await explorer.start();
+
+    expect(explorer.canOpenChest.value).toBe(true);
+    explorer.openChest();
+    await flushPromises();
+
+    expect(api.openChest).toHaveBeenCalledWith(
+      initialRun.id,
+      chest.id,
+      expect.any(AbortSignal),
+    );
+    expect(explorer.run.value?.openedChestElementIds).toEqual([chest.id]);
+    expect(explorer.chestLoot.value?.status).toBe("success");
+    expect(explorer.chestLoot.value?.result?.items).toHaveLength(1);
+    expect(explorer.canOpenChest.value).toBe(false);
+  });
+
+  it("blocks movement while the chest modal is open", async () => {
+    const chest = floor.elements.find((element) => element.type === "item")!;
+    const run: DungeonRunResponse = {
+      ...initialRun,
+      hero: { x: chest.x, y: chest.y },
+      openedChestElementIds: [],
+    };
+    vi.mocked(api.joinDungeon).mockResolvedValue(run);
+    vi.mocked(api.openChest).mockImplementation(() => new Promise(() => undefined));
+    const explorer = useDungeonExplorer(initialRun.id);
+    await explorer.start();
+
+    explorer.openChest();
+    await Promise.resolve();
+    explorer.move("south");
+
+    expect(explorer.movementBlocked.value).toBe(true);
+    expect(api.moveHero).not.toHaveBeenCalled();
+    explorer.closeChestLoot();
+    expect(explorer.movementBlocked.value).toBe(false);
+  });
+
+  it("retries the same Dungeon chest after an opening error", async () => {
+    const chest = floor.elements.find((element) => element.type === "item")!;
+    const run: DungeonRunResponse = {
+      ...initialRun,
+      hero: { x: chest.x + 1, y: chest.y },
+      openedChestElementIds: [],
+    };
+    const loot = {
+      rewardId: "22222222-2222-2222-2222-222222222222",
+      dungeonRunId: run.id,
+      chestId: "33333333-3333-3333-3333-333333333333",
+      floor: 1,
+      difficulty: "NORMAL" as const,
+      alreadyGenerated: true,
+      items: [],
+    };
+    vi.mocked(api.joinDungeon).mockResolvedValue(run);
+    vi.mocked(api.openChest)
+      .mockRejectedValueOnce(
+        new GatewayError(503, { code: "UNAVAILABLE", message: "Try later." }),
+      )
+      .mockResolvedValueOnce({
+        run: { ...run, openedChestElementIds: [chest.id] },
+        loot,
+      });
+    const explorer = useDungeonExplorer(initialRun.id);
+    await explorer.start();
+
+    explorer.openChest();
+    await flushPromises();
+    expect(explorer.chestLoot.value).toMatchObject({
+      chestElementId: chest.id,
+      status: "error",
+      errorMessage: "Try later.",
+    });
+
+    explorer.retryChestLoot();
+    await flushPromises();
+    expect(api.openChest).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(api.openChest).mock.calls[1]?.[1]).toBe(chest.id);
+    expect(explorer.chestLoot.value?.status).toBe("success");
+    expect(explorer.chestLoot.value?.result).toEqual(loot);
+  });
+
   it("keeps the gate locked until the boss is defeated, then goes down through it", async () => {
     const gate = gateOf(floor)!;
-    const belowGate: DungeonRunResponse = { ...initialRun, hero: { x: gate.x, y: gate.y + 1 } };
+    const belowGate: DungeonRunResponse = {
+      ...initialRun,
+      hero: { x: gate.x, y: gate.y + 1 },
+    };
     const arrival = { x: 7, y: 9 };
-    vi.mocked(api.fetchDungeonRun).mockResolvedValue(belowGate);
+    vi.mocked(api.joinDungeon).mockResolvedValue(belowGate);
     vi.mocked(api.moveHero).mockResolvedValue({
       ...belowGate,
       currentFloor: 1,
@@ -218,10 +385,122 @@ describe("useDungeonExplorer", () => {
     expect(api.moveHero).toHaveBeenCalledWith(initialRun.id, "north");
     expect(explorer.run.value?.currentFloor).toBe(1);
     expect(explorer.hero.value).toEqual(arrival);
-    expect(vi.mocked(api.fetchDungeonMap).mock.calls.map(([, floorIndex]) => floorIndex)).toContain(1);
+    expect(
+      vi.mocked(api.fetchDungeonMap).mock.calls.map(([, floorIndex]) => floorIndex),
+    ).toContain(1);
+  });
+
+  describe("sound (ADR-FE-016)", () => {
+    function listen() {
+      const cues: string[] = [];
+      return { cues, sound: { play: (cue: string) => void cues.push(cue) } };
+    }
+
+    it("plays nothing on arrival, then a step as soon as the move is predicted", async () => {
+      serverAccepts();
+      const { cues, sound } = listen();
+      const explorer = useDungeonExplorer(initialRun.id, { sound });
+      await explorer.start();
+      expect(cues).toEqual([]);
+
+      explorer.move("south");
+      expect(cues).toEqual(["step"]);
+    });
+
+    it("bumps on a wall, without a step", async () => {
+      serverAccepts();
+      const { cues, sound } = listen();
+      const explorer = useDungeonExplorer(initialRun.id, { sound });
+      await explorer.start();
+      explorer.move("south");
+      await flushPromises();
+      while (
+        cellAt(floor, explorer.hero.value.x - 1, explorer.hero.value.y) === Cell.Floor
+      ) {
+        explorer.move("west");
+        await flushPromises();
+      }
+      cues.length = 0;
+
+      explorer.move("west");
+      expect(cues).toEqual(["bump"]);
+    });
+
+    it("opens the gate with the sound once the server confirms the boss fell", async () => {
+      const boss = floor.elements.find((element) => element.type === "boss")!;
+      const direction = (["north", "east", "south", "west"] as const).find(
+        (candidate) => isWalkableAt(floor, step(boss, opposite(candidate))),
+      )!;
+      const run: DungeonRunResponse = {
+        ...initialRun,
+        hero: step(boss, opposite(direction)),
+      };
+      vi.mocked(api.joinDungeon).mockResolvedValue(run);
+      vi.mocked(api.defeatFloorBoss).mockResolvedValue({
+        ...run,
+        floorBossDefeated: true,
+      });
+      const { cues, sound } = listen();
+      const explorer = useDungeonExplorer(initialRun.id, { sound });
+      await explorer.start();
+
+      explorer.move(direction);
+      expect(cues).toEqual([]);
+      await flushPromises();
+      expect(cues).toEqual(["gateOpen"]);
+    });
+
+    it("rattles the locked gate, then goes down through the open one", async () => {
+      const gate = gateOf(floor)!;
+      const belowGate: DungeonRunResponse = {
+        ...initialRun,
+        hero: { x: gate.x, y: gate.y + 1 },
+      };
+      vi.mocked(api.joinDungeon).mockResolvedValue(belowGate);
+      vi.mocked(api.moveHero).mockResolvedValue({
+        ...belowGate,
+        floorBossDefeated: true,
+        currentFloor: 1,
+        hero: { x: 7, y: 9 },
+        turn: 1,
+      });
+      const { cues, sound } = listen();
+      const explorer = useDungeonExplorer(initialRun.id, { sound });
+      await explorer.start();
+
+      explorer.move("north");
+      expect(cues).toEqual(["gateLocked"]);
+
+      explorer.run.value = { ...belowGate, floorBossDefeated: true };
+      explorer.move("north");
+      await flushPromises();
+      expect(cues).toEqual(["gateLocked", "gateOpen", "floorDown"]);
+    });
+
+    it("stays silent once the explorer is disposed", async () => {
+      const { cues, sound } = listen();
+      const explorer = useDungeonExplorer(initialRun.id, { sound });
+      await explorer.start();
+      explorer.dispose();
+
+      explorer.run.value = { ...initialRun, floorBossDefeated: true };
+      expect(cues).toEqual([]);
+    });
   });
 });
 
 function opposite(direction: Direction): Direction {
-  return ({ north: "south", east: "west", south: "north", west: "east" } as const)[direction];
+  return ({ north: "south", east: "west", south: "north", west: "east" } as const)[
+    direction
+  ];
+}
+
+/** The run's `visitedTiles` bitset, as the server encodes it. */
+function encodeTiles(tiles: Position[]): string {
+  const bytes = new Uint8Array(Math.ceil((floor.width * floor.height) / 8));
+  for (const { x, y } of tiles) {
+    const index = y * floor.width + x;
+    bytes[index >> 3]! |= 1 << (index & 7);
+  }
+  return btoa(String.fromCharCode(...bytes));
 }

@@ -5,7 +5,7 @@ import HeroCreatedConfirmation from "~/features/player/components/HeroCreatedCon
 import { usePlayerApi } from "~/features/player/api/playerApi";
 import type { HeroSheet } from "~/features/player/types";
 
-definePageMeta({ layout: "player" });
+definePageMeta({ layout: "default" });
 
 const route = useRoute();
 const router = useRouter();

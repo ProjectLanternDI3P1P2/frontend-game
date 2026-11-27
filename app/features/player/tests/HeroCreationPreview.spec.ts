@@ -18,7 +18,7 @@ describe("HeroCreationPreview", () => {
             template:
               '<button type="button" @click="$emit(\'click\')"><slot /></button>',
           },
-          HeroPortraitPlaceholder: true,
+          HeroSprite: true,
         },
       },
     });

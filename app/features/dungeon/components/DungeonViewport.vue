@@ -15,29 +15,42 @@
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import type { LoadedFloor } from "../composables/useDungeonFloor";
 import { gateOf, revealedTeleports } from "../dungeonMap";
-import { MOB_DEATH_MS, MOVE_COOLDOWN_MS, cameraOrigin, type Viewport } from "../dungeonRules";
+import {
+  MOB_DEATH_MS,
+  MOVE_COOLDOWN_MS,
+  cameraOrigin,
+  type Viewport,
+} from "../dungeonRules";
 import { MAX_LAYERS } from "../tiles/autotile";
+import { HERO_SHEET, heroLayers, heroSprite, type HeroAppearance } from "../tiles/hero";
 import {
   BOSS,
   ENEMY,
-  HERO_SHEET,
   TRAP,
+  decorationSprite,
   gateSprite,
-  heroFacesWest,
-  heroSprite,
   itemSprite,
   mobClassName,
+  openedItemSprite,
   spriteStyle,
   type AnimatedSprite,
 } from "../tiles/sprites";
 import { SHEETS, themeOf } from "../tiles/tileset";
 import type { Direction, DungeonElement, MobState, Position } from "../types";
 
+function stableAnimationDelay(id: string): number {
+  let hash = 0;
+  for (const character of id) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  return (hash / 0xffffffff) * 1.6;
+}
+
 const props = defineProps<{
   loaded: LoadedFloor;
   hero: Position;
   /** Where the hero last tried to go: it faces that way. */
   facing: Direction;
+  /** What the hero looks like: its body, clothes, hair, weapon and shield. */
+  appearance: HeroAppearance;
   revealed: Uint8Array;
   /** Bumped whenever `revealed` changes: typed arrays are not reactive. */
   revealVersion: number;
@@ -50,6 +63,16 @@ const props = defineProps<{
   mobs: MobState[];
   /** Mobs just killed, fading out where they fell. */
   dyingMobs: MobState[];
+  /** Item element IDs whose chest state is open on this floor. */
+  openedChestElementIds: readonly (string | number)[];
+  /** The nearby chest that can be opened with E, or null when none is in reach. */
+  openableChestElementId: string | number | null;
+}>();
+
+const emit = defineEmits<{
+  openChest: [];
+  /** A click on the board, as the tile under the pointer (debug sandbox). */
+  tile: [position: Position];
 }>();
 
 const theme = computed(() => themeOf(props.loaded.floor.floor));
@@ -62,7 +85,10 @@ const camera = computed(() =>
  * `revealed` is mutated in place, so reading it is not tracked: the computed
  * values below read it through this wrapper, which changes with `revealVersion`.
  */
-const revealedMask = computed(() => ({ version: props.revealVersion, cells: props.revealed }));
+const revealedMask = computed(() => ({
+  version: props.revealVersion,
+  cells: props.revealed,
+}));
 
 interface VisibleLayer {
   key: number;
@@ -117,12 +143,15 @@ function spriteOf(element: DungeonElement): AnimatedSprite {
       return itemSprite(element.id);
     case "trap":
       return TRAP;
+    case "decoration":
+      return decorationSprite(element.kind);
   }
 }
 
 const visibleElements = computed<VisibleSprite[]>(() => {
   const { cells: revealed } = revealedMask.value;
   const { floor } = props.loaded;
+  const openedChestIds = new Set(props.openedChestElementIds);
   return floor.elements
     .filter(
       (element) =>
@@ -132,12 +161,13 @@ const visibleElements = computed<VisibleSprite[]>(() => {
         !(element.type === "boss" && props.floorBossDefeated),
     )
     .map((element) => {
-      const sprite = spriteOf(element);
+      const isOpenedChest = element.type === "item" && openedChestIds.has(element.id);
+      const sprite = isOpenedChest ? openedItemSprite(element.id) : spriteOf(element);
       return {
         key: `element-${element.id}`,
-        className: `dungeon-sprite dungeon-sprite--${sprite.sheet} dungeon-element dungeon-element--${element.type}${element.kind ? ` dungeon-element--${element.kind}` : ""}`,
+        className: `dungeon-sprite dungeon-sprite--${sprite.sheet} dungeon-element dungeon-element--${element.type}${isOpenedChest ? " dungeon-element--opened" : ""}${element.kind ? ` dungeon-element--${element.kind}` : ""}`,
         // Mobs float out of step with one another.
-        style: `${spriteStyle(sprite, element)};--delay:-${((element.id * 0.37) % 1.6).toFixed(2)}s`,
+        style: `${spriteStyle(sprite, element)};--delay:-${stableAnimationDelay(String(element.id)).toFixed(2)}s`,
       };
     });
 });
@@ -153,7 +183,7 @@ const visibleMobs = computed<VisibleSprite[]>(() => {
       // Same key alive and dying: the sprite stays where it fell and fades out.
       key: `mob-${mob.id}`,
       className: `${mobClassName(mob)}${dying.has(mob.id) ? " dungeon-mob--dying" : ""}`,
-      style: `${spriteStyle(ENEMY, mob)};--delay:-${((mob.id * 0.37) % 1.6).toFixed(2)}s`,
+      style: `${spriteStyle(ENEMY, mob)};--delay:-${stableAnimationDelay(String(mob.id)).toFixed(2)}s`,
     }));
 });
 
@@ -163,6 +193,14 @@ const teleports = computed(() =>
     ({ id, x, y }) => ({ key: `teleport-${id}`, style: `--x:${x};--y:${y}` }),
   ),
 );
+
+const promptChest = computed<Position | null>(() => {
+  if (props.openableChestElementId === null) return null;
+  const chest = props.loaded.floor.elements.find(
+    (element) => element.id === props.openableChestElementId && element.type === "item",
+  );
+  return chest ? { x: chest.x, y: chest.y } : null;
+});
 
 /**
  * The portcullis of the gate down, drawn over its wall: closed until the boss falls, then
@@ -191,7 +229,7 @@ const doors = computed(() => {
   return arches;
 });
 
-/** Running while the hero moves, standing idle otherwise. */
+/** Shuffling while the hero moves, on guard otherwise. */
 const isWalking = ref(false);
 let walkTimer: ReturnType<typeof setTimeout> | undefined;
 watch(
@@ -204,14 +242,19 @@ watch(
 );
 onBeforeUnmount(() => clearTimeout(walkTimer));
 
-const facesWest = ref(heroFacesWest(props.facing, false));
-watch(
-  () => props.facing,
-  (facing) => (facesWest.value = heroFacesWest(facing, facesWest.value)),
+const heroStyle = computed(() =>
+  spriteStyle(heroSprite(isWalking.value ? "move" : "idle", props.facing), {
+    x: 0,
+    y: 0,
+  }),
 );
 
-const heroStyle = computed(() =>
-  spriteStyle(heroSprite(isWalking.value ? "run" : "idle"), { x: 0, y: 0 }),
+/** The paper doll: one sheet per layer, stacked by depth for the way the hero faces. */
+const heroLayerStyles = computed(() =>
+  heroLayers(props.appearance, props.facing).map(({ slot, sheet, depth }) => ({
+    key: slot,
+    style: `background-image:url("${sheet}");z-index:${depth}`,
+  })),
 );
 
 const viewportStyle = computed(() => {
@@ -229,14 +272,39 @@ const worldStyle = computed(
 );
 
 const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
+
+function pickTile(event: MouseEvent) {
+  const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  const { tile } = props.viewport;
+  emit("tile", {
+    x: camera.value.x + Math.floor((event.clientX - box.left) / tile),
+    y: camera.value.y + Math.floor((event.clientY - box.top) / tile),
+  });
+}
 </script>
 
 <template>
-  <div :class="['dungeon-viewport', `dungeon-viewport--${theme}`]" :style="viewportStyle">
+  <!-- Mouse picking is a development-only sandbox interaction; gameplay uses the board keyboard. -->
+  <!-- eslint-disable-next-line vuejs-accessibility/click-events-have-key-events, vuejs-accessibility/no-static-element-interactions -->
+  <div
+    :class="['dungeon-viewport', `dungeon-viewport--${theme}`]"
+    :style="viewportStyle"
+    @click="pickTile"
+  >
     <div class="dungeon-viewport__world" :style="worldStyle">
-      <div v-for="layer in visibleLayers" :key="layer.key" :class="layer.className" :style="layer.style" />
+      <div
+        v-for="layer in visibleLayers"
+        :key="layer.key"
+        :class="layer.className"
+        :style="layer.style"
+      />
 
-      <div v-for="door in doors" :key="door.key" :class="door.className" :style="door.style" />
+      <div
+        v-for="door in doors"
+        :key="door.key"
+        :class="door.className"
+        :style="door.style"
+      />
 
       <div
         v-for="element in visibleElements"
@@ -245,24 +313,61 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
         :style="element.style"
       />
 
-      <div v-for="mark in teleports" :key="mark.key" class="dungeon-teleport" :style="mark.style">
+      <div
+        v-for="mark in teleports"
+        :key="mark.key"
+        class="dungeon-teleport"
+        :style="mark.style"
+      >
         <!-- 1–8 spiral in, 9–12 rise (see `.dungeon-teleport__mote`). -->
-        <span v-for="i in 12" :key="i" class="dungeon-teleport__mote" :style="{ '--i': i }" />
+        <span
+          v-for="i in 12"
+          :key="i"
+          class="dungeon-teleport__mote"
+          :style="{ '--i': i }"
+        />
       </div>
 
-      <div v-for="mob in visibleMobs" :key="mob.key" :class="mob.className" :style="mob.style" />
+      <div
+        v-for="mob in visibleMobs"
+        :key="mob.key"
+        :class="mob.className"
+        :style="mob.style"
+      />
+
+      <button
+        v-if="promptChest"
+        :key="openableChestElementId ?? undefined"
+        type="button"
+        class="dungeon-chest-prompt"
+        :style="tokenStyle(promptChest)"
+        aria-label="Open chest (E)"
+        @click="emit('openChest')"
+      >
+        <span>Open chest (E)</span>
+      </button>
 
       <div class="dungeon-token dungeon-token--hero" :style="tokenStyle(hero)">
         <span
           :key="bump?.id ?? 0"
-          :class="['dungeon-token__body', bump ? `dungeon-token__body--bump-${bump.direction}` : null]"
+          :class="[
+            'dungeon-token__body',
+            bump ? `dungeon-token__body--bump-${bump.direction}` : null,
+          ]"
         >
-          <!-- Keyed by pose: a new pose starts on its first frame. -->
+          <!-- Keyed by pose: a new pose starts every layer on its first frame, in step. -->
           <span
-            :key="isWalking ? 'run' : 'idle'"
-            :class="['dungeon-sprite', 'dungeon-sprite--hero', 'dungeon-hero', { 'dungeon-hero--west': facesWest }]"
+            :key="isWalking ? 'move' : 'idle'"
+            class="dungeon-hero"
             :style="heroStyle"
-          />
+          >
+            <span
+              v-for="layer in heroLayerStyles"
+              :key="layer.key"
+              class="dungeon-sprite dungeon-sprite--hero"
+              :style="layer.style"
+            />
+          </span>
         </span>
       </div>
     </div>
@@ -295,9 +400,11 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   &__world {
     position: absolute;
     inset: 0;
-    transform: translate3d(calc(var(--camera-x) * var(--tile) * -1),
-        calc(var(--camera-y) * var(--tile) * -1),
-        0);
+    transform: translate3d(
+      calc(var(--camera-x) * var(--tile) * -1),
+      calc(var(--camera-y) * var(--tile) * -1),
+      0
+    );
     will-change: transform;
 
     @include bp.motion-safe {
@@ -319,7 +426,8 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 
 :deep(.dungeon-tile--atlas) {
   background-image: var(--atlas);
-  background-size: calc(var(--atlas-width) * var(--px)) calc(var(--atlas-height) * var(--px));
+  background-size: calc(var(--atlas-width) * var(--px))
+    calc(var(--atlas-height) * var(--px));
 }
 
 :deep(.dungeon-tile--props) {
@@ -367,6 +475,19 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   z-index: calc(2 * var(--y) + 2);
 }
 
+// The walls hide the hero, the mobs and the furniture behind them or beside them, whose
+// sprites overflow their tile: nothing sticks out over the walls of a corridor (see
+// `TileLayer.wall`). The lower half of a face hides what stands on its row; the upper half
+// and the top of a wall, what stands on their row and the row below, still the wall's.
+// What stands in front of the wall is drawn over it.
+:deep(.dungeon-tile--wall-face) {
+  z-index: calc(2 * var(--y) + 4);
+}
+
+:deep(.dungeon-tile--wall-top) {
+  z-index: calc(2 * var(--y) + 6);
+}
+
 :deep(.dungeon-tile--torch) {
   background-image: url("@/assets/dongeon/objects.png");
   background-size: calc(320 * var(--px)) calc(480 * var(--px));
@@ -396,25 +517,34 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   inline-size: calc(var(--sw) * var(--px) * var(--scale));
   block-size: calc(var(--sh) * var(--px) * var(--scale));
   background-repeat: no-repeat;
-  background-position:
-    calc(var(--sx) * var(--px) * var(--scale) * -1) calc(var(--sy) * var(--px) * var(--scale) * -1);
+  background-position: calc(var(--sx) * var(--px) * var(--scale) * -1)
+    calc(var(--sy) * var(--px) * var(--scale) * -1);
   image-rendering: pixelated;
   pointer-events: none;
 
   &--objects {
     background-image: url("@/assets/dongeon/objects.png");
-    background-size: calc(320 * var(--px) * var(--scale)) calc(480 * var(--px) * var(--scale));
+    background-size: calc(320 * var(--px) * var(--scale))
+      calc(480 * var(--px) * var(--scale));
+  }
+
+  // The easter-egg decorations (see `DECORATIONS` in `tiles/sprites.ts`).
+  &--eggs {
+    background-image: url("@/assets/dongeon/easter-eggs.png");
+    background-size: calc(200 * var(--px) * var(--scale))
+      calc(64 * var(--px) * var(--scale));
   }
 
   &--mob {
     background-image: url("@/assets/dongeon/placeholder_mob.png");
-    background-size: calc(32 * var(--px) * var(--scale)) calc(32 * var(--px) * var(--scale));
+    background-size: calc(32 * var(--px) * var(--scale))
+      calc(32 * var(--px) * var(--scale));
   }
 
+  // The image of each layer is set by the viewport (see `heroLayers`).
   &--hero {
-    background-image: url("@/assets/heroes/swordsman/hero_swordsman_spritesheet.png");
-    background-size:
-      calc(var(--hero-width) * var(--px) * var(--scale)) calc(var(--hero-height) * var(--px) * var(--scale));
+    background-size: calc(var(--hero-width) * var(--px) * var(--scale))
+      calc(var(--hero-height) * var(--px) * var(--scale));
   }
 
   @include bp.motion-safe {
@@ -430,16 +560,36 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   }
 
   to {
-    background-position-x: calc((var(--sx) + var(--pitch) * var(--frames)) * var(--px) * var(--scale) * -1);
+    background-position-x: calc(
+      (var(--sx) + var(--pitch) * var(--frames)) * var(--px) * var(--scale) * -1
+    );
   }
 }
 
 // Elements and the gate stand on their tile, offset by (--dx, --dy).
 .dungeon-element,
 .dungeon-door {
-  transform: translate3d(calc(var(--x) * var(--tile) + var(--dx) * var(--px)),
-      calc(var(--y) * var(--tile) + var(--dy) * var(--px)),
-      0);
+  transform: translate3d(
+    calc(var(--x) * var(--tile) + var(--dx) * var(--px)),
+    calc(var(--y) * var(--tile) + var(--dy) * var(--px)),
+    0
+  );
+}
+
+// The gate is set in its wall: over the faces and the top beside it (see
+// `.dungeon-tile--wall-face`), under what stands in front of it. It stays on its first
+// frame, closed, until its boss is defeated; then it rises to its last one, open.
+.dungeon-door {
+  z-index: calc(2 * var(--y) + 5);
+  animation: none;
+
+  &--opening {
+    background-position-x: calc((var(--sx) + var(--pitch) * 4) * var(--px) * -1);
+
+    @include bp.motion-safe {
+      animation: dungeon-door-open var(--duration) steps(4) backwards;
+    }
+  }
 }
 
 // In depth order with the furniture (see `.dungeon-tile--upright`).
@@ -563,7 +713,8 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 
 @keyframes dungeon-teleport-gather {
   from {
-    transform: rotate(calc(var(--i) * 45deg)) translateX(calc(var(--tile) * 0.85)) scale(1.3);
+    transform: rotate(calc(var(--i) * 45deg)) translateX(calc(var(--tile) * 0.85))
+      scale(1.3);
   }
 
   25% {
@@ -579,7 +730,10 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 // Spread across the tile: --i is 9 to 12, so the offset runs from -1.5 to 1.5 steps.
 @keyframes dungeon-teleport-rise {
   from {
-    transform: translate(calc((var(--i) - 10.5) * var(--tile) * 0.15), calc(var(--tile) * 0.25));
+    transform: translate(
+      calc((var(--i) - 10.5) * var(--tile) * 0.15),
+      calc(var(--tile) * 0.25)
+    );
   }
 
   30% {
@@ -587,7 +741,10 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   }
 
   to {
-    transform: translate(calc((var(--i) - 10.5) * var(--tile) * 0.15), calc(var(--tile) * -0.9));
+    transform: translate(
+      calc((var(--i) - 10.5) * var(--tile) * 0.15),
+      calc(var(--tile) * -0.9)
+    );
     opacity: 0;
   }
 }
@@ -639,7 +796,10 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 .dungeon-element--bat {
   filter: brightness(3) sepia(1) saturate(var(--mob-saturation, 4))
     hue-rotate(var(--mob-hue))
-    drop-shadow(0 0 var(--mob-glow-size, calc(var(--px) * 1)) var(--mob-glow, rgb(214 206 255 / 55%)));
+    drop-shadow(
+      0 0 var(--mob-glow-size, calc(var(--px) * 1))
+        var(--mob-glow, rgb(214 206 255 / 55%))
+    );
 }
 
 .dungeon-element--zombie {
@@ -674,22 +834,66 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
 }
 
 .dungeon-element--item {
-  filter: drop-shadow(0 0 calc(var(--px) * 2) color-mix(in srgb, var(--color-accent) 60%, transparent));
+  filter: drop-shadow(
+    0 0 calc(var(--px) * 2) color-mix(in srgb, var(--color-accent) 60%, transparent)
+  );
 }
 
-// The gate down stays on its first frame, closed, until its boss is defeated; then it
-// rises to its last one, open.
-.dungeon-door {
-  animation: none;
+.dungeon-element--opened {
+  filter: none;
+}
 
-  &--opening {
-    background-position-x: calc((var(--sx) + var(--pitch) * 4) * var(--px) * -1);
+.dungeon-chest-prompt {
+  position: absolute;
+  left: calc(var(--x) * var(--tile) + var(--tile) / 2);
+  top: calc(var(--y) * var(--tile) - var(--space-2));
+  z-index: calc(2 * var(--y) + 20);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2.25rem;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-accent-strong);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-accent);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-inset);
+  font-family: var(--font-family-display);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.035em;
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  white-space: nowrap;
+  translate: -50% -100%;
+  scale: 1;
+  opacity: 1;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--easing-standard);
+
+  &:hover {
+    background-color: var(--color-accent-strong);
   }
 
-  &--opening {
-    @include bp.motion-safe {
-      animation: dungeon-door-open var(--duration) steps(4) backwards;
-    }
+  &:focus-visible {
+    outline: 3px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  @include bp.motion-safe {
+    animation: dungeon-chest-prompt-appear var(--duration-fast) var(--easing-standard)
+      forwards;
+  }
+}
+
+@keyframes dungeon-chest-prompt-appear {
+  from {
+    scale: 0.86;
+    opacity: 0;
+  }
+
+  to {
+    scale: 1;
+    opacity: 1;
   }
 }
 
@@ -703,15 +907,16 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   }
 }
 
-// The hero idles on the spot and runs between tiles (see `heroSprite`). Its sheet faces
-// east: it is mirrored, in place, to face west.
+// The hero stands on guard and shuffles between tiles (see `heroSprite`), its layers
+// stacked in one window that casts a single shadow.
 .dungeon-hero {
+  position: absolute;
+  left: 0;
+  top: 0;
+  inline-size: calc(var(--sw) * var(--px));
+  block-size: calc(var(--sh) * var(--px));
   translate: calc(var(--dx) * var(--px)) calc(var(--dy) * var(--px));
   filter: drop-shadow(0 calc(var(--px) * 1) 0 rgb(0 0 0 / 35%));
-
-  &--west {
-    scale: -1 1;
-  }
 }
 
 .dungeon-token {
@@ -720,9 +925,7 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
   top: 0;
   inline-size: var(--tile);
   block-size: var(--tile);
-  transform: translate3d(calc(var(--x) * var(--tile)),
-      calc(var(--y) * var(--tile)),
-      0);
+  transform: translate3d(calc(var(--x) * var(--tile)), calc(var(--y) * var(--tile)), 0);
   pointer-events: none;
 
   &--hero {
@@ -739,7 +942,8 @@ const tokenStyle = ({ x, y }: Position) => `--x:${x};--y:${y}`;
     inset: 0;
   }
 
-  @each $direction, $x, $y in (north, 0, -1), (east, 1, 0), (south, 0, 1), (west, -1, 0) {
+  @each $direction, $x, $y in (north, 0, -1), (east, 1, 0), (south, 0, 1), (west, -1, 0)
+  {
     &__body--bump-#{$direction} {
       @include bp.motion-safe {
         animation: dungeon-bump-#{$direction} var(--duration-fast) ease-out;

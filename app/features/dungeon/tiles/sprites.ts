@@ -1,22 +1,15 @@
 /**
- * The sprites that stand on the board: the hero, enemies, bosses, items, traps and the
- * boss gate. Data only: the viewport binds `spriteStyle` and CSS plays the frames.
+ * The sprites that stand on the board: enemies, bosses, items, traps, the boss gate and the
+ * decorations of the easter-egg rooms (the hero, a paper doll, is in `hero.ts`). Data only:
+ * the viewport binds `spriteStyle` and CSS plays the frames.
  *
  * An animation is a row of frames `pitch` pixels apart in its sheet; CSS steps through
  * them by moving the background, so no JavaScript runs per frame.
  */
-import type { Direction, MobState } from "../types";
+import type { DecorationKindName, MobState } from "../types";
 import type { Theme } from "./tileset";
 
-export type SpriteSheet = "objects" | "hero" | "mob";
-
-/**
- * The hero sheet: one animation per row, in cells of 100 x 40, the hero facing east and
- * standing on the line y = 34 of its cell, around x = 40.
- * Rows: 0 idle (6 frames), 1 run (8), 2 walk (8), 3 and 4 sword attacks (8 and 2),
- * 5 hurt (4), 6 dash attack (8).
- */
-export const HERO_SHEET = { width: 800, height: 280 } as const;
+export type SpriteSheet = "objects" | "hero" | "mob" | "eggs";
 
 export interface AnimatedSprite {
   sheet: SpriteSheet;
@@ -43,7 +36,15 @@ const still = { frames: 1, pitch: 0, duration: 1 };
  * three quarters of it, about the size of the hero, a few pixels above its tile.
  */
 export const ENEMY: AnimatedSprite = {
-  sheet: "mob", x: 0, y: 0, w: 32, h: 32, ...still, dx: -4, dy: -11, scale: 0.75,
+  sheet: "mob",
+  x: 0,
+  y: 0,
+  w: 32,
+  h: 32,
+  ...still,
+  dx: -4,
+  dy: -11,
+  scale: 0.75,
 };
 
 /** The classes of a mob of the run: its kind tints it, its aggro lights it up. */
@@ -69,57 +70,48 @@ const CHESTS: readonly AnimatedSprite[] = [64, 96, 128].map((y) => ({
   dy: -16,
 }));
 
+/** The matching open, emptied chest sprites: lid up, from the same three colour rows. */
+const OPENED_CHESTS: readonly AnimatedSprite[] = [64, 96, 128].map((y) => ({
+  sheet: "objects",
+  x: 100,
+  y,
+  w: 24,
+  h: 32,
+  ...still,
+  dx: -4,
+  dy: -16,
+}));
+
 /** A chest, of a colour chosen by the item's id. */
-export function itemSprite(id: number): AnimatedSprite {
-  return CHESTS[id % CHESTS.length]!;
+function stableIndex(id: string | number, length: number): number {
+  if (typeof id === "number") return Math.abs(id) % length;
+  let hash = 0;
+  for (const character of id) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  return hash % length;
+}
+
+export function itemSprite(id: string | number): AnimatedSprite {
+  return CHESTS[stableIndex(id, CHESTS.length)]!;
+}
+
+/** The opened version of an item chest, with the same deterministic colour. */
+export function openedItemSprite(id: string | number): AnimatedSprite {
+  return OPENED_CHESTS[stableIndex(id, OPENED_CHESTS.length)]!;
 }
 
 /** Spikes that come out of the floor and go back in. */
 export const TRAP: AnimatedSprite = {
-  sheet: "objects", x: 160, y: 262, w: 32, h: 20, frames: 3, pitch: 32, duration: 1.2, dx: -8, dy: -2,
+  sheet: "objects",
+  x: 160,
+  y: 262,
+  w: 32,
+  h: 20,
+  frames: 3,
+  pitch: 32,
+  duration: 1.2,
+  dx: -8,
+  dy: -2,
 };
-
-/** Standing still, or running from one tile to the next. */
-export type HeroPose = "idle" | "run";
-
-const HERO_CELL = { width: 100, height: 40 } as const;
-
-const HERO_POSES: Record<HeroPose, { row: number; frames: number; duration: number }> = {
-  idle: { row: 0, frames: 6, duration: 0.9 },
-  run: { row: 1, frames: 8, duration: 0.64 },
-};
-
-/**
- * The hero in a pose. The window is 56 pixels wide around the hero, wide enough for the
- * sword of the attack rows, and centred on it so that it can be flipped in place. The
- * hero stands at the bottom of its tile, as tall as about two tiles: its head overlaps
- * the row above, drawn behind it.
- */
-export function heroSprite(pose: HeroPose): AnimatedSprite {
-  const { row, frames, duration } = HERO_POSES[pose];
-  return {
-    sheet: "hero",
-    x: 12,
-    y: row * HERO_CELL.height,
-    w: 56,
-    h: HERO_CELL.height,
-    frames,
-    pitch: HERO_CELL.width,
-    duration,
-    dx: -20,
-    dy: -20,
-  };
-}
-
-/**
- * The sheet only draws the hero facing east: it is mirrored to face west. Going north or
- * south, it keeps facing the way it last went sideways.
- */
-export function heroFacesWest(facing: Direction, facedWest: boolean): boolean {
-  if (facing === "west") return true;
-  if (facing === "east") return false;
-  return facedWest;
-}
 
 /**
  * The portcullis of a boss room, drawn over the gate down: closed on its first frame, it
@@ -127,12 +119,115 @@ export function heroFacesWest(facing: Direction, facedWest: boolean): boolean {
  */
 export function gateSprite(theme: Theme): AnimatedSprite {
   return {
-    sheet: "objects", x: 0, y: theme === "stone" ? 320 : 0, w: 64, h: 64, frames: 5, pitch: 64, duration: 0.9, dx: -24, dy: -48,
+    sheet: "objects",
+    x: 0,
+    y: theme === "stone" ? 320 : 0,
+    w: 64,
+    h: 64,
+    frames: 5,
+    pitch: 64,
+    duration: 0.9,
+    dx: -24,
+    dy: -48,
   };
 }
 
+/**
+ * The easter-egg decorations, from `assets/dongeon/easter-eggs.png` (200 x 64, drawn by
+ * `scripts/easter-eggs/`). A decoration stands on the first tile of its footprint in
+ * reading order, the top-left one: the offsets put each sprite on its footprint.
+ *
+ * To add one: draw it in the sheet, add its kind to `DecorationKindName` and here, then a
+ * room template on the Dungeon service.
+ */
+export const DECORATIONS: Readonly<Record<DecorationKindName, AnimatedSprite>> = {
+  // Three tiles wide, two deep: it stands on its footprint and rises above it.
+  ship: { sheet: "eggs", x: 0, y: 0, w: 48, h: 42, ...still, dx: 0, dy: -10 },
+  // One tile, a small cube standing on it.
+  grassBlock: { sheet: "eggs", x: 48, y: 0, w: 16, h: 16, ...still, dx: 0, dy: -4 },
+  // Hung on the north wall, above the top row of the room, the vortex turning.
+  bluePortal: {
+    sheet: "eggs",
+    x: 72,
+    y: 0,
+    w: 16,
+    h: 32,
+    frames: 4,
+    pitch: 16,
+    duration: 0.8,
+    dx: 0,
+    dy: -32,
+  },
+  orangePortal: {
+    sheet: "eggs",
+    x: 136,
+    y: 0,
+    w: 16,
+    h: 32,
+    frames: 4,
+    pitch: 16,
+    duration: 0.8,
+    dx: 0,
+    dy: -32,
+  },
+  // Floats a few pixels above its tile, wings beating.
+  strawberry: {
+    sheet: "eggs",
+    x: 0,
+    y: 48,
+    w: 16,
+    h: 16,
+    frames: 2,
+    pitch: 16,
+    duration: 0.5,
+    dx: 0,
+    dy: -5,
+  },
+  campfire: {
+    sheet: "eggs",
+    x: 32,
+    y: 48,
+    w: 16,
+    h: 16,
+    frames: 3,
+    pitch: 16,
+    duration: 0.45,
+    dx: 0,
+    dy: -2,
+  },
+};
+
+/**
+ * Shown for a decoration whose kind this client does not know (a newer Dungeon service, a
+ * typo): Minecraft's violet and black missing texture, in the easter-egg sheet, so the
+ * mistake is seen in the room rather than leaving a hole in it.
+ */
+export const MISSING_DECORATION: AnimatedSprite = {
+  sheet: "eggs",
+  x: 48,
+  y: 16,
+  w: 16,
+  h: 16,
+  ...still,
+  dx: 0,
+  dy: 0,
+};
+
+const DECORATION_SPRITES: Readonly<Record<string, AnimatedSprite | undefined>> =
+  DECORATIONS;
+
+/** The sprite of a decoration, whatever kind the service sent: unknown or missing is the placeholder. */
+export function decorationSprite(kind: string | null): AnimatedSprite {
+  // Own keys only: a kind named `constructor` is not a decoration.
+  if (kind === null || !Object.hasOwn(DECORATIONS, kind)) return MISSING_DECORATION;
+  return DECORATION_SPRITES[kind] ?? MISSING_DECORATION;
+}
+
 /** CSS custom properties of a sprite standing on tile (x, y). */
-export function spriteStyle(sprite: AnimatedSprite, { x, y }: { x: number; y: number }): string {
+export function spriteStyle(
+  sprite: AnimatedSprite,
+  { x, y }: { x: number; y: number },
+): string {
   return (
     `--x:${x};--y:${y};--dx:${sprite.dx};--dy:${sprite.dy};` +
     `--sx:${sprite.x};--sy:${sprite.y};--sw:${sprite.w};--sh:${sprite.h};` +

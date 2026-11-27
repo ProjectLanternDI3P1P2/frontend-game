@@ -37,6 +37,8 @@ export const Cell = {
   Lava: 10,
   /** A stone tomb, two or three side by side: blocks movement. */
   Tomb: 11,
+  /** Under a decoration of an easter-egg room: blocks movement, plain ground. */
+  Decoration: 12,
 } as const;
 
 export type CellCode = (typeof Cell)[keyof typeof Cell];
@@ -54,6 +56,7 @@ const CODE_BY_NAME: Record<CellTypeName, CellCode> = {
   water: Cell.Water,
   lava: Cell.Lava,
   tomb: Cell.Tomb,
+  decoration: Cell.Decoration,
 };
 
 const NO_ROOM = -1;
@@ -207,6 +210,26 @@ export function isWalkableAt(floor: DecodedFloor, position: Position): boolean {
   return isWalkable(cellAt(floor, position.x, position.y));
 }
 
+/**
+ * The tiles a hero has stood on, from the run's `visitedTiles`: a base64
+ * bitset in row order, tile `i = y * width + x` being bit `i % 8` of byte
+ * `i / 8`. Empty for a run that has not moved since the bitset was added.
+ */
+export function decodeVisitedTiles(
+  floor: Pick<DecodedFloor, "width" | "height">,
+  encoded: string,
+): Position[] {
+  const bytes = atob(encoded);
+  const count = Math.min(bytes.length * 8, floor.width * floor.height);
+  const tiles: Position[] = [];
+  for (let index = 0; index < count; index++) {
+    if (bytes.charCodeAt(index >> 3) & (1 << (index & 7))) {
+      tiles.push({ x: index % floor.width, y: Math.floor(index / floor.width) });
+    }
+  }
+  return tiles;
+}
+
 export function roomAt(
   floor: DecodedFloor,
   position: Position,
@@ -271,7 +294,7 @@ export function revealedTeleports(
   mobs: readonly MobState[],
   revealed: Uint8Array,
   width: number,
-): { id: number; x: number; y: number }[] {
+): { id: string | number; x: number; y: number }[] {
   return mobs.flatMap(({ id, nextTeleport }) =>
     nextTeleport && revealed[nextTeleport.y * width + nextTeleport.x] === 1
       ? [{ id, x: nextTeleport.x, y: nextTeleport.y }]

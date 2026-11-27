@@ -122,7 +122,7 @@ export function reveal(
  * How long the hero, the camera and the mobs slide from one tile to the next, and so the
  * shortest time between two moves: a step never starts before the previous one has landed.
  */
-export const MOVE_COOLDOWN_MS = 320;
+export const MOVE_COOLDOWN_MS = 50;
 
 /**
  * Lets the first call through at once, then drops the calls that come within `ms` of it:

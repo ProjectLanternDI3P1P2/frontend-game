@@ -5,13 +5,20 @@
  * justified in docs/rendering-modes.md.
  */
 import { useDungeonLauncher } from "~/features/dungeon/composables/useDungeonLauncher";
-import { formatSeed, missingSeedCharacters, seedError } from "~/features/dungeon/seed";
+import {
+  SANDBOX_SEED,
+  formatSeed,
+  missingSeedCharacters,
+  seedError,
+} from "~/features/dungeon/seed";
 import { ButtonType, ButtonVariant } from "~/shared/ui/ui.types";
 import { NoticeTone } from "~/shared/ui/UiNotice.vue";
 
 useHead({ title: "Dungeon" });
 
 const route = useRoute();
+/** The debug sandbox is offered in development only; its seed works anywhere. */
+const isDev = import.meta.dev;
 const seed = ref(
   formatSeed(typeof route.query.seed === "string" ? route.query.seed : ""),
 );
@@ -34,6 +41,16 @@ function typeSeed(event: Event) {
   input.value = seed.value = formatSeed(input.value);
 }
 
+/**
+ * Starts a run and opens it. The heroes will come from the Player service: each player's
+ * character as they made it (look, colours, hair, class, items…), to be drawn in the
+ * dungeon. Until then, the hero of a run is drawn at random from its id
+ * (`heroAppearanceOf` in `tiles/hero.ts`).
+ *
+ * TODO(player): the hero is chosen in the Player service; draw it from what the run
+ * receives (its appearance codes, read through `features/player/appearance.ts`) instead of
+ * `heroAppearanceOf`.
+ */
 async function explore(replayedSeed?: string) {
   const runId = await start(replayedSeed);
   if (runId) await navigateTo(`/dungeon/${runId}`);
@@ -49,6 +66,15 @@ async function explore(replayedSeed?: string) {
     </p>
 
     <UiButton :busy="isStarting" @click="explore()">New exploration</UiButton>
+
+    <UiButton
+      v-if="isDev"
+      :variant="ButtonVariant.GHOST"
+      :busy="isStarting"
+      @click="explore(SANDBOX_SEED)"
+    >
+      Debug sandbox
+    </UiButton>
 
     <form class="dungeon-start__replay" @submit.prevent="canReplay && explore(seed)">
       <label for="dungeon-seed">Replay a seed</label>

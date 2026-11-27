@@ -37,6 +37,7 @@ const createdAt = computed(() => {
     <span class="hero-collection-card__portrait">
       <HeroPortraitPlaceholder
         :class-code="hero.classCode"
+        :appearance="hero.appearance"
         :label="`${hero.name} portrait`"
       />
     </span>

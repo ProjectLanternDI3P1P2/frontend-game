@@ -2,7 +2,7 @@
 
 Voir aussi le [contrat de configuration des communications](communications-configuration.md).
 
-Le fichier `compose.yaml` de `frontend-game` lance dix conteneurs : les deux
+Le fichier `compose.yaml` de `frontend-game` lance douze conteneurs : les deux
 fronts Nuxt, Player, Combat, Dungeon, Reward, Leaderboard, Traefik, PostgreSQL
 et RabbitMQ. Il assemble les dépôts indépendants sans déplacer leurs sources.
 
@@ -34,11 +34,42 @@ docker compose ps
 | ----------- | --------------------- |
 | Jeu         | http://localhost:3000 |
 | Site public | http://localhost:3001 |
+| Keycloak    | http://localhost:8081 |
 
 Ces deux ports appartiennent à Traefik et sont publiés uniquement sur
 `127.0.0.1`. Les microservices, PostgreSQL, RabbitMQ et gRPC ne publient aucun
 port sur l'hôte. Le réseau `backend` est interne ; les fronts utilisent un
 réseau `web` distinct et Traefik rejoint les deux.
+
+### Authentification locale
+
+Keycloak est un service de la stack locale. Il démarre en mode développement,
+importe automatiquement `keycloak/realm/lantern-realm.json` et monte le thème
+`keycloak/themes/lantern`. Aucune importation manuelle de realm ni copie de
+thème dans un conteneur n'est nécessaire.
+
+Le client public `lantern-public` est configuré pour le jeu sur
+`http://localhost:3000`. Le front Game est construit avec
+`NUXT_PUBLIC_KEYCLOAK_URL=http://localhost:8081` et attend que Keycloak soit
+en bonne santé avant son démarrage. Les identifiants locaux sont :
+
+| Usage                   | Identifiant | Mot de passe |
+| ----------------------- | ----------- | ------------ |
+| Joueur de démonstration | `demo`      | `demo`       |
+| Administration Keycloak | `admin`     | `admin`      |
+
+Les variables `KEYCLOAK_PORT`, `KEYCLOAK_ADMIN` et
+`KEYCLOAK_ADMIN_PASSWORD` figurent dans `.env.compose.example`. Les valeurs
+par défaut sont exclusivement locales ; les modifier avant toute exposition de
+la stack. La documentation détaillée est dans
+[`app/features/auth/readme.md`](../app/features/auth/readme.md).
+
+Traefik valide cryptographiquement les access tokens via son plugin JWT. Il
+vérifie la signature RS256 depuis le JWKS Keycloak, l'émetteur et le client
+`lantern-public`, puis transmet les headers d'identité de confiance
+`X-User-Id` et `X-Username` aux APIs. Les headers correspondants fournis par
+un client sont supprimés avant la validation. Le plugin est téléchargé au
+démarrage de Traefik : le premier lancement nécessite donc un accès réseau.
 
 Il n'y a pas de port API supplémentaire dans le Compose complet : les appels
 `http://localhost:3000/api/v1/...` arrivent déjà sur Traefik, qui les envoie au
@@ -46,19 +77,24 @@ microservice concerné. Les autres chemins vont au front.
 
 ### Variante sans les fronts
 
-`compose.backend.yaml` démarre uniquement les cinq backends, PostgreSQL,
-RabbitMQ et Traefik. Il ne construit et ne lance aucun front :
+La superposition de `compose.backend.yaml` et `compose.backend.dev.yaml`
+démarre les cinq backends, PostgreSQL, RabbitMQ, MongoDB, Keycloak et Traefik.
+Elle ne construit et ne lance aucun front :
 
 ```sh
-docker compose -f compose.backend.yaml up -d --build --wait --wait-timeout 240
+docker compose --env-file .env.compose -f compose.backend.yaml -f compose.backend.dev.yaml up -d --build --wait --wait-timeout 240
 ```
 
-Dans cette variante, seul Traefik est publié sur `http://localhost:8088`
-(`API_PORT`). Les ports `3000` et `3001` restent libres pour les serveurs Nuxt
+Dans cette variante, Traefik est publié sur `http://localhost:8088`
+(`API_PORT`) et Keycloak sur `http://localhost:8081` (`KEYCLOAK_PORT`). Les
+ports `3000` et `3001` restent libres pour les serveurs Nuxt
 lancés sur l'hôte. Dans le `.env` de chaque front local, utiliser :
 
 ```dotenv
 NUXT_PUBLIC_API_GATEWAY_URL=http://localhost:8088
+NUXT_PUBLIC_KEYCLOAK_URL=http://localhost:8081
+NUXT_PUBLIC_KEYCLOAK_REALM=lantern
+NUXT_PUBLIC_KEYCLOAK_CLIENT_ID=lantern-public
 ```
 
 Lancer ensuite les fronts avec `npm run dev`, sur `3000` pour le jeu et `3001`
@@ -67,14 +103,15 @@ origines via CORS, notamment les requêtes de négociation SignalR. Adapter
 `GAME_PORT` et `PUBLIC_PORT` si les serveurs locaux utilisent d'autres ports.
 
 Le Compose complet réutilise les définitions de `compose.backend.yaml` via
-`extends`. Les deux modes partagent le projet `lantern-local` et ses volumes ;
-ce sont deux façons de lancer la même stack, pas deux stacks simultanées.
-Pour changer de mode, arrêter le mode courant avec sa commande `down`, sans
-`--volumes`, puis lancer l'autre. Exemple depuis le mode complet :
+`extends`. La variante locale de développement porte le nom de projet
+`lantern-local-dev` ; le Compose complet porte le nom `lantern-local`. Leurs
+volumes sont donc distincts. Arrêter un mode avec sa propre commande `down`
+avant de lancer l'autre, car ils publient les mêmes ports. Exemple depuis le
+mode complet :
 
 ```sh
 docker compose down
-docker compose -f compose.backend.yaml up -d --build --wait
+docker compose --env-file .env.compose -f compose.backend.yaml -f compose.backend.dev.yaml up -d --build --wait
 ```
 
 Pour changer les ports ou les identifiants locaux, copier `.env.compose.example`
@@ -86,11 +123,11 @@ et les guillemets ; utiliser une valeur alphanumérique pour cette stack.
 
 ## Routage HTTP et SignalR
 
-Les fronts reçoivent `NUXT_PUBLIC_API_GATEWAY_URL=/` au build et à l'exécution.
-Le navigateur appelle ainsi `/api/v1/...` et `/hubs/player` sur l'origine du
-front, toujours via Traefik, sans CORS ni proxy Nuxt. La valeur au build couvre
-aussi les pages pré-rendues. Les éventuels futurs appels SSR devront utiliser
-une URL interne absolue de Traefik, car `/` vise ici les appels du navigateur.
+Les fronts reçoivent `NUXT_PUBLIC_API_GATEWAY_URL=/` à l'exécution. Le
+navigateur appelle ainsi `/api/v1/...` et `/hubs/player` sur l'origine du
+front, toujours via Traefik, sans CORS ni proxy Nuxt. Les éventuels futurs
+appels SSR devront utiliser une URL interne absolue de Traefik, car `/` vise
+ici les appels du navigateur.
 
 La configuration commune des API se trouve dans `deploy/traefik/backend/routes.yaml`.
 Le mode complet charge aussi `deploy/traefik/frontends.yaml`. Elle utilise le
@@ -102,23 +139,23 @@ Après modification des fichiers de routage, utiliser
 restart traefik` en mode complet). Docker Desktop peut ne pas transmettre les
 notifications de changement des fichiers montés depuis Windows.
 
-| Route native, via les ports Traefik du mode choisi               | Service                                                     |
-| ---------------------------------------------------------------- | ----------------------------------------------------------- |
-| `/api/v1/players[/...]`, `/api/v1/hero-classes[/...]`            | Player                                                      |
-| `/hubs/player[/...]` (négociation et WebSocket)                  | Player                                                      |
-| `/api/v1/monster-types[/...]`, `/api/v1/heroes/{id}/combat-data` | Combat                                                      |
-| `/hubs/combats[/...]`                                            | Combat                                                      |
-| `/hubs/dungeons[/...]`                                           | Dungeon                                                     |
-| `/api/v1/player/...`, `/api/player/...`                          | Player, préfixe remplacé par `/api/v1`                      |
-| `/api/v1/rewards/...`, `/api/rewards/...`                        | Rewards, préfixe remplacé par `/api/v1`                     |
-| `/api/v1/progression/...`, `/api/progression/...`                | Progression (`leaderboard`), préfixe remplacé par `/api/v1` |
-| `/api/v1/heroes/{id}/inventory[/...]`                            | Reward                                                      |
-| `/services/{service}/...`                                        | Service nommé, préfixe retiré                               |
+| Route native, via les ports Traefik du mode choisi                    | Service                                   |
+| --------------------------------------------------------------------- | ----------------------------------------- |
+| `/api/player/v1/hero-classes[/...]`, `/api/player/v1/me/heroes[/...]` | Player                                    |
+| `/hubs/player[/...]` (négociation et WebSocket)                       | Player                                    |
+| `/api/v1/monster-types[/...]`, `/api/v1/heroes/{id}/combat-data`      | Combat                                    |
+| `/hubs/combats[/...]`                                                 | Combat                                    |
+| `/hubs/dungeons[/...]`                                                | Dungeon                                   |
+| `/api/player/v1/...`                                                  | Player, route native sans réécriture      |
+| `/api/v1/rewards/...`, `/api/rewards/...`                             | Rewards, préfixe remplacé par `/api/v1`   |
+| `/api/leaderboard/v1/...`                                             | Leaderboard, route native sans réécriture |
+| `/api/v1/heroes/{id}/inventory[/...]`                                 | Reward                                    |
+| `/services/{service}/...`                                             | Service nommé, préfixe retiré             |
 
-`service` vaut `player`, `combat`, `dungeon`, `reward` ou `leaderboard`.
+`service` vaut `player`, `combat`, `dungeon` ou `reward`.
 Par exemple, `/services/dungeon/health/ready` devient `/health/ready` dans
-Dungeon. Ces préfixes locaux donnent accès aux cinq services sans collision :
-Dungeon et Leaderboard exposent encore des contrôleurs de template
+Dungeon. Ces préfixes locaux donnent accès à quatre services sans collision :
+Dungeon expose encore des contrôleurs de template
 `/api/v1/players`. Les routes de diagnostic préfixées ne constituent pas un
 nouveau contrat d'API de production. Les URLs natives du front restent intactes.
 
@@ -131,19 +168,23 @@ l'application .NET **dans ce conteneur**. Traefik et Reward partagent le réseau
 Le navigateur de l'hôte utilise une URL de Traefik, pas le nom interne `reward`.
 Plusieurs conteneurs peuvent écouter sur `8080`, chacun ayant sa propre adresse.
 
-### Pourquoi une variable au build Nuxt ?
+Keycloak est également accessible depuis les deux origines des fronts sous
+`/auth`. Traefik retire ce préfixe avant de transmettre la requête au Keycloak
+local, qui est monté à sa racine. Les pages pré-rendues peuvent donc utiliser
+la valeur portable `NUXT_PUBLIC_KEYCLOAK_URL=/auth` en Compose comme en
+production.
 
-`ARG NUXT_PUBLIC_API_GATEWAY_URL` reçoit un paramètre de construction Docker.
-L'instruction `ENV` le rend visible à `npm run build`. Le Compose complet passe
-`/`, ce qui fait appeler l'API sur l'origine du front. La valeur par défaut
-`http://localhost:8080` ne s'applique donc pas à ce build Compose.
+### Configuration Nuxt au démarrage
 
-Les pages `/` et `/demo` sont actuellement pré-rendues : Nuxt écrit leur HTML
-pendant le build, avec la configuration publique. Leur HTML déjà présent dans
-`.output/public` contient bien `window.__NUXT__.config.public.apiGatewayUrl`.
-Modifier seulement l'environnement du conteneur au démarrage ne réécrit pas
-ce HTML statique. Le paramètre au build évite de conserver une ancienne URL
-quand on navigue depuis une page pré-rendue vers le jeu.
+L'image du jeu ne reçoit aucune URL publique pendant sa construction. Les
+variables `NUXT_PUBLIC_*` sont fournies à l'exécution par Compose ou Kubernetes
+et Nuxt les injecte dans les réponses SSR/CSR. La même image est donc portable
+entre les environnements.
+
+Le crawl de pré-rendu est désactivé pour ne pas transformer les routes
+interactives en HTML statique contenant une configuration obsolète. Une future
+route statique doit explicitement déclarer `prerender: true` et utiliser les
+valeurs portables par défaut : Gateway `/` et Keycloak `/auth`.
 
 La configuration suit les dépendances cibles : Player → Dungeon ; Dungeon →
 Combat et Rewards ; Combat → Player, Rewards et Dungeon. Chaque adresse gRPC
@@ -161,8 +202,11 @@ La topologie RabbitMQ est importée automatiquement via un hook Compose après
 le démarrage normal du broker : les utilisateurs existants sont conservés.
 Les backends attendent la fin de cet import avant de démarrer. Les bindings
 et la politique de redélivrance figurent dans
-`deploy/rabbitmq/definitions.json`. Les trois files de consommation et leurs
-dead-letter queues sont durables. Modifier la topologie puis recréer le broker
+`deploy/rabbitmq/definitions.json`. Les files Player, Rewards et Progression
+sont préconfigurées ; celle de Progression et ses 15 bindings restent réservés
+à un futur consommateur. Leaderboard déclare sa propre file
+`leaderboard.raw-events` et sa file de rejet au démarrage. Toutes sont durables.
+Modifier la topologie puis recréer le broker
 (`docker compose -f compose.backend.yaml up -d --force-recreate rabbitmq`)
 réimporte les définitions sans supprimer le volume.
 
@@ -183,19 +227,25 @@ commande `make` : PostgreSQL exécute automatiquement le script monté dans
 `/docker-entrypoint-initdb.d`. Comme le précise l'[image officielle PostgreSQL](https://hub.docker.com/_/postgres),
 les scripts d'initialisation ne sont exécutés que sur un volume vide.
 Changer les variables de mot de passe ne modifie donc pas les rôles existants.
-Le même principe s'applique aux identifiants initiaux RabbitMQ.
+Le même principe s'applique aux identifiants initiaux RabbitMQ. MongoDB 8
+fonctionne en replica set local `rs0` pour le magasin d'événements bruts de
+Leaderboard, avec un volume `mongo-data` dédié.
 
-Les backends attendent PostgreSQL et RabbitMQ en bonne santé, puis appliquent
+Les backends attendent PostgreSQL et RabbitMQ en bonne santé ; Leaderboard
+attend aussi MongoDB. Ils appliquent ensuite
 leurs migrations et données de développement via leur démarrage existant
 (`ASPNETCORE_ENVIRONMENT=Development`). Chaque API et front possède un contrôle
 HTTP ; Traefik vérifie aussi les destinations. `/health/ready` reste le contrôle
 existant des backends, qui ne teste pas toutes leurs dépendances métier.
+L'image minimale de Leaderboard ne contient pas de shell : son contrôle Compose
+appelle `Leaderboard.Presentation.dll --healthcheck`, qui interroge
+`/health/ready`. Traefik vérifie aussi cette route.
 
-Les volumes `postgres-data` et `rabbitmq-data` persistent après un arrêt :
+Les volumes `postgres-data`, `rabbitmq-data` et `mongo-data` persistent après un arrêt :
 
 ```sh
-docker compose logs --tail=100 player traefik
-docker compose down
+docker compose --env-file .env.compose -f compose.backend.yaml -f compose.backend.dev.yaml logs --tail=100 player traefik
+docker compose --env-file .env.compose -f compose.backend.yaml -f compose.backend.dev.yaml down
 ```
 
 Pour une remise à zéro **avec suppression de toutes les données de cette stack**,
@@ -207,12 +257,11 @@ ne doit pas être utilisée pour un simple redémarrage.
 ```sh
 curl http://localhost:3000/healthz
 curl http://localhost:3001/healthz
-curl http://localhost:3000/api/v1/hero-classes
+curl http://localhost:3000/api/player/v1/hero-classes
 curl http://localhost:3000/services/player/health/ready
 curl http://localhost:3000/services/combat/health/ready
 curl http://localhost:3000/services/dungeon/health/ready
 curl http://localhost:3000/services/reward/health/ready
-curl http://localhost:3000/services/leaderboard/health/ready
 curl -X POST "http://localhost:3000/hubs/player/negotiate?negotiateVersion=1"
 ```
 
@@ -225,33 +274,33 @@ API/SignalR ; les deux endpoints frontend `/healthz` ne sont pas disponibles.
 - ADR-GLOB-002, 003, 005 et 010 : RabbitMQ, entrée unique, bases possédées par
   service et transports HTTP/SignalR/gRPC sont représentés dans cette stack.
   ADR-FE-007 : les deux fronts restent des dépôts et images indépendants.
-- ADR-GLOB-004 prévoit Keycloak, validation des jetons et injection d'identité.
-  **Cette stack locale ne réalise pas cette authentification.** Traefik retire
-  les en-têtes externes `X-User-Id`, `X-Username`, `X-Roles` et `X-Correlation-Id`,
-  mais n'injecte pas d'utilisateur authentifié. Les endpoints exigeant une
-  identité ne deviennent pas accessibles par l'ajout de ces en-têtes.
-  Une intégration Keycloak avec validation à la gateway et HTTPS reste nécessaire
-  avant tout déploiement partagé ou de production.
+- ADR-GLOB-004 est appliqué à la stack locale : Traefik valide les access
+  tokens Keycloak par son plugin JWT et injecte les headers d'identité de
+  confiance. Les microservices ne valident pas le JWT externe.
+  HTTPS et une gestion de secrets adaptée restent nécessaires avant tout
+  déploiement partagé ou de production.
 - Les adresses, abonnements et paramètres de résilience décrivent la cible des
   ADR. Les adaptateurs gRPC, consommateurs, outbox et instrumentation encore
   absents ne sont pas implémentés par ce travail. Le démarrage de la stack
   n'est pas un test de bout en bout des parcours métier.
-- Chaque backend utilise désormais son propre Dockerfile. Leaderboard restaure
-  systématiquement `Combat.Contracts` depuis GitHub Packages. Le build de
+- Chaque backend utilise désormais son propre Dockerfile. Leaderboard construit
+  ses contrats dans son dépôt et restaure depuis NuGet.org. Le build de
   `frontend-public` reste dans
   `deploy/frontend-public.Dockerfile`.
 
 ## Packages de contrats : local et GitHub
 
-Les commandes Compose locales construisent `Dungeon.Contracts` pour Player et
-`Combat.Contracts` pour Leaderboard depuis les sources des backends frÃ¨res.
-Elles ne demandent donc pas `GITHUB_PACKAGES_CREDENTIALS`. Les instructions
-d'authentification ci-dessous concernent seulement un build Docker standard,
-utilisÃ© en CI et en production.
+La commande locale superpose `compose.backend.dev.yaml` à
+`compose.backend.yaml`. Elle utilise les `Dockerfile.dev` des cinq backends.
+Celui de Leaderboard utilise les contrats de son propre dépôt et ne dépend
+pas de `Combat.Contracts`. Cette variante ne demande pas
+`GITHUB_PACKAGES_CREDENTIALS`. Comme les autres `Dockerfile.dev`, il publie
+l'application pendant le build ; une modification de code nécessite un
+nouveau `docker compose ... up -d --build leaderboard` pour être visible.
 
-Les cinq backends ont un `NuGet.config` avec la source GitHub de l'organisation
-et une sélection explicite des packages de contrats. Les jetons sont transmis
-par secret BuildKit, jamais par ARG ni ENV persistant.
+Le build Docker standard des autres backends peut nécessiter les packages de
+contrats sur GitHub Packages. Les jetons sont transmis par secret BuildKit,
+jamais par ARG ni ENV persistant. Leaderboard n'en a pas besoin.
 
 Définir `GITHUB_PACKAGES_CREDENTIALS` dans
 le shell au format `Username=<login>;Password=<token>;ValidAuthenticationTypes=Basic`,
@@ -262,6 +311,4 @@ docker compose -f compose.backend.yaml up -d --build --wait
 ```
 
 Pour la stack complète, utiliser `docker compose up -d --build --wait` avec la
-même variable d'environnement. Leaderboard ne construit ni ne lit les sources
-locales du contrat Combat ; il restaure uniquement la version référencée par
-`PackageReference`.
+même variable d'environnement pour les services qui en ont besoin.

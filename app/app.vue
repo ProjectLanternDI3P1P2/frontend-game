@@ -6,7 +6,11 @@ const config = useRuntimeConfig();
 
 useHead({
   titleTemplate: (title) => (title ? `${title} · Project Lantern` : "Project Lantern"),
-  link: [{ rel: "canonical", href: config.public.siteUrl }],
+  // A portable static build has no environment-specific canonical URL. SSR
+  // and development receive it at runtime through NUXT_PUBLIC_SITE_URL.
+  link: config.public.siteUrl
+    ? [{ rel: "canonical", href: config.public.siteUrl }]
+    : [],
 });
 </script>
 

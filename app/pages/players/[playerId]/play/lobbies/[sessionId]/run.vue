@@ -5,9 +5,9 @@ import {
   playerHubUrl,
 } from "~/features/player/api/playerHub";
 import type { GameSessionSnapshot } from "~/features/player/types";
-import { useRunRewards } from "~/features/rewards/composables/useRunRewards";
 import RunRewardSummary from "~/features/rewards/components/RunRewardSummary.vue";
-definePageMeta({ layout: "player" });
+import { useRunRewards } from "~/features/rewards/composables/useRunRewards";
+definePageMeta({ layout: "default" });
 const route = useRoute();
 const config = useRuntimeConfig();
 const playerId = computed(() => String(route.params.playerId));
@@ -30,7 +30,7 @@ onMounted(async () => {
     hub = new PlayerHubClient(playerHubUrl(config.public.apiGatewayUrl), (snapshot) => {
       session.value = snapshot;
     });
-    session.value = await hub.getSessionSnapshot(playerId.value, sessionId.value);
+    session.value = await hub.getSessionSnapshot(sessionId.value);
     await loadRewards();
   } catch (cause) {
     error.value =
@@ -45,8 +45,8 @@ onBeforeUnmount(() => void hub?.disconnect());
     <p class="run-placeholder__eyebrow">Dungeon run</p>
     <h1>Run started</h1>
     <p v-if="error" role="alert">{{ error }}</p>
-    <template v-else-if="session"
-      ><p>Your dungeon is ready. The gameplay screen is coming next.</p>
+    <template v-else-if="session">
+      <p>Your dungeon is ready. The gameplay screen is coming next.</p>
       <dl>
         <dt>Session</dt>
         <dd>{{ session.sessionId }}</dd>
@@ -55,13 +55,12 @@ onBeforeUnmount(() => void hub?.disconnect());
       </dl>
       <NuxtLink
         :to="`/players/${encodeURIComponent(playerId)}/play/lobbies/${encodeURIComponent(sessionId)}`"
-        >Back to lobby</NuxtLink
       >
+        Back to lobby
+      </NuxtLink>
       <section aria-labelledby="group-rewards-title">
         <h2 id="group-rewards-title">Group rewards</h2>
-        <output v-if="rewardsLoading" aria-label="Loading group rewards"
-          >Loading rewards…</output
-        >
+        <p v-if="rewardsLoading" role="status">Loading rewards…</p>
         <p v-else-if="rewardsError" role="alert">{{ rewardsError }}</p>
         <p v-else-if="noRewards">No group rewards.</p>
         <RunRewardSummary

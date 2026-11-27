@@ -1,5 +1,19 @@
 http:
   routers:
+    # Static browser pages use the portable Keycloak base URL `/auth`. Locally,
+    # Keycloak itself is mounted at `/`, so remove that public prefix here.
+    keycloak-game:
+      entryPoints: [game]
+      rule: PathPrefix(`/auth`)
+      priority: 100
+      middlewares: [strip-keycloak-prefix]
+      service: keycloak
+    keycloak-public:
+      entryPoints: [public]
+      rule: PathPrefix(`/auth`)
+      priority: 100
+      middlewares: [strip-keycloak-prefix]
+      service: keycloak
     frontend-game:
       entryPoints: [game]
       rule: PathPrefix(`/`)
@@ -12,6 +26,10 @@ http:
       service: frontend-public
 
   services:
+    keycloak:
+      loadBalancer:
+        servers:
+          - url: http://keycloak:8080
     frontend-game:
       loadBalancer:
         servers:
@@ -28,3 +46,8 @@ http:
           path: /healthz
           interval: 10s
           timeout: 3s
+
+  middlewares:
+    strip-keycloak-prefix:
+      stripPrefix:
+        prefixes: [/auth]

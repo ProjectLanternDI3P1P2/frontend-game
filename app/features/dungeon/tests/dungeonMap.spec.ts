@@ -13,6 +13,7 @@ import {
   cellAt,
   corridorAt,
   decodeFloor,
+  decodeVisitedTiles,
   elementsAt,
   gateOf,
   goesDown,
@@ -91,6 +92,23 @@ describe("decodeFloor", () => {
   it("rejects an unknown cell symbol", () => {
     const broken = { ...map, rows: [`?${map.rows[0]!.slice(1)}`, ...map.rows.slice(1)] };
     expect(() => decodeFloor(broken)).toThrow(DungeonContractError);
+  });
+});
+
+describe("decodeVisitedTiles", () => {
+  it("reads one bit per tile, in row order, low bit first", () => {
+    // 3 × 3 floor, its diagonal: tiles 0 and 4 in byte 0, tile 8 in byte 1.
+    const encoded = btoa(String.fromCharCode(0b0001_0001, 0b0000_0001));
+
+    expect(decodeVisitedTiles({ width: 3, height: 3 }, encoded)).toEqual([
+      { x: 0, y: 0 },
+      { x: 1, y: 1 },
+      { x: 2, y: 2 },
+    ]);
+  });
+
+  it("knows no tile of a run that has not moved since the bitset was added", () => {
+    expect(decodeVisitedTiles({ width: 3, height: 3 }, "")).toEqual([]);
   });
 });
 

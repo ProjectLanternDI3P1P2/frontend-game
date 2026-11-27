@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ButtonSize, ButtonVariant } from "~/shared/ui/UiButton.vue";
 import { HERO_ROSTER_CAPACITY, type HeroSheet } from "../types";
-import HeroPortraitPlaceholder from "./HeroPortraitPlaceholder.vue";
+import HeroSprite from "./HeroSprite.vue";
 
 const props = defineProps<{
   hero: HeroSheet;
@@ -32,9 +32,11 @@ const canCreateAnotherHero = computed(() => props.heroCount < HERO_ROSTER_CAPACI
   <main id="main" class="hero-created-confirmation">
     <section class="hero-created-confirmation__content" aria-labelledby="created-title">
       <div class="hero-created-confirmation__portrait">
-        <HeroPortraitPlaceholder
+        <HeroSprite
           :class-code="hero.classCode"
-          :label="`${hero.name} placeholder portrait`"
+          :appearance="hero.appearance"
+          :scale="4"
+          :label="`${hero.name} portrait`"
         />
       </div>
       <p class="hero-created-confirmation__status">New hero</p>
@@ -104,15 +106,6 @@ const canCreateAnotherHero = computed(() => props.heroCount < HERO_ROSTER_CAPACI
     background: var(--color-surface-raised);
   }
 
-  &__portrait :deep(.hero-portrait) {
-    width: 10rem;
-    height: 10rem;
-  }
-
-  &__portrait :deep(.hero-portrait__sprite) {
-    transform: scale(2.25);
-  }
-
   &__status {
     margin: 0 0 var(--space-5);
     border: 1px solid var(--color-success);
@@ -176,9 +169,10 @@ const canCreateAnotherHero = computed(() => props.heroCount < HERO_ROSTER_CAPACI
       height: 10rem;
     }
 
-    &__portrait :deep(.hero-portrait) {
-      width: 8rem;
-      height: 8rem;
+    // Scale 3 (96×120): whole pixels keep the pixel art crisp.
+    &__portrait :deep(.hero-sprite) {
+      width: 6rem;
+      height: 7.5rem;
     }
   }
 }

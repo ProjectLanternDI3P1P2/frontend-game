@@ -16,8 +16,14 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 describe("buildGatewayUrl", () => {
   it("builds a same-origin relative URL for the local proxy", () => {
-    expect(buildGatewayUrl("/", "v1", "players/player-id/heroes")).toBe(
-      "/api/v1/players/player-id/heroes",
+    expect(buildGatewayUrl("/", "v1", "player/player-id/heroes")).toBe(
+      "/api/player/v1/player-id/heroes",
+    );
+  });
+
+  it("routes leaderboard requests through the service prefix", () => {
+    expect(buildGatewayUrl("/", "v1", "leaderboard/players/player-id/statistics")).toBe(
+      "/api/leaderboard/v1/players/player-id/statistics",
     );
   });
 
@@ -96,6 +102,48 @@ describe("createGatewayClient", () => {
     });
   });
 
+  it("notifies the application when the access token is rejected", async () => {
+    const onUnauthorized = vi.fn();
+    const client = createGatewayClient({
+      baseUrl: "http://gw.test",
+      apiVersion: "v1",
+      fetchImpl: vi
+        .fn()
+        .mockResolvedValue(jsonResponse({}, 401)) as unknown as typeof fetch,
+      onUnauthorized,
+    });
+
+    await expect(client.get("player/me/heroes")).rejects.toMatchObject({ status: 401 });
+
+    expect(onUnauthorized).toHaveBeenCalledOnce();
+  });
+
+  it("retries once after a successful token refresh", async () => {
+    let token = "expired-token";
+    const onUnauthorized = vi.fn(async () => {
+      token = "fresh-token";
+      return true;
+    });
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({}, 401))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }));
+    const client = createGatewayClient({
+      baseUrl: "http://gw.test",
+      apiVersion: "v1",
+      getToken: () => token,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      onUnauthorized,
+    });
+
+    await expect(client.get("player/me/heroes")).resolves.toEqual({ ok: true });
+
+    expect(onUnauthorized).toHaveBeenCalledWith(false);
+    expect(fetchImpl.mock.calls[1]![1].headers.Authorization).toBe(
+      "Bearer fresh-token",
+    );
+  });
+
   it("preserves field errors from an ASP.NET validation problem", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       jsonResponse(
@@ -113,7 +161,7 @@ describe("createGatewayClient", () => {
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
 
-    await expect(client.post("players/id/heroes")).rejects.toMatchObject({
+    await expect(client.post("player/id/heroes")).rejects.toMatchObject({
       code: "VALIDATION_ERROR",
       message: "Hero name is required.",
       details: { errors: { name: ["Hero name is required."] } },
