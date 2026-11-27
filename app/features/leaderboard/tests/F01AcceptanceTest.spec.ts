@@ -34,6 +34,7 @@ import {
   type RankingEntry,
   type RankingResponse,
 } from "../types";
+import { apiStub as createApiStub } from "./fixtures/leaderboardFixtures";
 import { GatewayError } from "~/shared/utils/gateway";
 import UiTopNavigation from "~/shared/ui/UiTopNavigation.vue";
 import LeaderboardPage from "~/pages/leaderboard.vue";
@@ -154,17 +155,12 @@ function board(overrides: Partial<RankingResponse> = {}): RankingResponse {
   };
 }
 
-function apiStub(
-  partial: Partial<Record<keyof LeaderboardApi, ReturnType<typeof vi.fn>>> = {},
-) {
-  return {
+function apiStub(overrides: Parameters<typeof createApiStub>[0] = {}) {
+  return createApiStub({
     getHeroStatistics: vi.fn().mockResolvedValue(statsResponse()),
     getRanking: vi.fn().mockResolvedValue(board()),
-    getRankingHeroDetail: vi.fn().mockRejectedValue(new Error("not used")),
-    getRankingHeroFacts: vi.fn().mockRejectedValue(new Error("not used")),
-    getPublicRanking: vi.fn().mockRejectedValue(new Error("not used")),
-    ...partial,
-  };
+    ...overrides,
+  });
 }
 
 function deferred<T>() {
