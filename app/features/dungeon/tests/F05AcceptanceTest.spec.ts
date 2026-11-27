@@ -287,6 +287,49 @@ describe("F05", () => {
       expect(page.find('[role="application"]').exists()).toBe(true);
     });
 
+    it("after a successful reload, mounting the page again shows the valid floor", async () => {
+      vi.mocked(api.fetchDungeonMap).mockResolvedValueOnce(withoutBoss);
+      const first = await mountPage();
+      expect(bossNotice(first).attributes("role")).toBe("alert");
+      await buttonNamed(first, "Reload floor")!.trigger("click");
+      await flushPromises();
+      expect(bossNotice(first).exists()).toBe(false);
+      first.unmount();
+
+      // Same session, cache kept: the page is mounted again.
+      const page = await mountPage();
+      expect(page.find('[role="application"]').exists()).toBe(true);
+      expect(bossNotice(page).exists()).toBe(false);
+    });
+
+    it("after a successful reload, start() and retry() of the same explorer show the valid floor", async () => {
+      vi.mocked(api.fetchDungeonMap).mockResolvedValueOnce(withoutBoss);
+      const explorer = useDungeonExplorer(initialRun.id);
+      await explorer.start();
+      expect(explorer.bossFailure.value).not.toBeNull();
+      await explorer.reloadFloor();
+      expect(explorer.bossFailure.value).toBeNull();
+
+      await explorer.start();
+      expect(explorer.bossFailure.value).toBeNull();
+      await explorer.retry();
+      expect(explorer.bossFailure.value).toBeNull();
+      expect(explorer.floorBoss.value).toMatchObject({
+        x: bossElement.x,
+        y: bossElement.y,
+      });
+    });
+
+    it("after a successful reload, a new explorer (cache kept) shows the valid floor", async () => {
+      vi.mocked(api.fetchDungeonMap).mockResolvedValueOnce(withoutBoss);
+      const first = useDungeonExplorer(initialRun.id);
+      await first.start();
+      await first.reloadFloor();
+      const second = useDungeonExplorer(initialRun.id);
+      await second.start();
+      expect(second.bossFailure.value).toBeNull();
+    });
+
     it("Reload floor still invalid: notice kept, exploration kept", async () => {
       vi.mocked(api.fetchDungeonMap).mockResolvedValue(withoutBoss);
       const page = await mountPage();

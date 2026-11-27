@@ -47,7 +47,7 @@ import type {
 } from "../types";
 import type { ChestLootInteraction } from "~/features/reward/types";
 import type { LoadedFloor } from "./useDungeonFloor";
-import { loadFloor, prefetchFloor } from "./useDungeonFloor";
+import { evictFloor, loadFloor, prefetchFloor } from "./useDungeonFloor";
 import { useFloorBoss } from "./useFloorBoss";
 
 /** Moves typed ahead of the server. Beyond it, key repeats are ignored. */
@@ -180,7 +180,6 @@ export function useDungeonExplorer(
   /** Loads again after an error; a second call while loading joins the first. */
   function retry(): Promise<void> {
     if (reloadInFlight) return reloadInFlight;
-    generation++;
     isReloading.value = true;
     reloadInFlight = start().finally(() => {
       reloadInFlight = null;
@@ -210,6 +209,8 @@ export function useDungeonExplorer(
     try {
       const state = await joinDungeon(runId);
       const map = await fetchDungeonMap(state.seed, state.currentFloor);
+      // The cached copy is the one found invalid: a later load reads it again.
+      evictFloor(state.seed, state.currentFloor);
       if (disposed || reloadGeneration !== generation) return;
       const decoded = decodeFloor(map);
       await enterFloor(state, markRaw({ floor: decoded, tiles: renderFloor(decoded) }));
