@@ -90,7 +90,8 @@ function move(direction: Direction) {
 }
 
 function spawnAt(position: Position) {
-  if (isSandbox.value && !movementBlocked.value) explorer.spawn(spawnKind.value, position);
+  if (isSandbox.value && !movementBlocked.value)
+    explorer.spawn(spawnKind.value, position);
 }
 
 function onKeydown(event: KeyboardEvent) {
