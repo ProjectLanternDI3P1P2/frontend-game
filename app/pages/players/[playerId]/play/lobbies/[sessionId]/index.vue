@@ -5,9 +5,11 @@ import {
   PlayerHubError,
   playerHubUrl,
 } from "~/features/player/api/playerHub";
+import ActiveSessionNotice from "~/features/player/components/ActiveSessionNotice.vue";
 import HeroPortraitPlaceholder from "~/features/player/components/HeroPortraitPlaceholder.vue";
 import HeroSelectionModal from "~/features/player/components/HeroSelectionModal.vue";
 import { usePlayerApi } from "~/features/player/api/playerApi";
+import { useActiveSessionResume } from "~/features/player/composables/useActiveSessionResume";
 import type { GameSessionSnapshot, HeroSummary } from "~/features/player/types";
 import {
   CLOSED_LOBBY_REDIRECT_SECONDS,
@@ -37,6 +39,11 @@ const isCreator = computed(() =>
 );
 const lobbyCode = computed(() => sessionId.value.slice(0, 8).toUpperCase());
 let hub: PlayerHubClient | null = null;
+const { activeSessionId, resuming, resumeError, capture, clear, resume } =
+  useActiveSessionResume(playerId, {
+    getSessionSnapshot: (id) => hub!.getSessionSnapshot(id),
+    navigate: (path) => router.push(path),
+  });
 
 /** Closed lobby (e.g. its hero was deleted): explain, then go back to "Join a game". */
 const isClosed = computed(() => isClosedLobby(session.value));
@@ -87,6 +94,7 @@ async function changeHero(hero: HeroSummary): Promise<void> {
   if (!session.value || !isCreator.value || session.value.state !== "Lobby") return;
   selectingHero.value = true;
   error.value = "";
+  clear();
   try {
     const changed = await hub!.changeSessionHero({
       commandId: createIdempotencyKey(),
@@ -101,6 +109,10 @@ async function changeHero(hero: HeroSummary): Promise<void> {
     }));
     heroPickerOpen.value = false;
   } catch (cause) {
+    if (capture(cause)) {
+      heroPickerOpen.value = false;
+      return;
+    }
     error.value =
       cause instanceof PlayerHubError
         ? cause.message
@@ -149,6 +161,14 @@ onBeforeUnmount(() => {
         class="lobby-page__back"
         >← Join a game</NuxtLink
       >
+      <ActiveSessionNotice
+        v-if="activeSessionId"
+        class="lobby-page__resume"
+        :resuming="resuming"
+        :error="resumeError"
+        @resume="resume"
+        @dismiss="clear"
+      />
       <p v-if="loading" class="lobby-page__notice">Loading lobby…</p>
       <p v-else-if="error" class="lobby-page__notice" role="alert">{{ error }}</p>
       <section
@@ -429,6 +449,9 @@ h1 {
 }
 .lobby-page__actions p {
   margin: 0;
+}
+.lobby-page__resume {
+  margin-top: var(--space-4);
 }
 .lobby-page__notice {
   color: var(--color-text-muted);
