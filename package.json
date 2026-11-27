@@ -73,5 +73,5 @@
     "*.{js,mjs,ts,vue}": "eslint --fix",
     "*": "prettier --write --ignore-unknown"
   },
-  "version": "0.5.0"
+  "version": "0.5.1"
 }
