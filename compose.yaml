@@ -76,6 +76,11 @@ services:
       file: compose.backend.yaml
       service: rabbitmq
 
+  mongo:
+    extends:
+      file: compose.backend.yaml
+      service: mongo
+
   player:
     extends:
       file: compose.backend.yaml
@@ -108,6 +113,7 @@ networks:
 volumes:
   postgres-data:
   rabbitmq-data:
+  mongo-data:
 
 secrets:
   github_packages_credentials:

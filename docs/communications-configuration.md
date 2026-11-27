@@ -44,19 +44,16 @@ par les équipes ; ce travail ne modifie pas leur enregistrement.
 
 ## Entrées HTTP et SignalR
 
-- Player : `/api/v1/player/...` et alias documentaire `/api/player/...`.
+- Player : `/api/player/v1/...`.
 - Rewards : `/api/rewards/v1/...`.
-- Progression : `/api/v1/progression/...` et `/api/progression/...`.
+- Leaderboard : `/api/leaderboard/v1/...`.
 - Hubs : `/hubs/player`, `/hubs/dungeons`, `/hubs/combats`.
 
-Le préfixe Player `/api/player` et le préfixe Progression sont remplacés côté
-backend conformément à leurs routes natives. Exemple :
-`/api/v1/player/hero-classes` → Player `/api/v1/hero-classes`. Rewards conserve
-son préfixe versionné `/api/rewards/v1`, notamment pour l'inventaire à
-`/api/rewards/v1/heroes/{id}/inventory[/...]`.
-Les routes natives actuelles restent routées, dont `/api/v1/players/...` et
-les routes Dungeon.
-`/services/<service>/...` reste un accès de diagnostic local.
+Les routes Player, Rewards et Leaderboard correspondent directement aux
+contrôleurs respectifs. Les routes natives actuelles restent routées,
+dont `/api/v1/players/...` et les routes Dungeon.
+`/services/<service>/...` reste un accès de diagnostic local pour Player,
+Combat, Dungeon et Reward.
 Le code du backend doit implémenter la route finale ; Traefik ne crée pas de Hub.
 
 Le port HTTP interne est 8080 (`Http1`), gRPC est sur 8081 (`Http2`).
@@ -72,37 +69,44 @@ Connexion commune : `RabbitMq__Enabled=true`, `HostName=rabbitmq`,
 `Port=5672`, `VirtualHost=/`, `UserName=lantern`, `Password`.
 Le mot de passe provient de `RABBITMQ_PASSWORD`.
 
-| Service     | Exchange publié                | File consommée          |
-| ----------- | ------------------------------ | ----------------------- |
-| Player      | `player.events`                | `player.events.v1`      |
-| Dungeon     | `dungeon.events`               | Aucune dans la matrice  |
-| Combat      | `combat.events`                | Aucune dans la matrice  |
-| Rewards     | `rewards.events`               | `rewards.events.v1`     |
-| Progression | `progression.events` (réservé) | `progression.events.v1` |
+| Service             | Exchange publié                | File consommée                                     |
+| ------------------- | ------------------------------ | -------------------------------------------------- |
+| Player              | `player.events`                | `player.events.v1`                                 |
+| Dungeon             | `dungeon.events`               | Aucune dans la matrice                             |
+| Combat              | `combat.events`                | Aucune dans la matrice                             |
+| Rewards             | `rewards.events`               | `rewards.events.v1`                                |
+| Leaderboard         | Aucun                          | `leaderboard.raw-events` (déclarée par le service) |
+| Progression (prévu) | `progression.events` (réservé) | `progression.events.v1` (réservée)                 |
 
 Player consomme `dungeon.dungeon-run-ended.v1`.
 Rewards consomme `combat.consumable-used.v1`.
-Progression consomme les 15 clés statistiques explicitement listées dans le
-catalogue, indépendamment des autres files. Aucun wildcard ne lui livre les
-événements techniques ou non statistiques.
+Leaderboard lie sa file aux exchanges producteurs avec la clé `#`, archive
+chaque message reçu dans MongoDB, puis valide les événements du catalogue.
+La file Progression réservée conserve les 15 bindings statistiques de la
+topologie locale. Aucun consommateur actif ne lit cette file pour l'instant.
 
-Les futurs consommateurs lisent `RabbitMq__QueueName`, `PrefetchCount`,
+Les autres consommateurs lisent `RabbitMq__QueueName`, `PrefetchCount`,
 `DeadLetterExchangeName`, `DeadLetterQueueName`,
 `Subscriptions__N__ExchangeName` et `Subscriptions__N__RoutingKey`.
 Les mêmes noms apparaissent dans les `appsettings.json` concernés et dans
-`deploy/rabbitmq/definitions.json`.
+`deploy/rabbitmq/definitions.json`. Leaderboard utilise
+`RawEventConsumer__QueueName` et `RawEventConsumer__Enabled`. Les variables
+`RabbitMq__Subscriptions__N__*` de Progression restent dans Compose pour la
+future intégration et ne configurent pas ce consommateur actuel.
 
 Le hook `post_start` importe la topologie après la création habituelle des
 utilisateurs RabbitMQ ; il ne remplace ni mots de passe ni permissions.
 Le hostname du broker est fixé à `rabbitmq` pour conserver le même nom de nœud
 et le même répertoire de données lors d'une recréation du conteneur.
 Le healthcheck reste en attente jusqu'à la fin de cet import.
-Les files sont des quorum queues durables. Politique locale :
+Les files sont des quorum queues durables. Les files Player, Rewards et
+Progression préconfigurées suivent cette politique locale :
 limite de redélivrance 5, expiration après 7 jours, puis dead-letter vers
 `lantern.dead-letter` et la file `<file>.dead`.
 La dead-letter utilise la stratégie `at-least-once` et
 `overflow=reject-publish`. Les DLQ n'expirent pas automatiquement.
-Ces seuils restent des choix locaux, pas des constantes métier.
+Leaderboard déclare sa file sans expiration et utilise sa propre dead-letter
+queue. Ces seuils restent des choix locaux, pas des constantes métier.
 Un consommateur doit acquitter après succès, dédupliquer et décider quand
 rejeter/rejouer ; le broker n'implémente pas cette logique applicative.
 

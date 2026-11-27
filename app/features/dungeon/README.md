@@ -209,6 +209,37 @@ the element's id, and traps spikes. Every enemy, the boss included (twice the
 size), is the art team's `placeholder_mob.png` for now: a single image, so it
 floats above its tile over a shadow that stays on the floor.
 
+### Easter-egg rooms
+
+Once in a long while (the odds are the Dungeon service's `EasterEggOneIn`), an
+empty room is a `secret` one: a tribute, decorations only. The Outer Wilds
+ship, its campfire, a Celeste strawberry, a Minecraft grass block, or the two
+Portal portals on the back wall, each in its own room. Its `easterEgg` names it
+(`outerWildsShip`, `outerWildsCampfire`, `celeste`, `minecraft`, `portal`), and
+each decoration is an element of type `decoration` whose `kind` says what it
+shows.
+
+- The sprites are original pixel art in one sheet,
+  `app/assets/dongeon/easter-eggs.png` (200 x 64), drawn by the scripts in
+  `scripts/easter-eggs/` (`python3 final.py <out.png>`); it can also be edited by
+  hand in Aseprite or Piskel. `DECORATIONS` in `tiles/sprites.ts` cuts it.
+- A decoration stands on the first tile of its footprint, in reading order; the
+  ground under it (`decoration` cells) blocks movement and gets no furniture.
+  The portals stand on the top row, walkable, and hang on the wall above it.
+- The walls and the floor of a secret room stay bare (no litter, no candles at the foot of
+  the walls, nothing hung on them), so that nothing overlaps the portals on the wall.
+- A decoration whose kind the client does not know (a newer service, a typo) is drawn as
+  `MISSING_DECORATION`, a violet and black checkerboard in the sheet, like Minecraft's
+  missing texture, rather than leaving a hole in the room.
+- Entering a secret room is announced like any room, with what it holds.
+- To add one: draw it in the sheet, add its kind to `DecorationKindName` and
+  `DECORATIONS`, add the game to `EasterEggName` and its announcement, then its
+  room template on the Dungeon service.
+- To see them: the dev sandbox seed `0000000SANDBX` stacks the five rooms north
+  of its bare ones; `0S8QMP5GDPJ11` (ship), `0EANG6PJ9ZAV7` (campfire),
+  `0XBWXVS90496E` (Celeste), `01GWTHZB70BF7` (Minecraft) and `0CR57NSZKFK60`
+  (Portal) hide one on their first floor.
+
 ### Accessibility (ADR-FE-015)
 
 The board is a documented gameplay exception: a focusable `role="application"`

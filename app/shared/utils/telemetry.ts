@@ -1,8 +1,8 @@
 /**
  * ADR-FE-013 — Browser error and Core Web Vitals reporting.
  *
- * Signals are shipped to the project observability stack through a
- * platform-provided endpoint. No third-party RUM SaaS is introduced.
+ * Signals are sent to the same-origin Nitro endpoint, which logs approved
+ * fields for the platform's container-log collector.
  *
  * Privacy rule (ADR-FE-013): an event NEVER carries an access token, a secret
  * or unnecessary personal data. Only the fields below are allowed.
@@ -45,37 +45,16 @@ const ALLOWED_FIELDS = new Set<keyof TelemetryEvent>([
   "value",
   "rating",
   "route",
-  "operation",
-  "correlationId",
-  "message",
-  "stack",
   "app",
   "version",
   "timestamp",
 ]);
-
-const SECRET_PATTERNS = [
-  /\bbearer\s+[a-z0-9._-]+/gi,
-  /\beyJ[a-z0-9_-]+\.[a-z0-9_-]+\.[a-z0-9_-]+/g,
-  /\b(?:api[_-]?key|token|password|secret)\s*[=:]\s*\S+/gi,
-];
-
-/** Removes anything that looks like a credential from free-text fields. */
-export function redact(text: string | undefined): string | undefined {
-  if (!text) return text;
-  return SECRET_PATTERNS.reduce(
-    (redacted, pattern) => redacted.replace(pattern, "[redacted]"),
-    text,
-  ).slice(0, 2000);
-}
 
 export function sanitiseEvent(event: TelemetryEvent): TelemetryEvent {
   const safe = {} as TelemetryEvent;
   for (const key of Object.keys(event) as (keyof TelemetryEvent)[]) {
     if (ALLOWED_FIELDS.has(key)) Object.assign(safe, { [key]: event[key] });
   }
-  safe.message = redact(safe.message);
-  safe.stack = redact(safe.stack);
   return safe;
 }
 

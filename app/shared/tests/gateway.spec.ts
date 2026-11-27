@@ -21,6 +21,12 @@ describe("buildGatewayUrl", () => {
     );
   });
 
+  it("routes leaderboard requests through the service prefix", () => {
+    expect(buildGatewayUrl("/", "v1", "leaderboard/players/player-id/statistics")).toBe(
+      "/api/leaderboard/v1/players/player-id/statistics",
+    );
+  });
+
   it("builds a versioned route", () => {
     expect(buildGatewayUrl("http://gw.test", "v1", "public/universe")).toBe(
       "http://gw.test/api/v1/public/universe",
@@ -101,7 +107,9 @@ describe("createGatewayClient", () => {
     const client = createGatewayClient({
       baseUrl: "http://gw.test",
       apiVersion: "v1",
-      fetchImpl: vi.fn().mockResolvedValue(jsonResponse({}, 401)) as unknown as typeof fetch,
+      fetchImpl: vi
+        .fn()
+        .mockResolvedValue(jsonResponse({}, 401)) as unknown as typeof fetch,
       onUnauthorized,
     });
 
@@ -131,7 +139,9 @@ describe("createGatewayClient", () => {
     await expect(client.get("player/me/heroes")).resolves.toEqual({ ok: true });
 
     expect(onUnauthorized).toHaveBeenCalledWith(false);
-    expect(fetchImpl.mock.calls[1]![1].headers.Authorization).toBe("Bearer fresh-token");
+    expect(fetchImpl.mock.calls[1]![1].headers.Authorization).toBe(
+      "Bearer fresh-token",
+    );
   });
 
   it("preserves field errors from an ASP.NET validation problem", async () => {

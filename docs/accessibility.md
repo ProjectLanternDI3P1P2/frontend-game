@@ -37,3 +37,21 @@ constraints, and ADR-FE-015 explicitly forbids using it for ordinary UI controls
 or content pages. If you believe you have a real case, document it in the game
 client's `accessibility-exceptions.md` format and get the owning squad to agree
 before merging.
+
+## Game client — audio
+
+ADR-FE-016. This is not an exception: the dungeon's sounds are built to meet
+ADR-FE-015, and are recorded here so a later change does not undo it.
+
+- **Sound is never the only carrier of information.** Every server-confirmed
+  cue (gate opening, victory, floor descent, refused move) already has an
+  `announce()` message read by the run's `aria-live` region. A player who is
+  deaf, or plays muted, loses nothing but atmosphere.
+- **Nothing plays before the player acts.** Audio starts on the first user
+  gesture only, as browsers require.
+- **The mute toggle is a real `<button>`** with `aria-pressed`, reachable by
+  keyboard, in the run's HUD. The `M` key toggles it too, from the board only,
+  so it never fires while focus is in a text field.
+- **The choice persists** (`localStorage`) and always wins over the default.
+- **The ambience stays in the background:** a drone with no melody, at a low
+  default level (0.4), so it does not mask screen-reader speech.

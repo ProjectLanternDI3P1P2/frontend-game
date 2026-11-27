@@ -97,7 +97,7 @@
 			</div>
 			<@passkeys.conditionalUIData />
 			<script type="module" src="${url.resourcesPath}/js/passwordVisibility.js"></script>
-			
+
 			<#elseif section = "info">
 				<hr>
 				<#if realm.password && realm.registrationAllowed && !registrationDisabled??>

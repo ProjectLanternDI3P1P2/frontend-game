@@ -1,15 +1,15 @@
 /**
- * The sprites that stand on the board: enemies, bosses, items, traps and the boss gate (the
- * hero, a paper doll, is in `hero.ts`). Data only: the viewport binds `spriteStyle` and CSS
- * plays the frames.
+ * The sprites that stand on the board: enemies, bosses, items, traps, the boss gate and the
+ * decorations of the easter-egg rooms (the hero, a paper doll, is in `hero.ts`). Data only:
+ * the viewport binds `spriteStyle` and CSS plays the frames.
  *
  * An animation is a row of frames `pitch` pixels apart in its sheet; CSS steps through
  * them by moving the background, so no JavaScript runs per frame.
  */
-import type { MobState } from "../types";
+import type { DecorationKindName, MobState } from "../types";
 import type { Theme } from "./tileset";
 
-export type SpriteSheet = "objects" | "hero" | "mob";
+export type SpriteSheet = "objects" | "hero" | "mob" | "eggs";
 
 export interface AnimatedSprite {
   sheet: SpriteSheet;
@@ -130,6 +130,97 @@ export function gateSprite(theme: Theme): AnimatedSprite {
     dx: -24,
     dy: -48,
   };
+}
+
+/**
+ * The easter-egg decorations, from `assets/dongeon/easter-eggs.png` (200 x 64, drawn by
+ * `scripts/easter-eggs/`). A decoration stands on the first tile of its footprint in
+ * reading order, the top-left one: the offsets put each sprite on its footprint.
+ *
+ * To add one: draw it in the sheet, add its kind to `DecorationKindName` and here, then a
+ * room template on the Dungeon service.
+ */
+export const DECORATIONS: Readonly<Record<DecorationKindName, AnimatedSprite>> = {
+  // Three tiles wide, two deep: it stands on its footprint and rises above it.
+  ship: { sheet: "eggs", x: 0, y: 0, w: 48, h: 42, ...still, dx: 0, dy: -10 },
+  // One tile, a small cube standing on it.
+  grassBlock: { sheet: "eggs", x: 48, y: 0, w: 16, h: 16, ...still, dx: 0, dy: -4 },
+  // Hung on the north wall, above the top row of the room, the vortex turning.
+  bluePortal: {
+    sheet: "eggs",
+    x: 72,
+    y: 0,
+    w: 16,
+    h: 32,
+    frames: 4,
+    pitch: 16,
+    duration: 0.8,
+    dx: 0,
+    dy: -32,
+  },
+  orangePortal: {
+    sheet: "eggs",
+    x: 136,
+    y: 0,
+    w: 16,
+    h: 32,
+    frames: 4,
+    pitch: 16,
+    duration: 0.8,
+    dx: 0,
+    dy: -32,
+  },
+  // Floats a few pixels above its tile, wings beating.
+  strawberry: {
+    sheet: "eggs",
+    x: 0,
+    y: 48,
+    w: 16,
+    h: 16,
+    frames: 2,
+    pitch: 16,
+    duration: 0.5,
+    dx: 0,
+    dy: -5,
+  },
+  campfire: {
+    sheet: "eggs",
+    x: 32,
+    y: 48,
+    w: 16,
+    h: 16,
+    frames: 3,
+    pitch: 16,
+    duration: 0.45,
+    dx: 0,
+    dy: -2,
+  },
+};
+
+/**
+ * Shown for a decoration whose kind this client does not know (a newer Dungeon service, a
+ * typo): Minecraft's violet and black missing texture, in the easter-egg sheet, so the
+ * mistake is seen in the room rather than leaving a hole in it.
+ */
+export const MISSING_DECORATION: AnimatedSprite = {
+  sheet: "eggs",
+  x: 48,
+  y: 16,
+  w: 16,
+  h: 16,
+  ...still,
+  dx: 0,
+  dy: 0,
+};
+
+const DECORATION_SPRITES: Readonly<Record<string, AnimatedSprite | undefined>> =
+  DECORATIONS;
+
+/** The sprite of a decoration, whatever kind the service sent: unknown or missing is the placeholder. */
+export function decorationSprite(kind: string | null): AnimatedSprite {
+  // Own keys only: a kind named `constructor` is not a decoration.
+  if (kind === null || !Object.hasOwn(DECORATIONS, kind)) return MISSING_DECORATION;
+  return DECORATION_SPRITES[kind] ?? MISSING_DECORATION;
 }
 
 /** CSS custom properties of a sprite standing on tile (x, y). */

@@ -9,6 +9,10 @@
       {
         "name": "player",
         "description": "Authenticated Project Lantern player"
+      },
+      {
+        "name": "operator",
+        "description": "May operate the Leaderboard warehouse rebuild"
       }
     ]
   },

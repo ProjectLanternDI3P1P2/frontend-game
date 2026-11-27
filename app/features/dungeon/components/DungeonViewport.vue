@@ -27,6 +27,7 @@ import {
   BOSS,
   ENEMY,
   TRAP,
+  decorationSprite,
   gateSprite,
   itemSprite,
   mobClassName,
@@ -142,6 +143,8 @@ function spriteOf(element: DungeonElement): AnimatedSprite {
       return itemSprite(element.id);
     case "trap":
       return TRAP;
+    case "decoration":
+      return decorationSprite(element.kind);
   }
 }
 
@@ -523,6 +526,13 @@ function pickTile(event: MouseEvent) {
     background-image: url("@/assets/dongeon/objects.png");
     background-size: calc(320 * var(--px) * var(--scale))
       calc(480 * var(--px) * var(--scale));
+  }
+
+  // The easter-egg decorations (see `DECORATIONS` in `tiles/sprites.ts`).
+  &--eggs {
+    background-image: url("@/assets/dongeon/easter-eggs.png");
+    background-size: calc(200 * var(--px) * var(--scale))
+      calc(64 * var(--px) * var(--scale));
   }
 
   &--mob {
