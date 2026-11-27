@@ -4,6 +4,34 @@
 
 <!-- Le plus récent en haut. Format : voir le skill decision-log. -->
 
+## D24 - 2026-11-27 - US #266 : périmètre front resserré sur les tâches #1084 à #1088
+
+Décision : remplace D23. La fiche F05 couvre l'invariant du boss, l'état explicite quand il est rompu, le retry du chargement de l'étage, la synchronisation avec le serveur et les tests reliés aux CA de l'US. La télémétrie (modification de l'endpoint partagé) et le retry du combat sortent du périmètre ; l'E2E (#1089) fera l'objet d'une fiche F06 après F05.
+Pourquoi : travail en équipe : s'en tenir à l'US et ne pas modifier le code partagé ni le périmètre de la squad Combat. Les types et l'affichage du boss existaient déjà (`f016c6c`, `2872f31`).
+Écarté : télémétrie `dungeon.contract` (touche `server/api/telemetry.post.ts`, partagé : à proposer à l'équipe) ; E2E dans F05 (risque d'auth Keycloak, ne doit pas bloquer F05).
+Source : discussion
+
+## D23 - 2026-11-26 - US-DONGEON-07 (boss final) : approche « garde-fous + états dégradés »
+
+Décision : côté front, l'US #266 ajoute une règle pure qui vérifie l'invariant du boss (exactement un élément `boss`, dans la salle de type `boss`), des états explicites quand le contrat est rompu, un retry et un anti double clic sur le combat contre le boss, un événement de télémétrie en cas de rupture du contrat, et des tests d'acceptation reliés aux CA 1 à 4.
+Pourquoi : l'affichage nominal du boss existe déjà sur `dev` ; la valeur de l'US côté front est la preuve, la robustesse et la mesure.
+Écarté : tests seuls (n'apportent aucune robustesse) ; E2E Cypress du donjon dans cette fiche (coût et risque d'auth Keycloak en E2E ; possible dans une fiche ultérieure).
+Source : discussion
+
+## D22 - 2026-11-26 - Combat contre le boss hors périmètre de l'US #266
+
+Décision : on garde le bouchon actuel `defeatFloorBoss` pour le combat contre le boss ; l'US #266 n'y ajoute que le retry et la protection contre la double soumission. L'écran de combat reste à la squad Combat (`feature/combat-screen`, non mergée).
+Pourquoi : la squad Dungeon définit l'emplacement, la squad Combat définit le boss et son comportement (ADR-FE-009).
+Écarté : intégrer `feature/combat-screen` dans cette US (feature d'une autre squad, non mergée).
+Source : discussion
+
+## D21 - 2026-11-26 - Le front ne code pas le numéro de la salle du boss
+
+Décision : le front repère le boss final par la salle de type `boss` et l'élément de type `boss` renvoyés par le back, jamais par un numéro de salle (« salle 40 ») codé en dur.
+Pourquoi : la position du boss est une règle de génération du back (déterminée par la seed) ; la coder côté front couplerait les deux dépôts.
+Écarté : vérifier `id === 40` ou `rooms.length === 40` côté front (casserait les fixtures à 10 salles et dupliquerait une règle back).
+Source : discussion
+
 ## D20 - 2026-10-21 - « Previous season final board » ouvre le classement All time
 
 Décision : faute de paramètre de saison dans le contrat, l'action de l'état vide bascule la période sur All time. Elle est désactivée, avec une explication, si la période est déjà All time. À corriger quand le back exposera la saison (`seasonId` dans `RankingQuery`).
