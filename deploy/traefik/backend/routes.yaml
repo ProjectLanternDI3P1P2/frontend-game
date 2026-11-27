@@ -26,6 +26,13 @@ http:
       priority: 100
       middlewares: [authenticated]
       service: player
+    # US-PLAYER-06: anonymous, cacheable public profile, the two read routes only
+    # (GET, HEAD and the CORS preflight OPTIONS answered by Traefik).
+    player-public-profile-api:
+      rule: (Method(`GET`) || Method(`HEAD`) || Method(`OPTIONS`)) && (PathRegexp(`^/api/player/v1/players/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/public-profile$`) || PathRegexp(`^/api/player/v1/players/by-handle/[A-Za-z0-9-]{1,32}/public-profile$`))
+      priority: 200
+      middlewares: [remove-external-identity]
+      service: player
     combat-api:
       rule: Path(`/api/v1/monster-types`) || PathPrefix(`/api/v1/monster-types/`) || PathRegexp(`^/api/v1/heroes/[^/]+/combat-data$`) || Path(`/hubs/combats`) || PathPrefix(`/hubs/combats/`) || Path(`/hubs/combat`) || PathPrefix(`/hubs/combat/`)
       priority: 100

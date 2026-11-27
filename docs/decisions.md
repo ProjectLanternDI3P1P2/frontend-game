@@ -4,6 +4,41 @@
 
 <!-- Le plus récent en haut. Format : voir le skill decision-log. -->
 
+## D25 - 2026-11-26 - Plus de `nitro.errorHandler` : logs JSON dans un plugin Nitro
+
+Décision : `server/error-handler.ts` est supprimé ; le log JSON des échecs serveur passe dans `server/plugins/error-log.ts` (hook `error`, mêmes conditions : non gérée, fatale ou ≥ 500). Nuxt rend ainsi `app/error.vue` en SSR.
+Pourquoi : Nuxt n'installe son handler (celui qui rend `error.vue`) que si `nitro.errorHandler` n'est pas défini ; sinon une 404 SSR renvoyait un corps JSON (CA3 de US-PLAYER-06).
+Écarté : recopier la logique interne de Nuxt (`/__nuxt_error`, non exportée) ; accepter une 404 JSON au premier chargement. Coût accepté : ligne texte `[request error]` de Nitro en plus pour les erreurs non gérées ou fatales.
+Source : US-PLAYER-06, validé par l'utilisateur
+
+## D24 - 2026-11-26 - `app/error.vue` global
+
+Décision : 404 avec `statusText` « Player not found » → « Player not found » ; toute autre 404 → « Page not found » ; sinon message générique. Toujours `noindex` ; retour par `clearError({ redirect: "/rankings" })`.
+Pourquoi : la page d'erreur sert toute l'app ; `/` et `/home` renvoient un visiteur anonyme vers la connexion, `/rankings` est la page publique la plus proche.
+Écarté : un libellé « Player not found » pour toute 404.
+Source : US-PLAYER-06
+
+## D23 - 2026-11-26 - Profil public : 404 sans appel pour une ref hors format, champs filtrés
+
+Décision : `/profiles/:ref` → GUID = appel par id ; `[a-z0-9-]{1,32}` (après passage en minuscules) = appel par handle ; autre chose = 404 sans appel. Le profil reçu est réduit aux champs du contrat (`toPublicProfile`) avant d'entrer dans l'état `useAsyncData`. La 404 est levée avec `fatal: import.meta.client` (le serveur rend l'erreur sans `fatal` et ne la journalise pas en « fatal ») ; une autre erreur répond 503 avec un message fixe et Retry, comme `/rankings` (D17).
+Pourquoi : le router anonyme de Traefik ne laisse passer que ces deux formats (sinon 401 traité comme une panne) ; l'état part dans le HTML public, un champ en trop (e-mail) ne doit jamais y arriver.
+Écarté : `fatal: true` partout ; recopier tel quel l'objet de l'API.
+Source : US-PLAYER-06
+
+## D22 - 2026-11-26 - Route publique `/profiles/:ref` en SSR `swr: 60`
+
+Décision : `app/pages/profiles/[ref].vue`, `"/profiles/**": { ssr: true, prerender: false, swr: 60 }`, canonical sur la forme par handle (`siteUrl` + `/profiles/{handle}`, sans `app.baseURL` car `siteUrl` contient déjà `/game` en prod). Pas de lien depuis l'accueil : il est authentifié (CSR) et aucun endpoint ne liste les joueurs.
+Pourquoi : `/players/**` est l'espace authentifié en CSR ; une ressource publique au pluriel suit le modèle de `/rankings` ; `swr: 60` s'aligne sur le `max-age=60` de l'API.
+Écarté : `/players/:id/profile` (mélange public et authentifié).
+Source : US-PLAYER-06, validé par l'utilisateur
+
+## D21 - 2026-11-26 - Appel anonyme par `token: null`, router Traefik dédié
+
+Décision : `getPublicProfileById` / `getPublicProfileByHandle` passent `token: null` au `GatewayClient` (aucun `Authorization`, seulement `Accept` et `X-Correlation-Id`). Traefik : router `player-public-profile-api` (priorité 200, `remove-external-identity` sans `keycloak-jwt`) limité à GET/HEAD/OPTIONS sur les deux routes, GUID strict et handle `[A-Za-z0-9-]{1,32}`.
+Pourquoi : pas besoin d'un second client ; `player-api` exige un JWT sur tout `/api/player/` ; OPTIONS est nécessaire au préflight CORS (en-tête `X-Correlation-Id`) et HEAD aux sondes.
+Écarté : nouveau client anonyme ; exception sur `/api/player/v1/players/**` (trop large) ; GET seul (casse le préflight).
+Source : US-PLAYER-06, revue n°1
+
 ## D20 - 2026-10-21 - « Previous season final board » ouvre le classement All time
 
 Décision : faute de paramètre de saison dans le contrat, l'action de l'état vide bascule la période sur All time. Elle est désactivée, avec une explication, si la période est déjà All time. À corriger quand le back exposera la saison (`seasonId` dans `RankingQuery`).

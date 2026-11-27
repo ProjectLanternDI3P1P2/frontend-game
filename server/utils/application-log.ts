@@ -11,6 +11,7 @@ const allowedRouteRoots = new Set([
   "home",
   "leaderboard",
   "players",
+  "profiles",
   "rankings",
 ]);
 
@@ -24,7 +25,7 @@ function safeText(value: string): string {
 export function safeRoute(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const route = value.split(/[?#]/, 1)[0];
-  if (!route || route.length > 120 || !/^\/[a-zA-Z0-9_/*:.-]*$/.test(route)) {
+  if (!route || route.length > 120 || !/^\/[a-zA-Z0-9_/*:.()-]*$/.test(route)) {
     return undefined;
   }
   const root = route.split("/")[1] ?? "";

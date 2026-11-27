@@ -1,8 +1,14 @@
 # Container application logs
 
-Nuxt 4.5.2 / Nitro 2.13.4 runs a Node server. The Nitro error handler writes
-server request failures to stderr as one JSON object per event and delegates the
-HTTP response to Nitro silently. The browser telemetry reporter posts to the
+Nuxt 4.5.2 / Nitro 2.13.4 runs a Node server. The Nitro plugin
+`server/plugins/error-log.ts` (hook `error`) writes server request failures to
+stderr as one JSON object per event: unhandled errors, fatal errors and statuses
+of 500 and above. Expected client errors, such as a 404 « Player not found », are
+not logged. The HTTP response itself is left to Nuxt's own error handler, which
+renders `app/error.vue` for page requests (there is no `nitro.errorHandler`: a
+custom one would stop Nuxt from rendering the error page on the server). The
+accepted cost: for unhandled or fatal errors, Nitro also prints its plain-text
+`[request error]` line next to the JSON one. The browser telemetry reporter posts to the
 same-origin `/game/api/telemetry` route. The Nitro route validates at most 16 KiB and 20
 events per request, then logs accepted events; it never forwards the browser to
 Loki. The client-supplied message, stack, app name, timestamp, and unknown
@@ -20,7 +26,11 @@ properties are ignored. Browser errors and server exceptions have different
 | `exception`  | Server errors only: `type`, sanitized `message`, optional sanitized `stack`   |
 
 Routes are restricted to known first segments and collapsed to that segment
-when deeper paths might contain user data. Browser event names, ratings, values,
+when deeper paths might contain user data. The browser sends the Nuxt route
+pattern, not the URL (for example `/profiles/:ref()`), so the server accepts the
+characters `a-z A-Z 0-9 _ / * : . ( ) -` and logs `/profiles`. One invalid event
+rejects the whole batch with 400: a route pattern rejected here silently drops
+every Web Vital of that page. Browser event names, ratings, values,
 and versions have allowlists or bounds. No token, cookie, personal identifier,
 raw payload, client message, or client stack is logged.
 

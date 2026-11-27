@@ -32,7 +32,9 @@ guessed now would be defended rather than met. Fix it after cycle 1.
 
 ## Lab measurement — regression detection only
 
-Lighthouse runs in CI on representative routes with `lighthouse-budget.json`.
+Lighthouse is meant to run in CI with `lighthouse-budget.json`, but it is
+temporarily removed from CI (see `README.md`). The single budget path `/*`
+already covers the SSR pages `/rankings` and `/profiles/*`; nothing is tooled per page.
 It is a laboratory measurement: a good score does not mean players have a good
 experience, and ADR-FE-014 explicitly refuses to let it replace field data.
 
