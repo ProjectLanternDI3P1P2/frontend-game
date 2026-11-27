@@ -30,8 +30,18 @@ const playerId = computed(() =>
 );
 // ADR-FE-016: the explorer decides which cue plays; the page wires the sound.
 const dungeonAudio = useDungeonAudio();
+// ADR-FE-013: how often the hero is drawn with its chosen look, and how long it takes.
+const { $telemetry } = useNuxtApp();
 const explorer = useDungeonExplorer(String(route.params.runId), {
   sound: dungeonAudio,
+  onHeroAppearance: ({ source, durationMs }) =>
+    $telemetry?.report({
+      type: "custom-timing",
+      name: "dungeon.hero-appearance",
+      value: durationMs,
+      rating: source,
+      route: "/dungeon/:runId",
+    }),
 });
 const {
   run,
@@ -90,7 +100,8 @@ function move(direction: Direction) {
 }
 
 function spawnAt(position: Position) {
-  if (isSandbox.value && !movementBlocked.value) explorer.spawn(spawnKind.value, position);
+  if (isSandbox.value && !movementBlocked.value)
+    explorer.spawn(spawnKind.value, position);
 }
 
 function onKeydown(event: KeyboardEvent) {

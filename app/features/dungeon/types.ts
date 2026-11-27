@@ -31,15 +31,29 @@ export type EnemyKindName = "zombie" | "mage" | "goblin" | "bat";
 
 /** What a decoration of an easter-egg room shows. */
 export type DecorationKindName =
-  "ship" | "campfire" | "strawberry" | "grassBlock" | "bluePortal" | "orangePortal";
+  | "ship"
+  | "campfire"
+  | "strawberry"
+  | "grassBlock"
+  | "bluePortal"
+  | "orangePortal";
 
 /** `secret`: a legendary easter-egg room, decorations only. */
 export type RoomTypeName =
-  "start" | "combat" | "treasure" | "empty" | "boss" | "secret";
+  | "start"
+  | "combat"
+  | "treasure"
+  | "empty"
+  | "boss"
+  | "secret";
 
 /** Which tribute a secret room pays: one game per room. */
 export type EasterEggName =
-  "outerWildsShip" | "outerWildsCampfire" | "celeste" | "minecraft" | "portal";
+  | "outerWildsShip"
+  | "outerWildsCampfire"
+  | "celeste"
+  | "minecraft"
+  | "portal";
 
 export type DungeonRunStatus = "active" | "won" | "lost" | "abandoned";
 
@@ -140,6 +154,32 @@ export interface DungeonRunResponse {
   /** Item element IDs already opened on the current floor. */
   openedChestElementIds: (string | number)[];
   startedAt: string;
+}
+
+/**
+ * The look of a hero as Player's hero editor stores it, passed on by Dungeon untouched.
+ * Typed loosely on purpose: the codes belong to Player and the client checks them before
+ * drawing (`heroAppearanceFromPlayer`), so an unknown code falls back instead of breaking.
+ */
+export interface RunHeroAppearanceResponse {
+  skinTone: number;
+  hairStyle: string;
+  /** Null for a bald hero. */
+  hairColor: number | null;
+}
+
+export interface RunHeroResponse {
+  heroId: string;
+  appearance: RunHeroAppearanceResponse;
+  /** Player could not describe the hero: `appearance` is Dungeon's default look. */
+  isDefaultAppearance: boolean;
+}
+
+/** GET /api/v1/dungeon-runs/{runId}/heroes */
+export interface DungeonRunHeroesResponse {
+  runId: string;
+  /** The heroes of the party, in the order Player listed them; empty without Player. */
+  heroes: RunHeroResponse[];
 }
 
 /** POST /api/v1/dungeon-runs */

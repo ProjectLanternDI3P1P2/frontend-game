@@ -8,6 +8,7 @@ import type {
   CreateDungeonRunRequest,
   Direction,
   DungeonMapResponse,
+  DungeonRunHeroesResponse,
   DungeonRunResponse,
   EnemyKindName,
   Position,
@@ -59,6 +60,22 @@ export function spawnMob(
   position: Position,
 ): Promise<DungeonRunResponse> {
   return useDungeonHub().spawnMob(runId, kind, position);
+}
+
+/**
+ * GET /api/v1/dungeon-runs/{runId}/heroes — the heroes of the run and the look chosen for
+ * each in Player's hero editor. Read on every load, never cached: a look changed in the
+ * editor shows on the next load. Cosmetic only: the caller draws a default hero when it
+ * fails.
+ */
+export function fetchRunHeroes(
+  runId: string,
+  signal?: AbortSignal,
+): Promise<DungeonRunHeroesResponse> {
+  return useGateway().get<DungeonRunHeroesResponse>(
+    `dungeon-runs/${encodeURIComponent(runId)}/heroes`,
+    { signal },
+  );
 }
 
 /**
