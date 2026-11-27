@@ -2,13 +2,138 @@
  * ADR-FE-012 — Shared setup for every end-to-end spec.
  * ADR-FE-015 — `cy.injectAxe()` / `cy.checkA11y()` are the automated
  * accessibility check that is part of acceptance for the main journeys.
+ *
+ * Specs run against the real Gateway and Keycloak (docs/e2e/identite.md): each
+ * test signs in a fresh user with `cy.login()`, so no state is shared. The
+ * session is kept as an alias: `cy.visitSignedIn()` and `cy.api()` read it.
  */
 import "cypress-axe";
+import { heroName } from "./heroName";
+import type { CreatedHero, KeycloakSession } from "./index";
 
-// ADR-FE-012: a journey never depends on an unpredictable shared environment.
-// Specs stub the Gateway with `cy.intercept` and fixture data instead.
-beforeEach(() => {
-  cy.intercept({ url: "**/api/v1/**", middleware: true }, (req) => {
-    req.headers["x-e2e"] = "true";
+// Same defaults as compose.backend.yaml and scripts/e2e/config.py.
+const KEYCLOAK_ADMIN = { username: "admin", password: "admin" };
+const E2E_PASSWORD = "e2e-Password-1";
+// Read by app/plugins/keycloak.client.ts to restore the session.
+const TOKENS_STORAGE_KEY = "lantern.keycloak.tokens";
+const SESSION_ALIAS = "session";
+
+// Watching aid for local runs: `slowMo` (ms, set by `e2e_parallel.py open`) pauses after
+// every action so each step can be followed on screen. Off when unset, as in CI.
+const slowMo = Number(Cypress.env("slowMo") ?? 0);
+if (slowMo > 0) {
+  for (const action of [
+    "visit",
+    "click",
+    "type",
+    "clear",
+    "check",
+    "select",
+  ] as const) {
+    const pauseAfter = (
+      originalFn: (...args: unknown[]) => unknown,
+      ...args: unknown[]
+    ) => {
+      const result = originalFn(...args);
+      return new Promise((resolve) => setTimeout(() => resolve(result), slowMo));
+    };
+    // The per-command overloads cannot type one wrapper shared by six commands.
+    Cypress.Commands.overwrite(action, pauseAfter as never);
+  }
+}
+
+const keycloakUrl = () => Cypress.env("keycloakUrl") as string;
+
+const passwordGrant = (realm: string, body: Record<string, string>) =>
+  cy.request({
+    method: "POST",
+    url: `${keycloakUrl()}/realms/${realm}/protocol/openid-connect/token`,
+    form: true,
+    body: { grant_type: "password", ...body },
   });
+
+Cypress.Commands.add("getByCy", (name: string) => cy.get(`[data-cy="${name}"]`));
+
+Cypress.Commands.add("login", () => {
+  const username = `e2e-${crypto.randomUUID()}`;
+
+  passwordGrant("master", { client_id: "admin-cli", ...KEYCLOAK_ADMIN })
+    .then(({ body }) =>
+      cy.request({
+        method: "POST",
+        url: `${keycloakUrl()}/admin/realms/lantern/users`,
+        headers: { Authorization: `Bearer ${body.access_token}` },
+        body: {
+          username,
+          // The user profile requires these, otherwise the account is "not fully set up".
+          email: `${username}@e2e.lantern.test`,
+          firstName: "E2E",
+          lastName: "Player",
+          enabled: true,
+          emailVerified: true,
+          requiredActions: [],
+          credentials: [{ type: "password", value: E2E_PASSWORD, temporary: false }],
+        },
+      }),
+    )
+    .then(() =>
+      passwordGrant("lantern", {
+        client_id: "lantern-public",
+        scope: "openid",
+        username,
+        password: E2E_PASSWORD,
+      }),
+    )
+    .then(({ body }) => {
+      const session: KeycloakSession = {
+        token: body.access_token,
+        refreshToken: body.refresh_token,
+        idToken: body.id_token,
+      };
+      // Aliases are cleared between tests: a session never leaks into the next one.
+      cy.wrap(session, { log: false }).as(SESSION_ALIAS);
+    });
+});
+
+const currentSession = () =>
+  cy.get<KeycloakSession>(`@${SESSION_ALIAS}`, { log: false });
+
+Cypress.Commands.add("visitSignedIn", (path: string) =>
+  currentSession().then((session) =>
+    cy.visit(path, {
+      onBeforeLoad(win) {
+        win.sessionStorage.setItem(TOKENS_STORAGE_KEY, JSON.stringify(session));
+      },
+    }),
+  ),
+);
+
+Cypress.Commands.add(
+  "api",
+  (method: Cypress.HttpMethod, path: string, body?: Cypress.RequestBody) =>
+    currentSession().then((session) =>
+      cy.request({
+        method,
+        url: `${Cypress.env("gatewayUrl")}${path}`,
+        headers: { Authorization: `Bearer ${session.token}` },
+        body,
+      }),
+    ),
+);
+
+const HEROES_PATH = "/api/player/v1/me/heroes";
+
+Cypress.Commands.add("createHero", ({ select = false } = {}) => {
+  const name = heroName();
+  return cy
+    .api<{ id: string }>("POST", HEROES_PATH, {
+      name,
+      classCode: "warrior",
+      idempotencyKey: crypto.randomUUID(),
+    })
+    .then(({ body }) => {
+      // A new hero is not selected: the play screen needs one to enable the lobby.
+      if (select) cy.api("PUT", `${HEROES_PATH}/${body.id}/selection`);
+      return cy.wrap<CreatedHero>({ id: body.id, name }, { log: false });
+    });
 });

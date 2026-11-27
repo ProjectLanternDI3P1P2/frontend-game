@@ -201,6 +201,7 @@ onBeforeUnmount(() => void hub?.disconnect());
               :variant="ButtonVariant.PRIMARY"
               :busy="creating"
               :disabled="!canCreateLobby"
+              data-cy="create-lobby"
               @click="createLobby"
               >{{ creating ? "Creating…" : "Create lobby" }}</UiButton
             >

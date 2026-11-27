@@ -268,6 +268,46 @@ Sous Windows PowerShell, utiliser `curl.exe` pour ces commandes.
 En mode sans fronts, utiliser `http://localhost:8088` pour les vérifications
 API/SignalR ; les deux endpoints frontend `/healthz` ne sont pas disponibles.
 
+## Tests end-to-end
+
+La suite Cypress tourne contre la variante sans les fronts : Traefik, Keycloak,
+PostgreSQL, RabbitMQ, Player, Combat, Dungeon et Reward. Leaderboard n'est ni
+construit ni démarré. Le jeu est servi depuis son build Nuxt sur le port 3000.
+Les décisions sont dans [e2e/README.md](e2e/README.md).
+
+Depuis `frontend-game`, avec Python 3.12 (`py` sous Windows) :
+
+```sh
+docker compose -f compose.backend.dev.yaml build player combat dungeon reward
+npm run build
+python3 scripts/e2e/e2e_parallel.py backends
+python3 scripts/e2e/e2e_parallel.py tests --spec cypress/e2e/play-solo-run.cy.ts
+```
+
+Pour voir les tests tourner dans le navigateur, `open` remplace `tests` : il prépare
+la même stack puis ouvre l'application Cypress, où l'on choisit la spec à lancer.
+Il marque une pause d'1 s après chaque action (visit, click, type…) pour suivre le
+test à l'écran : `--slow-mo 500` la change, `--slow-mo 0` la retire. `tests` accepte
+la même option, sans pause par défaut.
+
+```sh
+python3 scripts/e2e/e2e_parallel.py backends
+python3 scripts/e2e/e2e_parallel.py open
+```
+
+- `backends` lance la stack en arrière-plan et rend la main tout de suite ;
+  `tests` attend que les huit services soient sains, active le password grant
+  sur le client `lantern-public` (stack E2E uniquement), démarre le front puis
+  Cypress.
+- Ports : front 3000 (jeu sous `/game/`), Traefik 8088, Keycloak 8081.
+- Chaque test crée son propre utilisateur Keycloak : aucune base n'est vidée.
+  Pour repartir de zéro : `docker compose -f compose.backend.dev.yaml down -v`.
+- Logs : `cypress/results/workers/worker-0/` (`backend.log`, `frontend.log`,
+  `cypress.log`) et captures dans `cypress/results/screenshots/`.
+- `tests` et `open` arrêtent le front en sortant. Si le port 3000 est déjà pris,
+  ils s'arrêtent tout de suite au lieu de tester un autre serveur.
+- Sans `--spec`, `tests` lance toutes les specs dans un même run.
+
 ## Portée et écarts actuels
 
 - ADR-GLOB-002, 003, 005 et 010 : RabbitMQ, entrée unique, bases possédées par
