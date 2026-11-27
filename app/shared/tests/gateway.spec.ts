@@ -27,12 +27,6 @@ describe("buildGatewayUrl", () => {
     );
   });
 
-  it("places the Rewards service prefix before the API version", () => {
-    expect(
-      buildGatewayUrl("https://gw.test", "v1", "rewards/runs/run%2F1/rewards"),
-    ).toBe("https://gw.test/api/rewards/v1/runs/run%2F1/rewards");
-  });
-
   it("builds a versioned route", () => {
     expect(buildGatewayUrl("http://gw.test", "v1", "public/universe")).toBe(
       "http://gw.test/api/v1/public/universe",

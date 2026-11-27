@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createRewardsApi } from "../api/rewardsApi";
+import { createRewardsApi, rewardsApiVersion } from "../api/rewardsApi";
 import { createGatewayClient } from "~/shared/utils/gateway";
 
 describe("Rewards API", () => {
@@ -14,7 +14,11 @@ describe("Rewards API", () => {
       ),
     );
     const api = createRewardsApi(
-      createGatewayClient({ baseUrl: "https://gw.test", apiVersion: "v1", fetchImpl }),
+      createGatewayClient({
+        baseUrl: "https://gw.test",
+        apiVersion: rewardsApiVersion("v1"),
+        fetchImpl,
+      }),
     );
 
     await api.getRunRewards("run/1");

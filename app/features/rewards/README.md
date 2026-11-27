@@ -6,9 +6,26 @@ US 611 — group reward distribution summary.
 | --------------- | ------------------------------------------------ | ------- |
 | `getRunRewards` | `GET /api/rewards/v1/runs/:dungeonRunId/rewards` | US 611  |
 
-The dungeon victory screen loads the summary once the run ID is available.
-Reward returns recipient identifiers. When the Player session is available,
-the screen resolves hero names from its members.
+Owner: SQUAD - Rewards. `useRewardsApi` builds its own client from the shared
+`createGatewayClient` so the shared gateway code stays untouched: the Rewards
+prefix is carried by the API version (`rewards/v1`), and a 401 is shown as
+unavailable rewards instead of redirecting to the login page.
+
+## Integration owned by other squads
+
+The feature is not mounted yet. Wiring it needs changes outside Rewards:
+
+- **Pages (Dungeon, Player):** render `RunRewardsPanel` on the victory screen
+  (`pages/dungeon/[runId].vue`) and/or the run page, with the dungeon run ID
+  and a `heroNames` map (hero ID → name) built from the session members:
+
+  ```vue
+  <RunRewardsPanel :run-id="dungeonRunId" :hero-names="heroNames" />
+  ```
+
+- **Local gateway (Traefik):** route `/api/rewards/v1/...` to Reward without
+  rewriting it. The current `rewards-owned-api` rule rewrites `/api/rewards/...`
+  to `/api/v1/...`, which no longer matches Reward's routes.
 
 Each recipient shows the hero name and who plays it: **You** when its player
 ID equals `viewerPlayerId`, **Teammate** for another player. Reward returns

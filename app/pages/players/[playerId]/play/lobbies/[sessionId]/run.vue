@@ -5,7 +5,6 @@ import {
   playerHubUrl,
 } from "~/features/player/api/playerHub";
 import type { GameSessionSnapshot } from "~/features/player/types";
-import RunRewardsPanel from "~/features/rewards/components/RunRewardsPanel.vue";
 definePageMeta({ layout: "default" });
 const route = useRoute();
 const config = useRuntimeConfig();
@@ -13,9 +12,6 @@ const playerId = computed(() => String(route.params.playerId));
 const sessionId = computed(() => String(route.params.sessionId));
 const session = ref<GameSessionSnapshot | null>(null);
 const error = ref("");
-const heroNames = computed(
-  () => new Map(session.value?.members.map((member) => [member.id, member.name])),
-);
 let hub: PlayerHubClient | null = null;
 onMounted(async () => {
   try {
@@ -50,11 +46,6 @@ onBeforeUnmount(() => void hub?.disconnect());
       ></template
     >
     <p v-else>Loading run…</p>
-    <RunRewardsPanel
-      v-if="session && !error"
-      :run-id="session.dungeonRunId"
-      :hero-names="heroNames"
-    />
   </main>
 </template>
 

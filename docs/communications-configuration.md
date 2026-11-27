@@ -45,13 +45,14 @@ par les équipes ; ce travail ne modifie pas leur enregistrement.
 ## Entrées HTTP et SignalR
 
 - Player : `/api/player/v1/...`.
-- Rewards : `/api/rewards/v1/...`.
+- Rewards : `/api/v1/rewards/...` et `/api/rewards/...`.
 - Leaderboard : `/api/leaderboard/v1/...`.
 - Hubs : `/hubs/player`, `/hubs/dungeons`, `/hubs/combats`.
 
-Les routes Player, Rewards et Leaderboard correspondent directement aux
-contrôleurs respectifs. Les routes natives actuelles restent routées,
-dont `/api/v1/players/...` et les routes Dungeon.
+Le préfixe Rewards est remplacé par `/api/v1` côté backend. Les routes
+Player et Leaderboard correspondent directement aux contrôleurs respectifs.
+Les routes natives actuelles restent routées, dont `/api/v1/players/...`,
+les routes Dungeon et l'inventaire Reward.
 `/services/<service>/...` reste un accès de diagnostic local pour Player,
 Combat, Dungeon et Reward.
 Le code du backend doit implémenter la route finale ; Traefik ne crée pas de Hub.
