@@ -38,6 +38,17 @@ export default defineNuxtConfig({
     "/dungeon": { ssr: false },
     "/dungeon/**": { ssr: false },
 
+    // Leaderboard and hero statistics: personal, frequently re-consolidated
+    // data with no SEO value, and the coming Keycloak session is client-side
+    // (decision D2). Justified in docs/rendering-modes.md.
+    "/leaderboard": { ssr: false },
+    "/players/*/heroes/*/statistics": { ssr: false },
+
+    // Public rankings: non-personal, indexable showcase whose data may be a
+    // minute old; the shared window bounds the load on the leaderboard
+    // service (decision D11). Justified in docs/rendering-modes.md.
+    "/rankings": { ssr: true, prerender: false, swr: 60 },
+
     // A route that genuinely needs a request-time render is declared here, one
     // entry per route, and justified in docs/rendering-modes.md. Two shapes are
     // allowed:
@@ -55,6 +66,9 @@ export default defineNuxtConfig({
   },
 
   nitro: {
+    debug: false,
+    timing: false,
+    errorHandler: "./server/error-handler",
     // Do not turn linked CSR routes into static HTML implicitly. A future
     // static route must opt in with `prerender: true` and use only portable
     // (relative) public URLs.
@@ -103,7 +117,6 @@ export default defineNuxtConfig({
       // .env instead.
       apiGatewayUrl: "/",
       apiVersion: "v1",
-      telemetryEndpoint: "",
       appName: "game-client",
       appVersion: "dev",
       commitSha: "local",

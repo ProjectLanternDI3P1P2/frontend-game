@@ -262,7 +262,9 @@ onMounted(load);
               <p class="hero-detail__label">Managed by the progression squad</p>
               <span>Level, experience and game history</span>
             </div>
-            <a href="#inventory">View progression →</a>
+            <a :href="heroesPath + '/' + encodeURIComponent(heroId) + '/statistics'"
+              >View progression →</a
+            >
           </section>
         </div>
       </div>

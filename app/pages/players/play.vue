@@ -6,8 +6,10 @@ import {
   PlayerHubError,
   playerHubUrl,
 } from "~/features/player/api/playerHub";
+import ActiveSessionNotice from "~/features/player/components/ActiveSessionNotice.vue";
 import HeroPortraitPlaceholder from "~/features/player/components/HeroPortraitPlaceholder.vue";
 import HeroSelectionModal from "~/features/player/components/HeroSelectionModal.vue";
+import { useActiveSessionResume } from "~/features/player/composables/useActiveSessionResume";
 import type { HeroSummary } from "~/features/player/types";
 import { formatSeed, missingSeedCharacters, seedError } from "~/features/dungeon/seed";
 import { createIdempotencyKey } from "~/shared/utils/idempotency";
@@ -29,6 +31,11 @@ const replaySeed = ref(
   formatSeed(typeof route.query.seed === "string" ? route.query.seed : ""),
 );
 let hub: PlayerHubClient | null = null;
+const { activeSessionId, resuming, resumeError, capture, clear, resume } =
+  useActiveSessionResume(playerId, {
+    getSessionSnapshot: (sessionId) => hub!.getSessionSnapshot(sessionId),
+    navigate: (path) => router.push(path),
+  });
 const selectedHero = computed(
   () => heroes.value.find((hero) => hero.id === selectedId.value) ?? null,
 );
@@ -67,6 +74,7 @@ async function createLobby(): Promise<void> {
   if (!hero || !canCreateLobby.value) return;
   creating.value = true;
   error.value = "";
+  clear();
   try {
     const config = useRuntimeConfig();
     hub ??= new PlayerHubClient(
@@ -82,6 +90,7 @@ async function createLobby(): Promise<void> {
       `/players/${encodeURIComponent(playerId.value)}/play/lobbies/${session.sessionId}`,
     );
   } catch (cause) {
+    if (capture(cause)) return;
     error.value =
       cause instanceof PlayerHubError ? cause.message : "Unable to create the lobby.";
   } finally {
@@ -117,6 +126,14 @@ onBeforeUnmount(() => void hub?.disconnect());
         <p class="join-game__eyebrow">Play a game</p>
         <h1>Join a game</h1>
       </header>
+      <ActiveSessionNotice
+        v-if="activeSessionId"
+        class="join-game__resume"
+        :resuming="resuming"
+        :error="resumeError"
+        @resume="resume"
+        @dismiss="clear"
+      />
       <p v-if="error" class="join-game__notice" role="alert">{{ error }}</p>
       <p v-else-if="loading" class="join-game__notice">Loading your heroes…</p>
       <div v-else class="join-game__layout">
@@ -298,6 +315,9 @@ h1 {
 }
 .join-game__card--empty {
   border-style: dashed;
+}
+.join-game__resume {
+  margin-top: var(--space-4);
 }
 .join-game__notice {
   margin-top: var(--space-4);

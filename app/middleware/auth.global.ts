@@ -4,6 +4,7 @@ const isSafeRedirect = (value: unknown): value is string =>
 const requiresAuthentication = (path: string) =>
   path === "/" ||
   path === "/home" ||
+  path === "/leaderboard" ||
   path === "/dungeon" ||
   path.startsWith("/dungeon/") ||
   path.startsWith("/players/");

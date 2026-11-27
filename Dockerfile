@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24-bookworm-slim AS build
+FROM node:24.22.3-trixie-slim AS build
 
 WORKDIR /app
 
@@ -18,20 +18,22 @@ COPY . .
 # them out of the build stage makes one image usable in every environment.
 RUN npm run build
 
-FROM node:24-bookworm-slim AS runtime
+# The Nuxt server only needs Node.js and its runtime libraries.
+FROM gcr.io/distroless/nodejs24-debian13:nonroot AS runtime
 
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
-    PORT=3000
+    PORT=3000 \
+    PATH=/nodejs/bin:$PATH
 
 WORKDIR /app
 
 # Nuxt/Nitro packages its production server and its runtime dependencies in
 # .output, so no development dependencies are carried into the final image.
-COPY --from=build --chown=node:node /app/.output ./.output
+COPY --from=build --chown=65532:65532 /app/.output ./.output
 
-USER node
+USER 65532:65532
 
 EXPOSE 3000
 
-CMD ["node", ".output/server/index.mjs"]
+CMD [".output/server/index.mjs"]

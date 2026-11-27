@@ -27,6 +27,7 @@ const authenticatedNavigationItems = [
   { label: "Heroes", to: "/players/me/heroes" },
   { label: "Lobby", to: "/players/play" },
   { label: "Dungeon", to: "/dungeon" },
+  { label: "Leaderboard", to: "/leaderboard" },
 ];
 const publicNavigationItems = [{ label: "Demo", to: "/demo" }];
 const navigationItems = computed(() =>
