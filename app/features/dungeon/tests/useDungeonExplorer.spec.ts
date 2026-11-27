@@ -22,6 +22,7 @@ vi.mock("../api/dungeonApi", () => ({
   defeatFloorBoss: vi.fn(),
   openChest: vi.fn(),
   createDungeonRun: vi.fn(),
+  retryEncounter: vi.fn(),
 }));
 
 const map = mapFixture as DungeonMapResponse;
@@ -504,3 +505,199 @@ function encodeTiles(tiles: Position[]): string {
   }
   return btoa(String.fromCharCode(...bytes));
 }
+
+describe("useDungeonExplorer with Combat on", () => {
+  const directions = ["north", "east", "south", "west"] as const;
+  const free = directions.find((d) => isWalkableAt(floor, step(initialRun.hero, d)))!;
+  const target = step(initialRun.hero, free);
+  const zombie = {
+    id: "mob-1",
+    kind: "zombie",
+    ...target,
+    aggro: true,
+    nextTeleport: null,
+  } as const;
+
+  beforeEach(() => {
+    clearFloorCache();
+    vi.mocked(api.fetchDungeonMap).mockResolvedValue(map);
+  });
+
+  it("sends a step into a mob as a contact and does not predict the hero", async () => {
+    vi.mocked(api.joinDungeon).mockResolvedValue({
+      ...initialRun,
+      combatEnabled: true,
+      mobs: [zombie],
+    });
+    vi.mocked(api.moveHero).mockResolvedValue({
+      ...initialRun,
+      combatEnabled: true,
+      turn: 1,
+      mobs: [{ ...zombie, inCombat: true }],
+      encounter: {
+        id: "enc-1",
+        status: "active",
+        trigger: "collision",
+        combatId: "combat-1",
+        mobIds: ["mob-1"],
+        bossId: null,
+        outcome: null,
+      },
+    });
+    const explorer = useDungeonExplorer(initialRun.id);
+    await explorer.start();
+
+    explorer.move(free);
+    expect(explorer.hero.value).toEqual(initialRun.hero);
+    await flushPromises();
+
+    expect(api.moveHero).toHaveBeenCalledWith(initialRun.id, free);
+    expect(explorer.hero.value).toEqual(initialRun.hero);
+    expect(explorer.encounter.value?.combatId).toBe("combat-1");
+    expect(explorer.inCombat.value).toBe(true);
+    expect(explorer.movementBlocked.value).toBe(true);
+  });
+
+  it("blocks every move while a fight waits for Combat, and retries it", async () => {
+    const waiting = {
+      ...initialRun,
+      combatEnabled: true,
+      encounter: {
+        id: "enc-1",
+        status: "failed" as const,
+        trigger: "collision" as const,
+        combatId: null,
+        mobIds: ["mob-1"],
+        bossId: null,
+        outcome: null,
+      },
+    };
+    vi.mocked(api.joinDungeon).mockResolvedValue(waiting);
+    vi.mocked(api.retryEncounter).mockResolvedValue({
+      ...waiting,
+      encounter: { ...waiting.encounter, status: "active", combatId: "combat-1" },
+    });
+    vi.mocked(api.moveHero).mockClear();
+    const explorer = useDungeonExplorer(initialRun.id);
+    await explorer.start();
+
+    explorer.move(free);
+    await flushPromises();
+    expect(api.moveHero).not.toHaveBeenCalled();
+
+    await explorer.retryFight();
+    expect(explorer.encounter.value?.status).toBe("active");
+  });
+});
+
+describe("useDungeonExplorer when the run ends", () => {
+  beforeEach(() => {
+    clearFloorCache();
+    vi.mocked(api.fetchDungeonMap).mockResolvedValue(map);
+  });
+
+  it("blocks every action once the run is lost, and shows no refusal as an error", async () => {
+    vi.mocked(api.joinDungeon).mockResolvedValue({ ...initialRun, status: "lost" });
+    const explorer = useDungeonExplorer(initialRun.id);
+    await explorer.start();
+    vi.mocked(api.moveHero).mockClear();
+
+    expect(explorer.runOver.value).toBe(true);
+    expect(explorer.movementBlocked.value).toBe(true);
+    explorer.move("south");
+    await flushPromises();
+    expect(api.moveHero).not.toHaveBeenCalled();
+  });
+
+  it("explains a refusal by the lost run with the state, not with an error message", async () => {
+    vi.mocked(api.joinDungeon).mockResolvedValueOnce(initialRun);
+    const directions = ["north", "east", "south", "west"] as const;
+    const free = directions.find((d) => isWalkableAt(floor, step(initialRun.hero, d)))!;
+    vi.mocked(api.moveHero).mockRejectedValue(
+      new Error("Dungeon run 'x' is Lost and no longer accepts actions."),
+    );
+    const explorer = useDungeonExplorer(initialRun.id);
+    await explorer.start();
+    vi.mocked(api.joinDungeon).mockResolvedValue({ ...initialRun, status: "lost" });
+
+    explorer.move(free);
+    await flushPromises();
+
+    expect(explorer.runOver.value).toBe(true);
+    expect(explorer.errorMessage.value).toBeNull();
+  });
+});
+
+describe("useDungeonExplorer waiting for a fight outcome", () => {
+  beforeEach(() => {
+    clearFloorCache();
+    vi.mocked(api.fetchDungeonMap).mockResolvedValue(map);
+  });
+
+  it("asks Combat once for a double click on Retry", async () => {
+    const waiting = {
+      ...initialRun,
+      combatEnabled: true,
+      encounter: {
+        id: "enc-1",
+        status: "failed" as const,
+        trigger: "collision" as const,
+        combatId: null,
+        mobIds: ["mob-1"],
+        bossId: null,
+        outcome: null,
+      },
+    };
+    vi.mocked(api.joinDungeon).mockResolvedValue(waiting);
+    let answer!: (run: DungeonRunResponse) => void;
+    vi.mocked(api.retryEncounter).mockReset();
+    vi.mocked(api.retryEncounter).mockReturnValue(
+      new Promise((resolve) => (answer = resolve)),
+    );
+    const explorer = useDungeonExplorer(initialRun.id);
+    await explorer.start();
+
+    const first = explorer.retryFight();
+    const second = explorer.retryFight();
+    expect(explorer.isRetrying.value).toBe(true);
+    answer({
+      ...waiting,
+      encounter: { ...waiting.encounter, status: "active", combatId: "c-1" },
+    });
+    await Promise.all([first, second]);
+
+    expect(api.retryEncounter).toHaveBeenCalledTimes(1);
+    expect(explorer.isRetrying.value).toBe(false);
+  });
+
+  it("refresh re-reads the run, and swallows a failed read", async () => {
+    const fighting = {
+      ...initialRun,
+      encounter: {
+        id: "enc-1",
+        status: "active" as const,
+        trigger: "collision" as const,
+        combatId: "c-1",
+        mobIds: ["mob-1"],
+        bossId: null,
+        outcome: null,
+      },
+    };
+    vi.mocked(api.joinDungeon).mockResolvedValueOnce(fighting);
+    const explorer = useDungeonExplorer(initialRun.id);
+    await explorer.start();
+    expect(explorer.encounter.value?.status).toBe("active");
+
+    vi.mocked(api.joinDungeon).mockResolvedValueOnce({
+      ...fighting,
+      encounter: { ...fighting.encounter, status: "resolved", outcome: "won" },
+    });
+    await explorer.refresh();
+    expect(explorer.encounter.value?.status).toBe("resolved");
+    expect(explorer.inCombat.value).toBe(false);
+
+    vi.mocked(api.joinDungeon).mockRejectedValueOnce(new Error("down"));
+    await explorer.refresh();
+    expect(explorer.errorMessage.value).toBeNull();
+  });
+});

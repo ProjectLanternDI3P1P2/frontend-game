@@ -13,6 +13,7 @@ import {
   defeatFloorBoss,
   joinDungeon,
   moveHero,
+  retryEncounter,
   openChest as requestOpenChest,
   spawnMob,
 } from "../api/dungeonApi";
@@ -103,7 +104,19 @@ export function useDungeonExplorer(
   const mobs = computed(() => run.value?.mobs ?? []);
   /** Mobs the last turn killed: they slide to where they fell, then fade out. */
   const dyingMobs = shallowRef<MobState[]>([]);
-  const movementBlocked = computed(() => disposed || chestLoot.value !== null);
+  /** The fight in progress, or the one settled this turn (shown once). */
+  const encounter = computed(() => run.value?.encounter ?? null);
+  /** A fight is on or waiting: the party cannot move until Combat reports the outcome. */
+  const inCombat = computed(
+    () => encounter.value !== null && encounter.value.status !== "resolved",
+  );
+  /** Contacts open real fights in Combat (else the stand-in: a contact kills the mob). */
+  const combatEnabled = computed(() => run.value?.combatEnabled === true);
+  /** The run is over (lost, won, abandoned): the server accepts no action in it any more. */
+  const runOver = computed(() => run.value !== null && run.value.status !== "active");
+  const movementBlocked = computed(
+    () => disposed || chestLoot.value !== null || inCombat.value || runOver.value,
+  );
 
   // The server dates each death: only a new turn brings new deaths to show.
   watch(
@@ -229,7 +242,9 @@ export function useDungeonExplorer(
 
     // Walking into the boss starts the fight; into the open gate, the way down.
     if (bossAt(current, target)) {
-      void fightBoss();
+      // With Combat, the server opens the boss fight on the move; else the stand-in.
+      if (combatEnabled.value) sendContact(direction);
+      else void fightBoss();
       return;
     }
     if (goesDown(current, target, state.floorBossDefeated)) {
@@ -250,8 +265,12 @@ export function useDungeonExplorer(
       return;
     }
 
-    // Same rule as the backend: a mob blocks the way.
+    // Same rule as the backend: a mob blocks the way; with Combat, the step is a contact.
     if (mobs.value.some((mob) => samePosition(mob, target))) {
+      if (combatEnabled.value) {
+        sendContact(direction);
+        return;
+      }
       bump.value = { direction, id: ++bumpCount };
       sound.play("bump");
       announce("A mob blocks the way.");
@@ -281,6 +300,69 @@ export function useDungeonExplorer(
         pendingMoves.value--;
       }
     });
+  }
+
+  /**
+   * A step into a mob or the boss with Combat on: the hero stays where it stands and the
+   * server opens the fight, so nothing is predicted here.
+   */
+  function sendContact(direction: Direction): void {
+    pendingMoves.value++;
+    const moveGeneration = generation;
+    queue = queue.then(async () => {
+      try {
+        if (moveGeneration !== generation) return;
+        const updated = await moveHero(runId, direction);
+        run.value = updated;
+        placeHero(updated.hero);
+      } catch (error) {
+        await resynchronise(error);
+      } finally {
+        pendingMoves.value--;
+      }
+    });
+  }
+
+  /** True while Combat is asked again: a second click does nothing. */
+  const isRetrying = ref(false);
+
+  /**
+   * Asks Combat again for the fight of a pending or failed encounter. The server's key is
+   * the encounter itself, so a retry never opens a second fight; the guard here only
+   * spares the useless second call of a double click.
+   */
+  async function retryFight(): Promise<void> {
+    if (isRetrying.value) return;
+    isRetrying.value = true;
+    errorMessage.value = null;
+    try {
+      run.value = await retryEncounter(runId);
+    } catch (error) {
+      await resynchronise(error);
+    } finally {
+      isRetrying.value = false;
+    }
+  }
+
+  /**
+   * Re-reads the run without touching the page's error state: used while waiting for the
+   * result of a fight Combat has not reported yet. A failure is not worth a message, the
+   * next attempt tries again.
+   */
+  async function refresh(): Promise<void> {
+    if (disposed) return;
+    try {
+      const authoritative = await joinDungeon(runId);
+      if (disposed) return;
+      if (authoritative.currentFloor !== run.value?.currentFloor) {
+        await enterFloor(authoritative);
+      } else {
+        run.value = authoritative;
+        placeHero(authoritative.hero);
+      }
+    } catch {
+      // Next tick.
+    }
   }
 
   /** The boss still standing on a tile, if any. */
@@ -488,6 +570,9 @@ export function useDungeonExplorer(
         run.value = authoritative;
         placeHero(authoritative.hero);
       }
+      // A run that ended (lost, won) refuses further actions: the page shows why, so the
+      // refusal itself is not an error to display.
+      if (authoritative.status !== "active") errorMessage.value = null;
     } catch (refreshError) {
       errorMessage.value = describe(refreshError);
     }
@@ -523,9 +608,16 @@ export function useDungeonExplorer(
     canOpenChest,
     openableChest,
     movementBlocked,
+    encounter,
+    inCombat,
+    combatEnabled,
+    runOver,
     chestLoot,
     start,
     move,
+    retryFight,
+    isRetrying,
+    refresh,
     fightBoss,
     openChest,
     retryChestLoot,

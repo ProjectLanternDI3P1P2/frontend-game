@@ -52,6 +52,11 @@ export function moveHero(
   return useDungeonHub().moveHero(runId, direction);
 }
 
+/** `RetryEncounter` on the Dungeon Hub — asks Combat again for the fight of a waiting encounter. */
+export function retryEncounter(runId: string): Promise<DungeonRunResponse> {
+  return useDungeonHub().retryEncounter(runId);
+}
+
 /** `SpawnMob` on the Dungeon Hub — debug only, in the sandbox dungeon (`SANDBOX_SEED`). */
 export function spawnMob(
   runId: string,
