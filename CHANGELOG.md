@@ -1,5 +1,57 @@
 # Changelog
 
+## [0.4.0](https://github.com/ProjectLanternDI3P1P2/frontend-game/compare/v0.3.0...v0.4.0) (2026-11-27)
+
+
+### Added
+
+* **audio:** add client-side sound system for the dungeon ([121721b](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/121721bf8939889ecca4d511f7ee460ad669f1da))
+* **audio:** add the dungeon's v1 sounds ([5caacad](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/5caacad973017a9d10fb360cc6335c23404a19f8))
+* **audio:** implement dynamic audio base URL handling and add audio client plugin ([2b5560b](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/2b5560bca78eef91610620afeaad1f4c12930653))
+* define local leaderboard operator role ([5844b16](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/5844b16db48670b97ed9807ee6645c0409c1918c))
+* **dungeon:** add easter-egg room decorations and update related logic ([ff3f0db](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/ff3f0dbec22accd0a89a362683a78eeaa25fc8d4))
+* **dungeon:** draw the easter-egg rooms ([7821e3f](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/7821e3ff5134c4399a01ab35f84ba65bea4d21bd))
+* **dungeon:** draw the easter-egg rooms ([30769ee](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/30769ee1503ee85bb75e1f3dba214e32150c8dd6))
+* integrate hero leaderboard with backend and Player roster ([feb671b](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/feb671bf474c8aaf435d4adc1111501bbc42ae84))
+* label backend seeded hero statistics ([cd267c4](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/cd267c422b6a9efff9bfc839aeb79050564373ad))
+* **player:** add active session resume composable ([bd5d8bd](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/bd5d8bdb297cfc39b9de647425aa9875613a7b78))
+* **player:** expose rejection code and active session from the hub ([d3cb1b5](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/d3cb1b57900b246f2c5ff3f1ae1718db936ec989))
+* **player:** offer to resume the session when a hero is already engaged ([f828847](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/f8288476d675bf2c27f98bc921a0a1d5d5d132c0))
+* **player:** offer to resume the session when a hero is already engaged ([e203f44](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/e203f44cd626e0fac686412c5b153c1236eadfad))
+* read hero rankings from leaderboard backend ([ff578b7](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/ff578b7a6f357a8f558accb01b0b5f12fb19f1d9))
+* **rewards:** show how group rewards were distributed (US 611) ([f41b834](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/f41b834ce29fa9ecfdc175dcf5f82036ab8d5ad0))
+* **rewards:** show the group reward distribution of a run (US 611) ([c04067f](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/c04067f9474223fe0f8d84c72fc8502b8803b9ce))
+* route leaderboard through service-scoped API ([bf375b6](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/bf375b643ae29d1a060cf48564720855edc27bbb))
+* **telemetry:** relay browser events to container logs ([caa0a0d](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/caa0a0d358c214ebe8dadda127f4bc1e16c854a8))
+* **telemetry:** relay browser events to JSON container logs ([7f63ceb](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/7f63ceb8360b3c3ac233d3c42b95abdd98bd39fc))
+
+
+### Fixed
+
+* align leaderboard gateway and local stack ([5de2ded](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/5de2deda5aa4094fb08550b9b636ba5f2b1e6bac))
+* **compose:** build leaderboard with development Dockerfile ([f1c8c39](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/f1c8c39da1f02f45a53fba0f407644323c6f8280))
+* **compose:** use current leaderboard Dockerfile locally ([7e2d3b0](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/7e2d3b0163be8f8bdb0c489e2b8c7784002be8c2))
+* drop obsolete progression consumer topology ([800be08](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/800be0854f723af4877b4e70c336e9a3a8d792bc))
+* forward Keycloak realm roles to leaderboard ([cbeed3a](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/cbeed3a5603c148959c6c2c800cecc3d17721ad6))
+* open selected Player hero from progression tab ([e326712](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/e326712678a323b8505982002b9401edf6e0769e))
+* preserve planned progression event settings ([3de7ea9](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/3de7ea9ca4bb36f49da0ed1a28555fae2d26e746))
+* remove legacy leaderboard gateway routes ([c61529a](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/c61529a68a25573b423f1438338230b393a2e9c9))
+* restore reserved progression event topology ([dbfa5e0](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/dbfa5e083f1d5bc2f63a65ca36f737d453043d12))
+* **rewards:** flag the viewer's rewards with viewerPlayerId (US 611) ([ac43a45](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/ac43a45acfcd53585031a1e338c1cdf0a0534df5))
+* **rewards:** identify recipients by the player's heroes (US 611) ([5e680bd](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/5e680bde6ae10f598e4a188c4ac5f2700f5f6d7f))
+* **rewards:** route /api/rewards/v1 to Reward in the local gateway ([7a57644](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/7a57644d5df5eff5865e2c98899d3689e342edb6))
+* scan season suffix without regex backtracking ([e85225e](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/e85225e49fbe7f86ee03f9d20a888dee37f5f840))
+* **security:** patch frontend image and dependencies ([bd41c90](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/bd41c902e8b42ee8a934fe4154899fe24bbb4a19))
+* **security:** patch frontend image and dependencies ([69cf475](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/69cf47529d26bb95e179dd4a3f8c6f561270e9c4))
+* show the authenticated player name in leaderboard ([3938931](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/3938931dedab9efe73b1079de4461d1340dfb109))
+* start leaderboard with its Mongo event store ([c223977](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/c223977b9b5c6cd1e2472d7115916c4610568920))
+* **traefik:** route Rewards API under versioned prefix ([288923d](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/288923d24c21df052fd730f2e32b3112d181fa42))
+
+
+### Changed
+
+* **rewards:** keep US 611 changes inside the rewards feature ([a6149bb](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/a6149bb3e333a8196354af686b08bfa38a109407))
+
 ## [0.3.0](https://github.com/ProjectLanternDI3P1P2/frontend-game/compare/v0.2.3...v0.3.0) (2026-10-23)
 
 
