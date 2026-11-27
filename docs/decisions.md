@@ -4,6 +4,13 @@
 
 <!-- Le plus récent en haut. Format : voir le skill decision-log. -->
 
+## D25 - 2026-11-27 - F05 : logique du boss dans des fichiers neufs, diff minimal dans l'explorateur
+
+Décision : l'invariant du boss vit dans `bossRules.ts`, `useFloorBoss.ts` et `DungeonBossNotice.vue` (nouveaux) ; `useDungeonExplorer.ts` et `[runId].vue` ne reçoivent que des lignes de branchement, sans refactoring.
+Pourquoi : `feature/combat-collision-frontend` (non mergée) modifie fortement ces deux fichiers ; un diff minimal garde les conflits triviaux et réduit le couplage.
+Écarté : attendre le merge de cette branche (dépendance de calendrier) ; partir de cette branche (travail bâti sur du code non validé).
+Source : discussion
+
 ## D24 - 2026-11-27 - US #266 : périmètre front resserré sur les tâches #1084 à #1088
 
 Décision : remplace D23. La fiche F05 couvre l'invariant du boss, l'état explicite quand il est rompu, le retry du chargement de l'étage, la synchronisation avec le serveur et les tests reliés aux CA de l'US. La télémétrie (modification de l'endpoint partagé) et le retry du combat sortent du périmètre ; l'E2E (#1089) fera l'objet d'une fiche F06 après F05.

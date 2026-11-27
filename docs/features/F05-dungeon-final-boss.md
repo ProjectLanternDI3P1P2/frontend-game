@@ -44,13 +44,15 @@ Preuves et documentation [#1088]
 
 ## Périmètre
 
-Fichiers possédés :
+Fichiers possédés (logique dans des fichiers neufs, voir D25) :
 
-- `app/features/dungeon/bossRules.ts` (nouveau)
-- `app/features/dungeon/composables/useDungeonExplorer.ts` (position du boss, état d'invariant, `retry`/`reloadFloor`, garde contre les chargements concurrents)
-- `app/pages/dungeon/[runId].vue` : uniquement les messages et boutons des CA5 à CA7
-- `app/features/dungeon/tests/F05AcceptanceTest.spec.ts`, `app/features/dungeon/tests/bossRules.spec.ts`, ajouts dans `app/features/dungeon/tests/useDungeonExplorer.spec.ts`, nouveaux tests de composant dans `app/features/dungeon/tests/`
-- `app/features/dungeon/README.md`
+- `app/features/dungeon/bossRules.ts` (nouveau) : la règle pure de l'invariant
+- `app/features/dungeon/composables/useFloorBoss.ts` (nouveau) : dérive la position du boss et l'état d'invariant à partir de l'étage et du run exposés par l'explorateur
+- `app/features/dungeon/components/DungeonBossNotice.vue` (nouveau) : message et bouton « Reload floor » du CA5
+- `app/features/dungeon/composables/useDungeonExplorer.ts` : **ajouts minimaux seulement** (exposer ce dont `useFloorBoss` a besoin, un `retry`/`reloadFloor` qui réutilise `start()` avec une garde contre les chargements concurrents). Aucun refactoring, aucun déplacement de code existant, ne pas toucher à `fightBoss()`.
+- `app/pages/dungeon/[runId].vue` : **quelques lignes de branchement seulement** (monter `DungeonBossNotice`, bouton « Retry » de l'état d'erreur existant).
+- `app/features/dungeon/tests/F05AcceptanceTest.spec.ts`, `bossRules.spec.ts`, `useFloorBoss.spec.ts`, `DungeonBossNotice.spec.ts` (nouveaux) ; ajouts dans `useDungeonExplorer.spec.ts` placés dans un `describe("F05 …")` séparé en fin de fichier.
+- `app/features/dungeon/README.md` : uniquement une nouvelle section « Final boss » ajoutée en fin de fichier.
 
 Fichiers en lecture seule : `app/shared/**`, `app/features/dungeon/api/**`, `app/features/dungeon/types.ts`, `app/features/dungeon/dungeonMap.ts`, `app/features/dungeon/components/**`, `app/features/dungeon/tests/fixtures/*.json` existants, `server/**`, `app/plugins/**`.
 Hors périmètre : le back (génération, placement par seed, unicité côté serveur) ; le numéro « 40 » ; l'écran de combat, le retry du combat et le comportement du boss (squad Combat) ; la télémétrie (modification de l'endpoint partagé) ; l'E2E Cypress (#1089, fiche F06 ultérieure).
@@ -70,6 +72,8 @@ Utilisés : contrat Gateway dungeon existant (`DungeonMapResponse`, `DungeonRunR
 - Fixtures : 10 salles par étage, boss en salle `id 8`.
 - Libellés d'interface en anglais. RGAA : focus visible, information pas seulement par la couleur, un seul `h1`.
 - Pas de nouvelle dépendance npm.
+
+Travail en parallèle : la branche `origin/feature/combat-collision-frontend` (zzAdri, non mergée) modifie `useDungeonExplorer.ts`, `[runId].vue`, `useDungeonExplorer.spec.ts` et `types.ts` (combat ouvert par le serveur, `retryFight`, `encounter`) ; `origin/docs/dungeon-docs-refresh` réécrit le README. Ne pas les merger ni s'en inspirer pour modifier ces fichiers : minimiser le diff dans les fichiers existants pour que les conflits futurs restent triviaux. CA8 et CA9 sont d'abord des tests du comportement existant ; ne corriger le code que si un test échoue, et le signaler dans le rapport.
 
 ## Questions ouvertes
 
