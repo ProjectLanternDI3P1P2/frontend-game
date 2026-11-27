@@ -46,6 +46,11 @@ export function prefetchFloor(seed: string, floor: number): void {
   });
 }
 
+/** Drops one cached floor, e.g. after it was read again from the API. */
+export function evictFloor(seed: string, floor: number): void {
+  floors.delete(`${seed}#${floor}`);
+}
+
 /** For tests only. */
 export function clearFloorCache(): void {
   floors.clear();

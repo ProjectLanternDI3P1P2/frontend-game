@@ -22,14 +22,14 @@ copying `app/features/dungeon/`, `app/pages/dungeon/` and the route rule.
 
 ### APIs consumed
 
-| Call               | Gateway route                                               | Cached                                 |
-| ------------------ | ----------------------------------------------------------- | -------------------------------------- |
-| `createDungeonRun` | `POST /api/v1/dungeon-runs`                                 | never                                  |
-| `joinDungeon`      | SignalR `/hubs/dungeons` → `JoinDungeon`                    | never: the run is mutable              |
-| `moveHero`         | SignalR `/hubs/dungeons` → `MoveHero`                       | never                                  |
-| `defeatFloorBoss`  | `POST /api/v1/dungeon-runs/{runId}/boss-defeats`            | never                                  |
+| Call               | Gateway route                                                    | Cached                                 |
+| ------------------ | ---------------------------------------------------------------- | -------------------------------------- |
+| `createDungeonRun` | `POST /api/v1/dungeon-runs`                                      | never                                  |
+| `joinDungeon`      | SignalR `/hubs/dungeons` → `JoinDungeon`                         | never: the run is mutable              |
+| `moveHero`         | SignalR `/hubs/dungeons` → `MoveHero`                            | never                                  |
+| `defeatFloorBoss`  | `POST /api/v1/dungeon-runs/{runId}/boss-defeats`                 | never                                  |
 | `openChest`        | `POST /api/v1/dungeon-runs/{runId}/chests/{elementId:guid}/open` | never                                  |
-| `fetchDungeonMap`  | `GET /api/v1/dungeons/{seed}/map?floor=n`                   | forever: a floor is immutable per seed |
+| `fetchDungeonMap`  | `GET /api/v1/dungeons/{seed}/map?floor=n`                        | forever: a floor is immutable per seed |
 
 The fog of war survives a reload: the run carries the tiles the hero stood on
 (`visitedTiles`), and the explorer reveals around each of them again on arrival
@@ -265,3 +265,63 @@ HUD, the minimap and the actions float over the board.
 
 The fixtures in `tests/fixtures/` were produced by the Dungeon service's query
 handlers: regenerate them when the contract changes.
+
+## Final boss
+
+US #266, fiche F05. The backend places one final boss per floor from the seed;
+the client checks what it received, shows it, and stays aligned with the server.
+
+### Invariant
+
+`findFloorBoss(floor)` (`bossRules.ts`, pure) requires exactly one `boss`
+element, inside the one room of type `boss` (its `roomId` and its interior).
+It returns the element's own position (`x`, `y`, `roomId`, `elementId`): the
+client never computes a position, and never expects a room number (D21). A
+broken invariant is a typed failure, never an exception: `missing` (no boss),
+`duplicate` (more than one), `misplaced` (outside the boss room, no boss room,
+or several). Structural breaks (rows, symbols) still throw
+`DungeonContractError` from `decodeFloor`.
+
+`useFloorBoss` derives `floorBoss` and `bossFailure` from the explorer's floor; the explorer exposes them next to `canFightBoss`.
+
+### Degraded states
+
+- Boss not located: the exploration stays on screen, with
+  `DungeonBossNotice` (`role="alert"`, "The final boss of this floor could not
+  be located.") and a "Reload floor" button. `reloadFloor()` reads the run and the
+  floor again (the floor straight from the API, bypassing the cache) without
+  leaving `status` "ready": the button stays, disabled while the read is in
+  flight, and a failure goes to `errorMessage`, not to the full error screen.
+- Floor or run not loaded: the existing `role="alert"` error gains a "Retry"
+  button (`retry()`); the loading message appears in a
+  `<output>` (implicit `role="status"`) region that is always mounted.
+- `retry()` and `reloadFloor()` share one in-flight load: a second call joins
+  it (`isReloading`, one request per resource), and responses to moves sent
+  before it are discarded.
+
+### Synchronisation
+
+Whether the boss stands comes only from the run read from the server
+(`floorBossDefeated`, ADR-FE-008): on a page reload, and after a failed
+`defeatFloorBoss` (`resynchronise()` reads the run again), the board removes
+the boss and opens the gate only if the server says so. `fightBoss()` sends one
+`POST boss-defeats` at a time.
+
+### What the tests prove, and what they do not
+
+| US #266 criterion                  | Proved by                                                                  |
+| ---------------------------------- | -------------------------------------------------------------------------- |
+| CA1 boss located on a valid floor  | `F05AcceptanceTest` CA1 (both fixtures), `bossRules.spec.ts`               |
+| CA2 typed failure per broken case  | `F05AcceptanceTest` CA2 (one test per case), `bossRules.spec.ts`           |
+| CA3 same seed, same position       | `F05AcceptanceTest` CA3 (two decodings, two explorer loads from the cache) |
+| CA4 shown once, in its room        | `F05AcceptanceTest` CA4 (page mounted, API mocked), `useFloorBoss.spec.ts` |
+| Notice, retry, single load (CA5-7) | `F05AcceptanceTest` CA5 to CA7, `DungeonBossNotice.spec.ts`                |
+| Server sync, one defeat (CA8-9)    | `F05AcceptanceTest` CA8, CA9 (existing behaviour, unchanged)               |
+
+Not proved here:
+
+- That the seed determines the boss position: the backend generates it and
+  proves it; the client only shows that it never alters what it receives.
+- That the backend still sends what the fixtures hold: they were captured from
+  the Dungeon service and can drift from the contract until regenerated.
+- A real browser run (E2E, planned in F06).

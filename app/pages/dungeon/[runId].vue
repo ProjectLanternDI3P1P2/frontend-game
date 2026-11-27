@@ -4,6 +4,7 @@
  * Composes the dungeon feature; holds no rule of its own.
  */
 import { useDungeonAudio } from "~/features/dungeon/audio/useDungeonAudio";
+import DungeonBossNotice from "~/features/dungeon/components/DungeonBossNotice.vue";
 import DungeonControls from "~/features/dungeon/components/DungeonControls.vue";
 import DungeonMinimap from "~/features/dungeon/components/DungeonMinimap.vue";
 import DungeonViewport from "~/features/dungeon/components/DungeonViewport.vue";
@@ -54,6 +55,8 @@ const {
   openableChest,
   movementBlocked,
   chestLoot,
+  bossFailure,
+  isReloading,
 } = explorer;
 
 const board = ref<HTMLElement | null>(null);
@@ -90,7 +93,8 @@ function move(direction: Direction) {
 }
 
 function spawnAt(position: Position) {
-  if (isSandbox.value && !movementBlocked.value) explorer.spawn(spawnKind.value, position);
+  if (isSandbox.value && !movementBlocked.value)
+    explorer.spawn(spawnKind.value, position);
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -124,13 +128,20 @@ async function copyShareLink() {
 
 <template>
   <div class="dungeon-page">
-    <p v-if="status === 'loading'" class="dungeon-page__status">Opening the dungeon…</p>
+    <!-- A live status message, not a form field: it has nothing to label. -->
+    <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -->
+    <output class="dungeon-page__status">
+      <template v-if="status === 'loading'">Opening the dungeon…</template>
+    </output>
 
-    <p v-else-if="status === 'error'" class="dungeon-page__status" role="alert">
-      The dungeon could not be loaded: {{ errorMessage }}
-    </p>
+    <div v-if="status === 'error'" class="dungeon-page__status">
+      <p role="alert">The dungeon could not be loaded: {{ errorMessage }}</p>
+      <UiButton :size="ButtonSize.SM" :busy="isReloading" @click="explorer.retry">
+        Retry
+      </UiButton>
+    </div>
 
-    <template v-else-if="loaded && run">
+    <template v-else-if="status === 'ready' && loaded && run">
       <!-- ADR-FE-015: documented gameplay exception. The board takes the
            arrow keys, so it is a focusable application region with
            instructions; on touch screens the same moves are buttons.
@@ -226,6 +237,12 @@ async function copyShareLink() {
         >
           Victory! The final boss is defeated.
         </output>
+        <DungeonBossNotice
+          v-if="bossFailure"
+          class="dungeon-page__panel"
+          :loading="isReloading"
+          @reload="explorer.reloadFloor"
+        />
         <p
           v-if="errorMessage"
           class="dungeon-page__panel dungeon-page__error"
@@ -422,6 +439,11 @@ async function copyShareLink() {
     margin: 0;
     translate: -50% -50%;
     color: var(--color-text-muted);
+  }
+
+  // <output> is inline by default; keep the block box of the former <p>.
+  @at-root output#{&}__status {
+    display: block;
   }
 }
 </style>
