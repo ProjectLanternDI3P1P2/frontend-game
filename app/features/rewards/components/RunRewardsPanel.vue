@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { useId } from "vue";
+import { useOwnHeroIds } from "../composables/useOwnHeroIds";
 import { useRunRewards } from "../composables/useRunRewards";
 import RunRewardSummary from "./RunRewardSummary.vue";
 
 const props = defineProps<{
   runId: string | null | undefined;
   heroNames: ReadonlyMap<string, string>;
-  currentPlayerId: string | null;
 }>();
 
 const titleId = useId();
 const { state, load } = useRunRewards(() => props.runId);
+const ownHeroIds = useOwnHeroIds();
 </script>
 
 <template>
@@ -36,7 +37,7 @@ const { state, load } = useRunRewards(() => props.runId);
         v-else
         :summary="state.summary"
         :hero-names="heroNames"
-        :current-player-id="currentPlayerId"
+        :own-hero-ids="ownHeroIds"
       />
     </template>
   </section>

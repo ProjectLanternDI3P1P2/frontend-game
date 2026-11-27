@@ -1,52 +1,45 @@
 import { describe, expect, it } from "vitest";
 import { describeRecipient, normalizeRarity } from "../rewardRules";
 
-const names = new Map([["h1", "Aria"]]);
+const names = new Map([
+  ["h1", "Aria"],
+  ["h2", "Bran"],
+]);
+const ownHeroes = new Set(["h1"]);
 
 describe("describeRecipient", () => {
-  it("names the receiving hero and flags the connected player", () => {
+  it("flags a hero of the connected player, whatever the player ID", () => {
     const view = describeRecipient(
-      { heroId: "h1", playerId: "p1", itemInstanceId: null },
+      { heroId: "h1", playerId: "0b8f7c1e-uuid", itemInstanceId: null },
       names,
-      "p1",
+      ownHeroes,
     );
-    expect(view).toEqual({ heroId: "h1", heroName: "Aria", owner: "you", isYou: true });
+    expect(view).toEqual({ heroId: "h1", heroName: "Aria", owner: "you" });
   });
 
-  it("does not flag another player or a missing player id", () => {
+  it("identifies another hero of the session as a teammate", () => {
     expect(
       describeRecipient(
-        { heroId: "h1", playerId: "p2", itemInstanceId: "i" },
+        { heroId: "h2", playerId: null, itemInstanceId: "i" },
         names,
-        "p1",
-      ).isYou,
-    ).toBe(false);
-    expect(
-      describeRecipient(
-        { heroId: "h1", playerId: null, itemInstanceId: "i" },
-        names,
-        "p1",
-      ).isYou,
-    ).toBe(false);
+        ownHeroes,
+      ).owner,
+    ).toBe("teammate");
   });
 
-  it("identifies another participant as a teammate and an unknown player as unknown", () => {
-    const recipient = { heroId: "h1", playerId: "p2", itemInstanceId: null };
-    expect(describeRecipient(recipient, names, "p1").owner).toBe("teammate");
-    expect(describeRecipient({ ...recipient, playerId: null }, names, "p1").owner).toBe(
-      "unknown",
-    );
+  it("stays neutral without the player's heroes or for a hero outside the session", () => {
+    const recipient = { heroId: "h1", playerId: "p1", itemInstanceId: null };
     expect(describeRecipient(recipient, names, null).owner).toBe("unknown");
-  });
-
-  it("falls back to a neutral label for a hero outside the session", () => {
-    expect(
-      describeRecipient(
-        { heroId: "x", playerId: "p2", itemInstanceId: null },
-        names,
-        "p1",
-      ).heroName,
-    ).toBe("Unknown hero");
+    const outsider = describeRecipient(
+      { heroId: "x", playerId: "p2", itemInstanceId: null },
+      names,
+      ownHeroes,
+    );
+    expect(outsider).toEqual({
+      heroId: "x",
+      heroName: "Unknown hero",
+      owner: "unknown",
+    });
   });
 });
 

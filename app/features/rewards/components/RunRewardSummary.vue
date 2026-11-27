@@ -9,7 +9,8 @@ const props = defineProps<{
   summary: RunRewardSummary;
   /** Hero id → display name, from the session members already loaded. */
   heroNames: ReadonlyMap<string, string>;
-  currentPlayerId: string | null;
+  /** Heroes of the connected player; null while unknown. */
+  ownHeroIds: ReadonlySet<string> | null;
 }>();
 
 const groups = computed(() =>
@@ -19,7 +20,7 @@ const groups = computed(() =>
       ...reward,
       rarityKey: normalizeRarity(reward.rarity),
       recipientViews: reward.recipients.map((recipient) =>
-        describeRecipient(recipient, props.heroNames, props.currentPlayerId),
+        describeRecipient(recipient, props.heroNames, props.ownHeroIds),
       ),
     })),
   })),
@@ -30,7 +31,7 @@ const groups = computed(() =>
   <div class="reward-summary">
     <UiPanel
       v-for="group in groups"
-      :key="group.causeId"
+      :key="`${group.sourceType}-${group.causeId}`"
       :title="group.sourceType"
       :heading-level="3"
     >
@@ -50,10 +51,13 @@ const groups = computed(() =>
             v-if="reward.kind === 'SHARED_PER_PARTICIPANT'"
             :tone="BadgeTone.ARCANE"
           >
-            Received by each eligible participant
+            Shared per participant
           </UiBadge>
           <ul class="reward__recipients">
-            <li v-for="recipient in reward.recipientViews" :key="recipient.heroId">
+            <li
+              v-for="(recipient, recipientIndex) in reward.recipientViews"
+              :key="`${recipient.heroId}-${recipientIndex}`"
+            >
               {{ recipient.heroName }}
               <UiBadge v-if="recipient.owner === 'you'" :tone="BadgeTone.SUCCESS">
                 You

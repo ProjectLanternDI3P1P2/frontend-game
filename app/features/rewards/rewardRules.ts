@@ -7,32 +7,32 @@ export interface RecipientView {
   heroId: string;
   heroName: string;
   owner: RecipientOwner;
-  /** True when the recipient belongs to the connected player. */
-  isYou: boolean;
 }
 
 /**
  * Reward only returns identifiers and no service exposes player names to the
- * game front, so the receiving player is identified through their hero in the
- * session: the connected player ("you") or another participant ("teammate").
- * A recipient whose hero is not in the session keeps a neutral label.
+ * game front, so the receiving player is identified through their hero: one of
+ * the connected player's heroes ("you") or another hero of the session
+ * ("teammate"). Without the player's heroes, or for a hero outside the session,
+ * the recipient keeps a neutral label.
  */
 export function describeRecipient(
   recipient: RewardRecipient,
   heroNames: ReadonlyMap<string, string>,
-  currentPlayerId: string | null,
+  ownHeroIds: ReadonlySet<string> | null,
 ): RecipientView {
   const owner: RecipientOwner =
-    recipient.playerId === null || currentPlayerId === null
+    ownHeroIds === null
       ? "unknown"
-      : recipient.playerId === currentPlayerId
+      : ownHeroIds.has(recipient.heroId)
         ? "you"
-        : "teammate";
+        : heroNames.has(recipient.heroId)
+          ? "teammate"
+          : "unknown";
   return {
     heroId: recipient.heroId,
     heroName: heroNames.get(recipient.heroId) ?? "Unknown hero",
     owner,
-    isYou: owner === "you",
   };
 }
 

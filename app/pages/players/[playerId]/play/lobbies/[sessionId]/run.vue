@@ -49,11 +49,7 @@ onBeforeUnmount(() => void hub?.disconnect());
       >
         Back to lobby
       </NuxtLink>
-      <RunRewardsPanel
-        :run-id="session.dungeonRunId"
-        :hero-names="heroNames"
-        :current-player-id="playerId"
-      />
+      <RunRewardsPanel :run-id="session.dungeonRunId" :hero-names="heroNames" />
     </template>
     <p v-else>Loading run…</p>
   </main>

@@ -7,13 +7,19 @@ const getRunRewards = vi.hoisted(() => vi.fn());
 vi.mock("../api/rewardsApi", () => ({
   useRewardsApi: () => ({ getRunRewards }),
 }));
+vi.mock("../composables/useOwnHeroIds", async () => {
+  const { shallowRef } = await import("vue");
+  return { useOwnHeroIds: () => shallowRef(new Set(["hero-1"])) };
+});
 
 function mountPanel(runId: string | null = "run-1") {
   return mount(RunRewardsPanel, {
     props: {
       runId,
-      heroNames: new Map([["hero-1", "Aria"]]),
-      currentPlayerId: "player-1",
+      heroNames: new Map([
+        ["hero-1", "Aria"],
+        ["hero-2", "Bran"],
+      ]),
     },
   });
 }
@@ -91,6 +97,17 @@ describe("RunRewardsPanel", () => {
                 recipients: [
                   { heroId: "hero-1", playerId: "player-1", itemInstanceId: null },
                   { heroId: "hero-2", playerId: "player-2", itemInstanceId: null },
+                  { heroId: "hero-9", playerId: null, itemInstanceId: null },
+                ],
+              },
+              {
+                itemId: "gold",
+                kind: "SHARED_PER_PARTICIPANT",
+                name: "Gold Coin",
+                rarity: "Common",
+                quantity: 5,
+                recipients: [
+                  { heroId: "hero-1", playerId: "player-1", itemInstanceId: null },
                 ],
               },
             ],
@@ -113,6 +130,8 @@ describe("RunRewardsPanel", () => {
     expect(wrapper.text()).toContain("Aria");
     expect(wrapper.text()).toContain("You");
     expect(wrapper.text()).toContain("Unknown hero");
+    expect(wrapper.text()).toContain("Bran");
     expect(wrapper.text()).toContain("Teammate");
+    expect(wrapper.text()).toContain("Shared per participant");
   });
 });

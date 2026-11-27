@@ -65,7 +65,7 @@ const victoryRunId = computed(() =>
 const rewardHeroNames = shallowRef<ReadonlyMap<string, string>>(new Map());
 
 watch(
-  () => (victoryRunId.value && playerId.value ? run.value?.gameSessionId : null),
+  () => (victoryRunId.value ? run.value?.gameSessionId : null),
   async (sessionId, _, onCleanup) => {
     rewardHeroNames.value = new Map();
     if (!sessionId) return;
@@ -269,7 +269,6 @@ async function copyShareLink() {
           class="dungeon-page__panel dungeon-page__rewards"
           :run-id="victoryRunId"
           :hero-names="rewardHeroNames"
-          :current-player-id="playerId"
         />
         <p
           v-if="errorMessage"
