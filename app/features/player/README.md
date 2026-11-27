@@ -1,14 +1,49 @@
 # Player foundations
 
-Shared contracts and typed Gateway calls for US-PLAYER-07 to US-PLAYER-11.
+Shared contracts and typed Gateway calls of the Player service. The current
+player is resolved by the backend from the token (`me`): the `_playerId`
+parameters are kept for call-site compatibility only.
 
-| API function   | Gateway route                                           | Used by |
-| -------------- | ------------------------------------------------------- | ------- |
-| `createHero`   | `POST /api/player/v1/:playerId/heroes`                  | US-07   |
-| `listHeroes`   | `GET /api/player/v1/:playerId/heroes`                   | US-08   |
-| `getHeroSheet` | `GET /api/player/v1/:playerId/heroes/:heroId`           | US-09   |
-| `deleteHero`   | `DELETE /api/player/v1/:playerId/heroes/:heroId`        | US-10   |
-| `startSoloRun` | `POST /api/player/v1/:playerId/heroes/:heroId/sessions` | US-11   |
+| API function               | Gateway route                                                             | Used by |
+| -------------------------- | ------------------------------------------------------------------------- | ------- |
+| `listHeroClasses`          | `GET /api/player/v1/hero-classes`                                         | US-07   |
+| `createHero`               | `POST /api/player/v1/me/heroes`                                           | US-07   |
+| `listHeroes`               | `GET /api/player/v1/me/heroes`                                            | US-08   |
+| `getHeroSheet`             | `GET /api/player/v1/me/heroes/:heroId`                                    | US-09   |
+| `selectHero`               | `PUT /api/player/v1/me/heroes/:heroId/selection`                          | US-08   |
+| `deselectHero`             | `DELETE /api/player/v1/me/heroes/:heroId/selection`                       | US-08   |
+| `deleteHero`               | `DELETE /api/player/v1/me/heroes/:heroId`                                 | US-10   |
+| `getPublicProfileById`     | `GET /api/player/v1/players/:playerId/public-profile` (anonymous)         | US-06   |
+| `getPublicProfileByHandle` | `GET /api/player/v1/players/by-handle/:handle/public-profile` (anonymous) | US-06   |
+
+## Public profile (US-PLAYER-06)
+
+Public, indexable page `/profiles/:ref`, server-rendered with `swr: 60`
+(`docs/rendering-modes.md`, decisions D21 to D25).
+
+- **Anonymous calls**: both public-profile functions pass `token: null`, so no
+  `Authorization` header leaves, even for a signed-in visitor. Traefik opens only
+  these two routes without a JWT (router `player-public-profile-api`).
+- **`ref`** (`publicProfileRules.ts`, `resolveProfileRef`): a GUID reads by id; a
+  handle `[a-z0-9-]{1,32}` (lower-cased) reads by handle; anything else is a 404
+  without calling the API.
+- **Data**: `toPublicProfile` keeps only the contract's fields before they reach
+  the `useAsyncData` state (which is serialised into the public HTML): display
+  name, NG+ level, heroes (name, class, level, in the order received) and the
+  public counters. `completedSessionCount` is shown as received (0 today).
+- **Errors**: API 404 → a real HTTP 404 rendered by `app/error.vue` (« Player
+  not found », `noindex`); any other failure → 503 with a fixed message and
+  Retry, never cached.
+- **SEO**: title « {displayName} — profile », description, canonical on the
+  handle form (`siteUrl` + `/profiles/{handle}`).
+- **Files**: `publicProfileRules.ts`, `composables/usePublicProfile.ts`,
+  `components/PublicProfileView.vue`, `app/pages/profiles/[ref].vue`,
+  `app/error.vue`.
+- **Tests**: `tests/playerApi.spec.ts`, `tests/publicProfileRules.spec.ts`,
+  `tests/usePublicProfile.spec.ts`, `tests/PublicProfileView.spec.ts`,
+  `tests/US-PLAYER-06AcceptanceTest.spec.ts`,
+  `cypress/e2e/US-PLAYER-06AcceptanceTest.cy.ts` (needs the Player backend with
+  the seeded handle `maelisrune-00000000`).
 
 ## Hero appearance
 

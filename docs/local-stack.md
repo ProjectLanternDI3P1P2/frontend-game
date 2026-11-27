@@ -139,18 +139,19 @@ Après modification des fichiers de routage, utiliser
 restart traefik` en mode complet). Docker Desktop peut ne pas transmettre les
 notifications de changement des fichiers montés depuis Windows.
 
-| Route native, via les ports Traefik du mode choisi                    | Service                                   |
-| --------------------------------------------------------------------- | ----------------------------------------- |
-| `/api/player/v1/hero-classes[/...]`, `/api/player/v1/me/heroes[/...]` | Player                                    |
-| `/hubs/player[/...]` (négociation et WebSocket)                       | Player                                    |
-| `/api/v1/monster-types[/...]`, `/api/v1/heroes/{id}/combat-data`      | Combat                                    |
-| `/hubs/combats[/...]`                                                 | Combat                                    |
-| `/hubs/dungeons[/...]`                                                | Dungeon                                   |
-| `/api/player/v1/...`                                                  | Player, route native sans réécriture      |
-| `/api/v1/rewards/...`, `/api/rewards/...`                             | Rewards, préfixe remplacé par `/api/v1`   |
-| `/api/leaderboard/v1/...`                                             | Leaderboard, route native sans réécriture |
-| `/api/v1/heroes/{id}/inventory[/...]`                                 | Reward                                    |
-| `/services/{service}/...`                                             | Service nommé, préfixe retiré             |
+| Route native, via les ports Traefik du mode choisi                                                                                | Service                                                                                                                    |
+| --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `/api/player/v1/hero-classes[/...]`, `/api/player/v1/me/heroes[/...]`                                                             | Player                                                                                                                     |
+| `/hubs/player[/...]` (négociation et WebSocket)                                                                                   | Player                                                                                                                     |
+| `GET`/`HEAD`/`OPTIONS` `/api/player/v1/players/{guid}/public-profile`, `/api/player/v1/players/by-handle/{handle}/public-profile` | Player, **anonyme** (router `player-public-profile-api`, priorité 200, `remove-external-identity` sans JWT ; US-PLAYER-06) |
+| `/api/v1/monster-types[/...]`, `/api/v1/heroes/{id}/combat-data`                                                                  | Combat                                                                                                                     |
+| `/hubs/combats[/...]`                                                                                                             | Combat                                                                                                                     |
+| `/hubs/dungeons[/...]`                                                                                                            | Dungeon                                                                                                                    |
+| `/api/player/v1/...`                                                                                                              | Player, route native sans réécriture                                                                                       |
+| `/api/v1/rewards/...`, `/api/rewards/...`                                                                                         | Rewards, préfixe remplacé par `/api/v1`                                                                                    |
+| `/api/leaderboard/v1/...`                                                                                                         | Leaderboard, route native sans réécriture                                                                                  |
+| `/api/v1/heroes/{id}/inventory[/...]`                                                                                             | Reward                                                                                                                     |
+| `/services/{service}/...`                                                                                                         | Service nommé, préfixe retiré                                                                                              |
 
 `service` vaut `player`, `combat`, `dungeon` ou `reward`.
 Par exemple, `/services/dungeon/health/ready` devient `/health/ready` dans

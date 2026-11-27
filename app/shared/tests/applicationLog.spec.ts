@@ -35,3 +35,13 @@ it("drops routes that might contain personal data", () => {
   expect(safeRoute("/unknown/alice")).toBeUndefined();
   expect(safeRoute("/rankings?token=abc")).toBe("/rankings");
 });
+
+it("keeps the root of a Nuxt route pattern sent by the browser", () => {
+  expect(safeRoute("/profiles/:ref()")).toBe("/profiles");
+  expect(safeRoute("/dungeon/:runId()")).toBe("/dungeon");
+  expect(safeRoute("/players/:playerId()/heroes/:heroId()/statistics")).toBe(
+    "/players",
+  );
+  expect(safeRoute("/unknown/:id()")).toBeUndefined();
+  expect(safeRoute("/(profiles)")).toBeUndefined();
+});

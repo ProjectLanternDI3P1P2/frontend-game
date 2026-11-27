@@ -130,3 +130,31 @@ export interface GameSessionSnapshot {
   failureReason: string | null;
   alreadyExists: boolean;
 }
+
+/**
+ * US-PLAYER-06 — anonymous, cacheable Player routes:
+ * `GET /api/player/v1/players/{playerId}/public-profile` and
+ * `GET /api/player/v1/players/by-handle/{handle}/public-profile`.
+ * Heroes arrive already sorted; the list may be empty.
+ */
+export interface PublicProfileHero {
+  name: string;
+  classCode: string;
+  className: string;
+  level: number;
+}
+
+export interface PublicProfileCounters {
+  heroCount: number;
+  highestHeroLevel: number;
+  completedSessionCount: number;
+}
+
+export interface PublicProfile {
+  playerId: string;
+  publicHandle: string;
+  displayName: string;
+  newGamePlusLevel: number;
+  heroes: PublicProfileHero[];
+  counters: PublicProfileCounters;
+}

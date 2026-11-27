@@ -6,6 +6,7 @@ import type {
   HeroClassOption,
   HeroSheet,
   HeroSummary,
+  PublicProfile,
 } from "../types";
 import { useGateway } from "~/shared/composables/useGateway";
 import type { GatewayClient } from "~/shared/utils/gateway";
@@ -64,8 +65,35 @@ export function createPlayerApi(client: GatewayClient) {
         `${heroesPath()}/${encodeURIComponent(heroId)}`,
       );
     },
+
+    /**
+     * US-PLAYER-06. Anonymous and cacheable: `token: null` keeps the
+     * Authorization header out, even for a signed-in visitor.
+     */
+    getPublicProfileById(
+      playerId: string,
+      signal?: AbortSignal,
+    ): Promise<PublicProfile> {
+      return client.get<PublicProfile>(
+        `player/players/${encodeURIComponent(playerId)}/public-profile`,
+        { signal, token: null },
+      );
+    },
+
+    /** US-PLAYER-06. Same as by id; the handle is matched case-insensitively. */
+    getPublicProfileByHandle(
+      handle: string,
+      signal?: AbortSignal,
+    ): Promise<PublicProfile> {
+      return client.get<PublicProfile>(
+        `player/players/by-handle/${encodeURIComponent(handle)}/public-profile`,
+        { signal, token: null },
+      );
+    },
   };
 }
+
+export type PlayerApi = ReturnType<typeof createPlayerApi>;
 
 export function usePlayerApi() {
   return createPlayerApi(useGateway());

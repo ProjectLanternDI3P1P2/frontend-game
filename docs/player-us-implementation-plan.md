@@ -23,6 +23,21 @@ Cette branche ne crée volontairement ni route, ni page, ni flux métier : les
 cinq US restent livrables indépendamment depuis `dev` une fois cette base
 fusionnée.
 
+## US-PLAYER-06 — Vue publique du profil (front livré)
+
+1. Client anonyme `getPublicProfileById` / `getPublicProfileByHandle`
+   (`token: null`) et types `PublicProfile*`.
+2. Page SSR `/profiles/:ref` (`swr: 60`) : GUID → par id, handle → par handle,
+   autre → 404 sans appel. Nom affiché, NG+, compteurs, héros (nom, classe,
+   niveau) ; aucune autre donnée.
+3. 404 réelle rendue par `app/error.vue` (« Player not found », `noindex`) ;
+   autre erreur → 503 générique avec Retry.
+4. Traefik : router anonyme `player-public-profile-api` limité aux deux routes.
+5. Pas de lien depuis l'accueil : il est authentifié et aucun endpoint ne liste
+   les joueurs.
+6. Reste hors de ce dépôt : ouvrir les deux routes anonymes dans la gateway de
+   production (`platform-gitops`).
+
 ## US-PLAYER-07 — Créer un héros
 
 1. Créer le dossier de fonctionnalité et la route de création CSR.
