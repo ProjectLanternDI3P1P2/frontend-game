@@ -6,6 +6,7 @@
  */
 import { ref } from "vue";
 import { createDungeonRun } from "../api/dungeonApi";
+import { usePlayerApi } from "~/features/player/api/playerApi";
 
 export function useDungeonLauncher() {
   const isStarting = ref(false);
@@ -19,6 +20,7 @@ export function useDungeonLauncher() {
       const run = await createDungeonRun({
         gameSessionId: crypto.randomUUID(),
         seed: seed?.trim() || undefined,
+        heroIds: await partyHeroIds(),
       });
       return run.id;
     } catch (error) {
@@ -27,6 +29,21 @@ export function useDungeonLauncher() {
       return null;
     } finally {
       isStarting.value = false;
+    }
+  }
+
+  /**
+   * The hero selected in the lobby (else the first one) joins the run, so that a contact
+   * with a mob opens a real fight in Combat. Without a hero (none created, Player down),
+   * the run starts anyway with the historical stand-in.
+   */
+  async function partyHeroIds(): Promise<string[]> {
+    try {
+      const heroes = await usePlayerApi().listHeroes();
+      const hero = heroes.find((candidate) => candidate.isSelected) ?? heroes[0];
+      return hero ? [hero.id] : [];
+    } catch {
+      return [];
     }
   }
 

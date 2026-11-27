@@ -49,6 +49,21 @@ export class DungeonHubClient {
     );
   }
 
+  /**
+   * Asks Combat again to open the fight of the encounter waiting in the run (pending or
+   * failed). The idempotency key of the fight is the encounter itself, kept by the server:
+   * Dungeon calls CreateCombat with it, so a retry never opens a second fight. The
+   * `commandId` below only identifies this Hub call (replay of the same call).
+   */
+  async retryEncounter(dungeonId: string): Promise<DungeonRunResponse> {
+    return this.accept(
+      await this.hub.invoke<DungeonAcknowledgement>("RetryEncounter", {
+        commandId: crypto.randomUUID(),
+        dungeonId,
+      }),
+    );
+  }
+
   /** Debug only: a mob on a tile of the sandbox dungeon. Refused on any other run. */
   async spawnMob(
     dungeonId: string,

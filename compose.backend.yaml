@@ -207,6 +207,8 @@ services:
       RabbitMq__ExchangeName: dungeon.events
       Grpc__Combat__Address: http://combat:8081
       Grpc__Combat__TimeoutSeconds: ${DUNGEON_COMBAT_GRPC_TIMEOUT_SECONDS:-5}
+      # A contact with a mob opens a real fight in Combat (Stub: the contact kills the mob).
+      Dungeon__Encounter__Mode: ${DUNGEON_ENCOUNTER_MODE:-Combat}
       Grpc__Rewards__Address: http://reward:8081
       Grpc__Rewards__TimeoutSeconds: ${DUNGEON_REWARDS_GRPC_TIMEOUT_SECONDS:-5}
       Grpc__Resilience__Retry__MaxAttempts: "1"

@@ -31,15 +31,29 @@ export type EnemyKindName = "zombie" | "mage" | "goblin" | "bat";
 
 /** What a decoration of an easter-egg room shows. */
 export type DecorationKindName =
-  "ship" | "campfire" | "strawberry" | "grassBlock" | "bluePortal" | "orangePortal";
+  | "ship"
+  | "campfire"
+  | "strawberry"
+  | "grassBlock"
+  | "bluePortal"
+  | "orangePortal";
 
 /** `secret`: a legendary easter-egg room, decorations only. */
 export type RoomTypeName =
-  "start" | "combat" | "treasure" | "empty" | "boss" | "secret";
+  | "start"
+  | "combat"
+  | "treasure"
+  | "empty"
+  | "boss"
+  | "secret";
 
 /** Which tribute a secret room pays: one game per room. */
 export type EasterEggName =
-  "outerWildsShip" | "outerWildsCampfire" | "celeste" | "minecraft" | "portal";
+  | "outerWildsShip"
+  | "outerWildsCampfire"
+  | "celeste"
+  | "minecraft"
+  | "portal";
 
 export type DungeonRunStatus = "active" | "won" | "lost" | "abandoned";
 
@@ -110,6 +124,29 @@ export interface MobState {
   aggro: boolean;
   /** Where a mage will land on its next action. */
   nextTeleport: Position | null;
+  /** Engaged in the fight in progress: it waits for the outcome. */
+  inCombat?: boolean;
+}
+
+/** A contact fought in Combat: the one in progress, or the one settled this turn. */
+export interface DungeonEncounter {
+  id: string;
+  /** pending: Combat is asked; active: the fight is on; failed: Combat could not be reached. */
+  status: "pending" | "active" | "resolved" | "failed";
+  trigger: "collision" | "boss";
+  /** Set once Combat opened the fight. */
+  combatId: string | null;
+  /** The engaged mobs (1 to N). */
+  mobIds: string[];
+  bossId: string | null;
+  outcome: "won" | "lost" | "fled" | null;
+}
+
+/** Hit points and mana a hero still has in the run; null: full. */
+export interface DungeonHeroState {
+  heroId: string;
+  currentHp: number | null;
+  currentMana: number | null;
 }
 
 /** GET /api/v1/dungeon-runs/{runId}, also returned by every run action. */
@@ -140,6 +177,12 @@ export interface DungeonRunResponse {
   /** Item element IDs already opened on the current floor. */
   openedChestElementIds: (string | number)[];
   startedAt: string;
+  /** The fight in progress (no move until it ends), or the one settled this turn. */
+  encounter?: DungeonEncounter | null;
+  /** The party's heroes and what they have left. */
+  heroes?: DungeonHeroState[];
+  /** A contact opens a real fight in Combat; false: the historical stand-in (contact kills). */
+  combatEnabled?: boolean;
 }
 
 /** POST /api/v1/dungeon-runs */
@@ -149,4 +192,6 @@ export interface CreateDungeonRunRequest {
   runId?: string;
   /** Omitted for a new dungeon; set to replay a shared seed. */
   seed?: string;
+  /** The party: without a hero, a contact with a mob opens no fight (stand-in). */
+  heroIds?: string[];
 }

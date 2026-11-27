@@ -20,7 +20,12 @@ services:
   combat:
     extends: { file: compose.backend.yaml, service: combat }
     build:
-      { context: ../combat-backend, dockerfile: Dockerfile.dev, secrets: !reset [] }
+      context: ../combat-backend
+      dockerfile: Dockerfile.dev
+      secrets: !reset []
+      additional_contexts:
+        player-contracts: ../player-backend
+        dungeon-contracts: ../dungeon-backend
   dungeon:
     extends: { file: compose.backend.yaml, service: dungeon }
     build:
@@ -29,6 +34,7 @@ services:
       secrets: !reset []
       additional_contexts:
         reward-contracts: ../reward-backend
+        combat-contracts: ../combat-backend
   reward:
     extends: { file: compose.backend.yaml, service: reward }
     build:
