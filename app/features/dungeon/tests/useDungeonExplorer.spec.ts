@@ -18,6 +18,7 @@ import runFixture from "./fixtures/run-DGPEAP9GWJKZF.json";
 vi.mock("../api/dungeonApi", () => ({
   joinDungeon: vi.fn(),
   fetchDungeonMap: vi.fn(),
+  fetchRunHeroes: vi.fn(),
   moveHero: vi.fn(),
   defeatFloorBoss: vi.fn(),
   openChest: vi.fn(),

@@ -50,14 +50,18 @@ describe("hero", () => {
       for (const slot of HERO_SLOTS) {
         const piece = look[slot];
         if (!piece) continue;
-        expect(Object.keys(HERO_WARDROBES[look.stance][slot] ?? {})).toContain(piece.style);
+        expect(Object.keys(HERO_WARDROBES[look.stance][slot] ?? {})).toContain(
+          piece.style,
+        );
         expect(() => heroSheetUrl(look.stance, slot, piece)).not.toThrow();
       }
     }
     // Never the v00 palette template.
     expect(randomHeroAppearance(lowest).body.variant).toBe(1);
     const last = randomHeroAppearance(() => 0.9999);
-    expect(last.hair.variant).toBe(HERO_WARDROBES[last.stance].hair[last.hair.style]);
+    // A drawn hero always has hair: only a look chosen in Player can be bald.
+    const hair = last.hair!;
+    expect(hair.variant).toBe(HERO_WARDROBES[last.stance].hair[hair.style]);
   });
 
   it("fights with a sword, a bow and a quiver, or a polearm in both hands", () => {
@@ -68,7 +72,9 @@ describe("hero", () => {
     expect(heroOf("pBOW2").weapon.style).toMatch(/^bo/);
     expect(heroOf("pBOW2").shield?.style).toBe("qv01");
     expect(heroOf("pPOL2").shield).toBeNull();
-    expect(heroLayers(heroOf("pPOL2"), "south").map(({ slot }) => slot)).not.toContain("shield");
+    expect(heroLayers(heroOf("pPOL2"), "south").map(({ slot }) => slot)).not.toContain(
+      "shield",
+    );
   });
 
   it("holds a wand with or without a shield, and every other one-handed weapon with one", () => {
@@ -95,23 +101,28 @@ describe("hero", () => {
     expect(hatted.hat).not.toBeNull();
     for (const facing of FACINGS) {
       expect(heroLayers(hatted, facing).map(({ slot }) => slot)).not.toContain("hair");
-      expect(heroLayers({ ...hatted, hat: null }, facing).map(({ slot }) => slot)).toContain(
-        "hair",
-      );
+      expect(
+        heroLayers({ ...hatted, hat: null }, facing).map(({ slot }) => slot),
+      ).toContain("hair");
     }
   });
 
   it("stacks the clothes over the body, and the weapon and shield as the art's guides say", () => {
     const appearance = randomHeroAppearance(lowest);
     const depthOf = (worn: HeroAppearance, facing: Direction) =>
-      Object.fromEntries(heroLayers(worn, facing).map(({ slot, depth }) => [slot, depth]));
+      Object.fromEntries(
+        heroLayers(worn, facing).map(({ slot, depth }) => [slot, depth]),
+      );
     const depth = (facing: Direction) => depthOf(appearance, facing);
 
     for (const facing of FACINGS) {
       const { body, outfit, hat } = depth(facing);
       expect(body).toBeLessThan(outfit!);
       expect(outfit).toBeLessThan(hat!);
-      const { outfit: bareOutfit, hair } = depthOf({ ...appearance, hat: null }, facing);
+      const { outfit: bareOutfit, hair } = depthOf(
+        { ...appearance, hat: null },
+        facing,
+      );
       expect(bareOutfit).toBeLessThan(hair!);
     }
     const south = depth("south");
@@ -129,7 +140,9 @@ describe("hero", () => {
 
   it("puts the bow in front facing south only, and the quiver on the back in front facing north only", () => {
     const depth = (facing: Direction) =>
-      Object.fromEntries(heroLayers(heroOf("pBOW2"), facing).map(({ slot, depth }) => [slot, depth]));
+      Object.fromEntries(
+        heroLayers(heroOf("pBOW2"), facing).map(({ slot, depth }) => [slot, depth]),
+      );
     expect(depth("south").weapon).toBeGreaterThan(depth("south").hat!);
     expect(depth("south").shield).toBeLessThan(depth("south").body!);
     expect(depth("north").weapon).toBeLessThan(depth("north").body!);
@@ -142,7 +155,9 @@ describe("hero", () => {
 
   it("holds the polearm behind facing north, in front otherwise", () => {
     const depth = (facing: Direction) =>
-      Object.fromEntries(heroLayers(heroOf("pPOL2"), facing).map(({ slot, depth }) => [slot, depth]));
+      Object.fromEntries(
+        heroLayers(heroOf("pPOL2"), facing).map(({ slot, depth }) => [slot, depth]),
+      );
     expect(depth("north").weapon).toBeLessThan(depth("north").body!);
     for (const facing of ["south", "east", "west"] as const) {
       expect(depth(facing).weapon).toBeGreaterThan(depth(facing).hat!);

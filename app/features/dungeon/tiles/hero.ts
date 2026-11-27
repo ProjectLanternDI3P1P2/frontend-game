@@ -5,14 +5,17 @@
  * decides its fighting style, hence the page of the art it is drawn from; every sheet of a
  * page has the same layout, so the layers play the same frames and move as one.
  *
- * Until the hero is received from the Player service, its look is drawn at random for each
- * run (`heroAppearanceOf`): a new dungeon, a new hero; the same run, the same hero on every
- * floor and after a reload. Data only: the viewport stacks the layers.
+ * Its body and hair are the look the player chose in Player's hero editor
+ * (`heroAppearanceFromPlayer`), with Player's default look when it is missing or unknown.
+ * Its gear is not chosen yet: it is drawn from the run's id (`heroAppearanceOf`), the same
+ * on every floor and after a reload. Data only: the viewport stacks the layers.
  */
 import {
   HERO_CATALOGUE,
   HERO_SLOTS,
   heroSheetUrl,
+  resolveAppearance,
+  type HeroAppearance as PlayerHeroAppearance,
   type HeroPage,
   type HeroPiece,
   type HeroSlot,
@@ -32,12 +35,18 @@ export const HERO_SHEET = { width: 512, height: 512, cell: 64 } as const;
  * weapon in one hand and a shield, a bow and a quiver, or a polearm in both hands. Their
  * rows and cells are laid out alike (see `heroSprite`).
  */
-export const HERO_STANCES = ["pONE2", "pBOW2", "pPOL2"] as const satisfies readonly HeroPage[];
+export const HERO_STANCES = [
+  "pONE2",
+  "pBOW2",
+  "pPOL2",
+] as const satisfies readonly HeroPage[];
 
 export type HeroStance = (typeof HERO_STANCES)[number];
 
 /** Every slot but the off hand, which a polearm leaves empty. */
-type HeroWardrobe = Record<Exclude<HeroSlot, "shield">, HeroStyles> & { shield?: HeroStyles };
+type HeroWardrobe = Record<Exclude<HeroSlot, "shield">, HeroStyles> & {
+  shield?: HeroStyles;
+};
 
 /**
  * What a hero of each fighting style can wear: every piece its page has. Typed without a
@@ -54,7 +63,8 @@ export interface HeroAppearance {
   stance: HeroStance;
   body: HeroPiece;
   outfit: HeroPiece;
-  hair: HeroPiece;
+  /** Bald when null. */
+  hair: HeroPiece | null;
   /** Bare-headed when null. */
   hat: HeroPiece | null;
   weapon: HeroPiece;
@@ -95,6 +105,48 @@ export function randomHeroAppearance(
  */
 export function heroAppearanceOf(runId: string): HeroAppearance {
   return randomHeroAppearance(seededRandom(runId));
+}
+
+/**
+ * The hero of a run as the player made it: the skin and hair chosen in Player's hero editor,
+ * bare-headed so that the chosen hair shows, in the gear drawn for the run.
+ *
+ * Any look Player sends is checked against the codes the client can draw: a missing look,
+ * or an unknown skin, hair style or colour, falls back field by field to Player's default
+ * look (`resolveAppearance`), never to a broken sprite.
+ */
+export function heroAppearanceFromPlayer(
+  runId: string,
+  chosen: Partial<Record<keyof PlayerHeroAppearance, unknown>> | null | undefined,
+): HeroAppearance {
+  // Checked at run time by `resolveAppearance`: the codes come from another service.
+  const look = resolveAppearance(chosen as Partial<PlayerHeroAppearance> | null);
+  return {
+    ...heroAppearanceOf(runId),
+    body: { style: "humn", variant: look.skinTone },
+    hair:
+      look.hairStyle === "bald" || look.hairColor === null
+        ? null
+        : { style: look.hairStyle, variant: look.hairColor },
+    hat: null,
+  };
+}
+
+/**
+ * The look Player sent can be drawn as it is: every code is one the client knows. When it is
+ * false, `heroAppearanceFromPlayer` falls back on part or all of the default look.
+ */
+export function isKnownPlayerAppearance(
+  chosen: Partial<Record<keyof PlayerHeroAppearance, unknown>> | null | undefined,
+): boolean {
+  if (!chosen) return false;
+  const look = resolveAppearance(chosen as Partial<PlayerHeroAppearance>);
+  return (
+    look.skinTone === chosen.skinTone &&
+    look.hairStyle === chosen.hairStyle &&
+    // A bald hero has no hair colour to check.
+    (look.hairStyle === "bald" || look.hairColor === chosen.hairColor)
+  );
 }
 
 /** Mulberry32, seeded with the 32-bit FNV-1a of a text. */

@@ -11,6 +11,7 @@
 import { computed, ref, shallowRef, watch } from "vue";
 import {
   defeatFloorBoss,
+  fetchRunHeroes,
   joinDungeon,
   moveHero,
   openChest as requestOpenChest,
@@ -32,7 +33,7 @@ import { diffRunCues } from "../audio/diffRunCues";
 import type { DungeonSound } from "../audio/useDungeonAudio";
 import { SILENT_DUNGEON } from "../audio/useDungeonAudio";
 import { MOB_DEATH_MS, MOVE_COOLDOWN_MS, reveal } from "../dungeonRules";
-import { heroAppearanceOf } from "../tiles/hero";
+import { heroAppearanceFromPlayer, isKnownPlayerAppearance } from "../tiles/hero";
 import type {
   Direction,
   DungeonElement,
@@ -41,6 +42,7 @@ import type {
   EnemyKindName,
   MobState,
   Position,
+  RunHeroAppearanceResponse,
 } from "../types";
 import type { ChestLootInteraction } from "~/features/reward/types";
 import type { LoadedFloor } from "./useDungeonFloor";
@@ -49,11 +51,40 @@ import { loadFloor, prefetchFloor } from "./useDungeonFloor";
 /** Moves typed ahead of the server. Beyond it, key repeats are ignored. */
 const MAX_PENDING_MOVES = 4;
 
+/**
+ * How long the hero's look may hold back the first frame. It is cosmetic: past this, the run
+ * shows with the default hero rather than wait on Player (Dungeon's own call to Player is
+ * bounded to 2 s per hero).
+ */
+export const HERO_APPEARANCE_TIMEOUT_MS = 3000;
+
 export type ExplorerStatus = "loading" | "ready" | "error";
+
+/** Where the drawn hero's look comes from. */
+export type HeroAppearanceSource =
+  /** Not received yet: the default look. */
+  | "pending"
+  /** The look chosen in Player's hero editor, drawn as chosen. */
+  | "chosen"
+  /** Chosen, but with a code the client cannot draw: the default for that part. */
+  | "unrecognized"
+  /** Player could not describe the hero (unknown, unreachable): the default look. */
+  | "player-default"
+  /** A run started without Player (development launcher): the default look. */
+  | "no-hero"
+  /** The request failed or timed out: the default look. */
+  | "unavailable";
+
+export interface HeroAppearanceReport {
+  source: Exclude<HeroAppearanceSource, "pending">;
+  durationMs: number;
+}
 
 export interface DungeonExplorerOptions {
   /** ADR-FE-016: silent unless the page wires the dungeon's sounds. */
   sound?: DungeonSound;
+  /** ADR-FE-013: told once per load where the hero's look came from and how long it took. */
+  onHeroAppearance?: (report: HeroAppearanceReport) => void;
 }
 
 export function useDungeonExplorer(
@@ -64,8 +95,9 @@ export function useDungeonExplorer(
   const run = shallowRef<DungeonRunResponse | null>(null);
   const loaded = shallowRef<LoadedFloor | null>(null);
   const hero = ref<Position>({ x: 0, y: 0 });
-  /** The look of the hero: for now drawn at random for each run (see `heroAppearanceOf`). */
-  const appearance = heroAppearanceOf(runId);
+  /** The look of the hero: the default one until Player's is received (`loadHeroAppearance`). */
+  const appearance = shallowRef(heroAppearanceFromPlayer(runId, null));
+  const appearanceSource = ref<HeroAppearanceSource>("pending");
   const status = ref<ExplorerStatus>("loading");
   const errorMessage = ref<string | null>(null);
   const announcement = ref("");
@@ -88,6 +120,7 @@ export function useDungeonExplorer(
   let isFighting = false;
   let chestRequestGeneration = 0;
   let chestAbortController: AbortController | null = null;
+  let heroAppearanceAbortController: AbortController | null = null;
   let disposed = false;
 
   const floor = computed<DecodedFloor | null>(() => loaded.value?.floor ?? null);
@@ -156,9 +189,13 @@ export function useDungeonExplorer(
     disposed = false;
     status.value = "loading";
     errorMessage.value = null;
+    // Read alongside the run, so the hero shows with its look from the first frame.
+    const heroLook = loadHeroAppearance();
     try {
       const state = await joinDungeon(runId);
       await enterFloor(state);
+      // Never rejects, and bounded by HERO_APPEARANCE_TIMEOUT_MS.
+      await heroLook;
       if (disposed) return;
       status.value = "ready";
     } catch (error) {
@@ -452,10 +489,54 @@ export function useDungeonExplorer(
     });
   }
 
+  /**
+   * Reads the look of the party's hero from Dungeon, which asks Player. Never fails: any
+   * problem (error, timeout, no hero, unknown code) draws the default look instead, and is
+   * reported through `onHeroAppearance` so that a degradation shows in the telemetry.
+   *
+   * Solo: the hero is the party's only one. Multiplayer will pick each hero by its id.
+   */
+  async function loadHeroAppearance(): Promise<void> {
+    heroAppearanceAbortController?.abort();
+    const controller = new AbortController();
+    heroAppearanceAbortController = controller;
+    const timeout = setTimeout(() => controller.abort(), HERO_APPEARANCE_TIMEOUT_MS);
+    const startedAt = performance.now();
+
+    let chosen: RunHeroAppearanceResponse | null = null;
+    let source: HeroAppearanceReport["source"];
+    try {
+      const { heroes } = await fetchRunHeroes(runId, controller.signal);
+      const partyHero = heroes?.[0];
+      if (!partyHero) {
+        source = "no-hero";
+      } else if (partyHero.isDefaultAppearance) {
+        source = "player-default";
+      } else {
+        chosen = partyHero.appearance ?? null;
+        source = isKnownPlayerAppearance(chosen) ? "chosen" : "unrecognized";
+      }
+    } catch {
+      source = "unavailable";
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    // Left the page, or a newer load started: this answer is stale.
+    if (disposed || controller !== heroAppearanceAbortController) return;
+    appearance.value = heroAppearanceFromPlayer(runId, chosen);
+    appearanceSource.value = source;
+    options.onHeroAppearance?.({
+      source,
+      durationMs: Math.round(performance.now() - startedAt),
+    });
+  }
+
   /** Invalidates in-flight responses when this explorer leaves the page. */
   function dispose(): void {
     disposed = true;
     generation++;
+    heroAppearanceAbortController?.abort();
     closeChestLoot();
   }
 
@@ -505,6 +586,7 @@ export function useDungeonExplorer(
     floor,
     hero,
     appearance,
+    appearanceSource,
     status,
     errorMessage,
     announcement,
