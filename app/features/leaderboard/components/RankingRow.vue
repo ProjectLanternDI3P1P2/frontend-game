@@ -9,7 +9,7 @@
 import { computed } from "vue";
 import UiBadge, { BadgeSize, BadgeTone } from "~/shared/ui/UiBadge.vue";
 import {
-  HERO_CLASS_LABELS,
+  displayHeroClass,
   displayPlayerName,
   formatRelativeTime,
   formatWinRate,
@@ -74,7 +74,7 @@ function toggle(): void {
       </span>
     </td>
     <th scope="row" class="ranking-row__hero">{{ entry.heroName }}</th>
-    <td>{{ HERO_CLASS_LABELS[entry.heroClass] ?? entry.heroClass }}</td>
+    <td>{{ displayHeroClass(entry.heroClass) }}</td>
     <td class="ranking-row__number">{{ entry.level }}</td>
     <td class="ranking-row__number">
       <span class="ranking-row__xp">

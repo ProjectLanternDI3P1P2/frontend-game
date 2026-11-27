@@ -6,11 +6,16 @@
  */
 import { computed } from "vue";
 import PublicRankingView from "~/features/leaderboard/components/PublicRankingView.vue";
-import { usePublicRanking } from "~/features/leaderboard/composables/usePublicRanking";
+import {
+  parsePublicRankingPage,
+  usePublicRanking,
+} from "~/features/leaderboard/composables/usePublicRanking";
 
 definePageMeta({ layout: "default" });
 
-const { state, refreshing, retry } = usePublicRanking();
+const route = useRoute();
+const page = computed(() => parsePublicRankingPage(route.query.page));
+const { state, refreshing, retry } = usePublicRanking({ page });
 
 const season = computed(() => state.value.ranking?.season?.label?.trim() || "");
 const title = computed(() =>
@@ -19,7 +24,7 @@ const title = computed(() =>
 const description = computed(
   () =>
     `${season.value || "Current season"} hero rankings of Project Lantern: the podium, ` +
-    "the leaders of each class and the top 10 heroes by total XP.",
+    "the leaders of each class and the paginated hero ranking by total XP.",
 );
 
 useSeoMeta({

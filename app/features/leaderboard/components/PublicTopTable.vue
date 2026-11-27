@@ -4,7 +4,7 @@
  * decorative; its meaning is spelled out for assistive technologies (RGAA).
  */
 import {
-  HERO_CLASS_LABELS,
+  displayHeroClass,
   RankDeltaDirection,
   displayPlayerName,
   formatRankDelta,
@@ -72,7 +72,7 @@ function describeTrend(delta: number | null): string {
             </td>
             <td class="public-top-table__text">{{ displayPlayerName(entry) }}</td>
             <th scope="row" class="public-top-table__text">{{ entry.heroName }}</th>
-            <td>{{ HERO_CLASS_LABELS[entry.heroClass] ?? entry.heroClass }}</td>
+            <td>{{ displayHeroClass(entry.heroClass) }}</td>
             <td class="public-top-table__number">{{ entry.level }}</td>
             <td class="public-top-table__number">{{ formatCount(entry.totalXp) }}</td>
           </tr>

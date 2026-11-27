@@ -4,7 +4,7 @@
  * ("1st · Gold"), so the rank never depends on colour alone (RGAA).
  */
 import UiBadge, { BadgeSize } from "~/shared/ui/UiBadge.vue";
-import { HERO_CLASS_LABELS, displayPlayerName, podiumMedal } from "../leaderboardRules";
+import { displayHeroClass, displayPlayerName, podiumMedal } from "../leaderboardRules";
 import { formatCount } from "../statisticsRules";
 import type { RankingEntry } from "../types";
 
@@ -38,7 +38,7 @@ function medalLabel(rank: number): string {
         <dl class="public-podium__facts">
           <div>
             <dt>Class</dt>
-            <dd>{{ HERO_CLASS_LABELS[entry.heroClass] ?? entry.heroClass }}</dd>
+            <dd>{{ displayHeroClass(entry.heroClass) }}</dd>
           </div>
           <div>
             <dt>Level</dt>

@@ -40,6 +40,7 @@ describe("PublicRankingView", () => {
       "Podium",
       "Season 3 leaders by class",
       "Top 10",
+      "Full ranking",
     ]);
   });
 

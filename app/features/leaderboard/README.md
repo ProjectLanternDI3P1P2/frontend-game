@@ -42,7 +42,7 @@ application reads the backend; Vitest scenarios use the simulated client.
 | `getRanking`           | `GET /api/leaderboard/v1/heroes?class&period&search&sort&page&pageSize` | Each visit, "Refresh", query change |
 | `getRankingHeroDetail` | `GET /api/leaderboard/v1/heroes/:heroId`                                | Row expanded (F03)                  |
 | `getRankingHeroFacts`  | `GET /api/leaderboard/v1/heroes/:heroId/facts`                          | Facts drawer (F03)                  |
-| `getPublicRanking`     | `GET /api/leaderboard/v1/public`                                        | `/rankings` (F04)                   |
+| `getPublicRanking`     | `GET /api/leaderboard/v1/public?page=...`                               | `/rankings` (F04)                   |
 
 Path segments are URL-encoded; `class` is left out for "all classes" (`null`)
 and `search` when blank. No client cache: every visit re-reads, the backend
@@ -92,7 +92,7 @@ and the pagination for real; `totalCount` and `me` follow the filters.
 - Detail and facts are derived from the same heroes (same name, class, level,
   owner; `xpFromFacts` = all-time XP); an unknown hero answers 404. The public
   rankings are the default (all-time) ranking: podium, best hero of each class,
-  top 10.
+  top 10 and pages of 50 heroes.
 - Tests (or a story) can hand the views any `LeaderboardApi` with
   `provide(LEADERBOARD_API_KEY, api)`.
 

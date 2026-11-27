@@ -102,7 +102,7 @@ export interface RankingEntry {
   rankDelta: number | null; // null = NEW ; >0 monte, <0 descend, 0 stable
   heroId: string;
   heroName: string;
-  heroClass: HeroClass;
+  heroClass: HeroClass | "unknown";
   level: number;
   totalXp: number;
   runs: number;
@@ -155,7 +155,7 @@ export interface RankingRun {
 export interface RankingHeroDetail {
   heroId: string;
   heroName: string;
-  heroClass: HeroClass;
+  heroClass: HeroClass | "unknown";
   level: number;
   ngTier: number;
   createdAt: string;
@@ -191,6 +191,9 @@ export interface PublicRankingResponse {
   podium: RankingEntry[]; // 0 à 3
   leadersByClass: { heroClass: HeroClass; entry: RankingEntry | null }[];
   top: RankingEntry[]; // 10 premiers
+  page: number;
+  pageSize: number;
+  entries: RankingEntry[]; // page publique de 50 héros (US #368)
 }
 
 export interface LeaderboardApi {
@@ -208,7 +211,7 @@ export interface LeaderboardApi {
     heroId: string,
     signal?: AbortSignal,
   ): Promise<RankingFactsResponse>;
-  getPublicRanking(signal?: AbortSignal): Promise<PublicRankingResponse>;
+  getPublicRanking(signal?: AbortSignal, page?: number): Promise<PublicRankingResponse>;
 }
 ```
 

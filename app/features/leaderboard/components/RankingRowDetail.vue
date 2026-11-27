@@ -6,7 +6,7 @@
  */
 import { computed, useId } from "vue";
 import { useRankingHeroDetail } from "../composables/useRankingHeroDetail";
-import { formatRelativeTime, HERO_CLASS_LABELS } from "../leaderboardRules";
+import { displayHeroClass, formatRelativeTime } from "../leaderboardRules";
 import {
   formatDate,
   formatNumber,
@@ -70,7 +70,7 @@ const runs = computed(() => (detail.value?.lastRuns ?? []).slice(0, 4));
       <dl class="ranking-row-detail__facts">
         <div class="ranking-row-detail__fact">
           <dt>Class</dt>
-          <dd>{{ HERO_CLASS_LABELS[detail.heroClass] ?? detail.heroClass }}</dd>
+          <dd>{{ displayHeroClass(detail.heroClass) }}</dd>
         </div>
         <div class="ranking-row-detail__fact">
           <dt>Level</dt>
