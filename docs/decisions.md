@@ -4,6 +4,13 @@
 
 <!-- Le plus récent en haut. Format : voir le skill decision-log. -->
 
+## D27 - 2026-11-27 - Un étage relu évince son entrée du cache par seed
+
+Décision : `reloadFloor()` évince l'entrée seed + étage du cache de `useDungeonFloor` (`evictFloor`) ; le chargement suivant relit l'étage au serveur. Le cache reste sans expiration pour un étage valide.
+Pourquoi : l'étage est immuable pour une seed, mais un étage reçu invalide ne doit pas survivre à une relecture (retour sur la page, `retry()`).
+Écarté : remplacer l'entrée par l'étage relu (plus de couplage avec le cache pour une requête économisée).
+Source : rapport F05
+
 ## D26 - 2026-11-27 - « Reload floor » relit sans repasser par l'écran de chargement
 
 Décision : `reloadFloor()` relit le run et l'étage directement (étage frais transmis à `enterFloor` par un paramètre optionnel), sans passer par `start()` ; l'exploration et le message restent affichés pendant la relecture. `retry()` (erreur initiale) repasse, lui, par `start()`.
