@@ -43,5 +43,10 @@ it. The deletion flow lives in `composables/useHeroDeletion.ts`. A closed lobby
 arrives on the lobby page as `Abandoned` (`failureReason: HeroDeleted`): the page
 explains it and goes back to "Join a game" (`lobbyClosure.ts`).
 
+A hero can only be in one open session. When `CreateSoloLobby` or `ChangeSessionHero` is refused with
+`COMMAND_CONFLICT` and an `activeSessionId`, `PlayerHubClient` throws a `PlayerCommandRejectedError`
+carrying `code` and `activeSessionId`; `composables/useActiveSessionResume.ts` turns it into a
+notice that resumes that session (lobby page, or the dungeon once the run has started).
+
 This client contract ships with the backend pull request that adds the delete
 endpoint: merge both together.

@@ -17,7 +17,7 @@ export default defineNuxtPlugin((nuxtApp) => {
 
   const reporter = createTelemetryReporter(
     { app: config.public.appName, version: config.public.appVersion },
-    config.public.telemetryEndpoint,
+    `${config.app.baseURL}api/telemetry`,
     // Public traffic is larger than the game client's: sample the vitals.
     { sampleRate: 0.25 },
   );
