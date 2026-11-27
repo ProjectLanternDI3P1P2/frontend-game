@@ -22,14 +22,14 @@ copying `app/features/dungeon/`, `app/pages/dungeon/` and the route rule.
 
 ### APIs consumed
 
-| Call               | Gateway route                                               | Cached                                 |
-| ------------------ | ----------------------------------------------------------- | -------------------------------------- |
-| `createDungeonRun` | `POST /api/v1/dungeon-runs`                                 | never                                  |
-| `joinDungeon`      | SignalR `/hubs/dungeons` → `JoinDungeon`                    | never: the run is mutable              |
-| `moveHero`         | SignalR `/hubs/dungeons` → `MoveHero`                       | never                                  |
-| `defeatFloorBoss`  | `POST /api/v1/dungeon-runs/{runId}/boss-defeats`            | never                                  |
+| Call               | Gateway route                                                    | Cached                                 |
+| ------------------ | ---------------------------------------------------------------- | -------------------------------------- |
+| `createDungeonRun` | `POST /api/v1/dungeon-runs`                                      | never                                  |
+| `joinDungeon`      | SignalR `/hubs/dungeons` → `JoinDungeon`                         | never: the run is mutable              |
+| `moveHero`         | SignalR `/hubs/dungeons` → `MoveHero`                            | never                                  |
+| `defeatFloorBoss`  | `POST /api/v1/dungeon-runs/{runId}/boss-defeats`                 | never                                  |
 | `openChest`        | `POST /api/v1/dungeon-runs/{runId}/chests/{elementId:guid}/open` | never                                  |
-| `fetchDungeonMap`  | `GET /api/v1/dungeons/{seed}/map?floor=n`                   | forever: a floor is immutable per seed |
+| `fetchDungeonMap`  | `GET /api/v1/dungeons/{seed}/map?floor=n`                        | forever: a floor is immutable per seed |
 
 The fog of war survives a reload: the run carries the tiles the hero stood on
 (`visitedTiles`), and the explorer reveals around each of them again on arrival
@@ -282,19 +282,19 @@ broken invariant is a typed failure, never an exception: `missing` (no boss),
 or several). Structural breaks (rows, symbols) still throw
 `DungeonContractError` from `decodeFloor`.
 
-`useFloorBoss` derives `floorBoss` and `bossFailure` from the explorer's floor
-and run; the explorer exposes them next to `canFightBoss`.
+`useFloorBoss` derives `floorBoss` and `bossFailure` from the explorer's floor; the explorer exposes them next to `canFightBoss`.
 
 ### Degraded states
 
 - Boss not located: the exploration stays on screen, with
   `DungeonBossNotice` (`role="alert"`, "The final boss of this floor could not
-  be located.") and a "Reload floor" button. `reloadFloor()` empties the floor
-  cache (a floor never goes stale otherwise) and reads the run and the floor
-  again.
+  be located.") and a "Reload floor" button. `reloadFloor()` reads the run and the
+  floor again (the floor straight from the API, bypassing the cache) without
+  leaving `status` "ready": the button stays, disabled while the read is in
+  flight, and a failure goes to `errorMessage`, not to the full error screen.
 - Floor or run not loaded: the existing `role="alert"` error gains a "Retry"
-  button (`retry()`); the loading message is announced with
-  `aria-live="polite"`.
+  button (`retry()`); the loading message appears in a
+  `role="status"` region that is always mounted.
 - `retry()` and `reloadFloor()` share one in-flight load: a second call joins
   it (`isReloading`, one request per resource), and responses to moves sent
   before it are discarded.

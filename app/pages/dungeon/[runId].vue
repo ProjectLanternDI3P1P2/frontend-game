@@ -93,7 +93,8 @@ function move(direction: Direction) {
 }
 
 function spawnAt(position: Position) {
-  if (isSandbox.value && !movementBlocked.value) explorer.spawn(spawnKind.value, position);
+  if (isSandbox.value && !movementBlocked.value)
+    explorer.spawn(spawnKind.value, position);
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -127,18 +128,18 @@ async function copyShareLink() {
 
 <template>
   <div class="dungeon-page">
-    <p v-if="status === 'loading'" class="dungeon-page__status" aria-live="polite">
-      Opening the dungeon…
+    <p class="dungeon-page__status" role="status">
+      <template v-if="status === 'loading'">Opening the dungeon…</template>
     </p>
 
-    <div v-else-if="status === 'error'" class="dungeon-page__status">
+    <div v-if="status === 'error'" class="dungeon-page__status">
       <p role="alert">The dungeon could not be loaded: {{ errorMessage }}</p>
       <UiButton :size="ButtonSize.SM" :busy="isReloading" @click="explorer.retry">
         Retry
       </UiButton>
     </div>
 
-    <template v-else-if="loaded && run">
+    <template v-else-if="status === 'ready' && loaded && run">
       <!-- ADR-FE-015: documented gameplay exception. The board takes the
            arrow keys, so it is a focusable application region with
            instructions; on touch screens the same moves are buttons.

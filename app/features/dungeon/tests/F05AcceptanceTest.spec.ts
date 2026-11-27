@@ -173,6 +173,23 @@ describe("F05", () => {
         reason: "misplaced",
       });
     });
+
+    it("boss element tagged with the boss room id but outside its bounds: misplaced", () => {
+      const start = map.rooms.find((room) => room.type === "start")!;
+      const moved = withElements(
+        map.elements.map((element) =>
+          element.type === "boss" ? { ...element, ...start.center } : element,
+        ),
+      );
+      expect(findFloorBoss(moved)).toEqual({ ok: false, reason: "misplaced" });
+    });
+
+    it("empty floor: missing, no throw", () => {
+      expect(findFloorBoss({ rooms: [], elements: [] })).toEqual({
+        ok: false,
+        reason: "missing",
+      });
+    });
   });
 
   describe("CA3 — same seed and floor, same position, the one received", () => {
@@ -269,6 +286,27 @@ describe("F05", () => {
       expect(bossNotice(page).exists()).toBe(false);
       expect(page.find('[role="application"]').exists()).toBe(true);
     });
+
+    it("Reload floor still invalid: notice kept, exploration kept", async () => {
+      vi.mocked(api.fetchDungeonMap).mockResolvedValue(withoutBoss);
+      const page = await mountPage();
+      await buttonNamed(page, "Reload floor")!.trigger("click");
+      await flushPromises();
+      expect(bossNotice(page).exists()).toBe(true);
+      expect(page.find('[role="application"]').exists()).toBe(true);
+    });
+
+    it("Reload floor failing: exploration and notice kept, error shown", async () => {
+      vi.mocked(api.fetchDungeonMap).mockResolvedValueOnce(withoutBoss);
+      const page = await mountPage();
+      vi.mocked(api.joinDungeon).mockRejectedValueOnce(new Error("Network down."));
+      await buttonNamed(page, "Reload floor")!.trigger("click");
+      await flushPromises();
+      expect(page.find('[role="application"]').exists()).toBe(true);
+      expect(bossNotice(page).exists()).toBe(true);
+      expect(page.text()).not.toContain("could not be loaded");
+      expect(page.find(".dungeon-page__error").text()).toContain("Network down.");
+    });
   });
 
   describe("CA6 — failed load: explicit error, announced loading, retry", () => {
@@ -276,7 +314,11 @@ describe("F05", () => {
       const join = deferred<DungeonRunResponse>();
       vi.mocked(api.joinDungeon).mockReturnValue(join.promise);
       const page = await mountPage();
-      expect(page.get('[aria-live="polite"]').text()).toContain("Opening the dungeon");
+      const status = page.get('[role="status"]');
+      expect(status.text()).toContain("Opening the dungeon");
+      // role="status" carries an implicit aria-live="polite" (WAI-ARIA); an
+      // explicit value, if any, must not be stronger or off.
+      expect(status.attributes("aria-live") ?? "polite").toBe("polite");
       join.resolve(initialRun);
       await flushPromises();
     });
@@ -299,6 +341,15 @@ describe("F05", () => {
       expect(page.text()).not.toContain("could not be loaded");
       expect(buttonNamed(page, "Retry")).toBeUndefined();
     });
+
+    it("Retry failing again keeps the error and the Retry button", async () => {
+      vi.mocked(api.joinDungeon).mockRejectedValue(new Error("Network down."));
+      const page = await mountPage();
+      await buttonNamed(page, "Retry")!.trigger("click");
+      await flushPromises();
+      expect(page.get('[role="alert"]').text()).toContain("could not be loaded");
+      expect(buttonNamed(page, "Retry")).toBeDefined();
+    });
   });
 
   describe("CA7 — no second load while one is in flight", () => {
@@ -310,7 +361,7 @@ describe("F05", () => {
 
       await buttonNamed(page, "Retry")!.trigger("click");
       expect(buttonNamed(page, "Retry")).toBeUndefined();
-      expect(page.get('[aria-live="polite"]').text()).toContain("Opening the dungeon");
+      expect(page.get('[role="status"]').text()).toContain("Opening the dungeon");
 
       join.resolve(initialRun);
       await flushPromises();
@@ -337,6 +388,31 @@ describe("F05", () => {
       expect(floor0).toHaveLength(1);
       expect(explorer.isReloading.value).toBe(false);
       expect(explorer.bossFailure.value).toBeNull();
+    });
+
+    it("Reload floor clicked twice while loading: disabled, one request per resource", async () => {
+      vi.mocked(api.fetchDungeonMap).mockResolvedValueOnce(withoutBoss);
+      const page = await mountPage();
+      vi.mocked(api.joinDungeon).mockClear();
+      vi.mocked(api.fetchDungeonMap).mockClear();
+      const join = deferred<DungeonRunResponse>();
+      vi.mocked(api.joinDungeon).mockReturnValueOnce(join.promise);
+
+      await buttonNamed(page, "Reload floor")!.trigger("click");
+      expect(page.find('[role="application"]').exists()).toBe(true);
+      expect(bossNotice(page).exists()).toBe(true);
+      const again = buttonNamed(page, "Reload floor");
+      expect(again).toBeDefined();
+      expect(again!.attributes("disabled")).toBeDefined();
+      await again!.trigger("click");
+      join.resolve(initialRun);
+      await flushPromises();
+      expect(api.joinDungeon).toHaveBeenCalledTimes(1);
+      const floor0 = vi
+        .mocked(api.fetchDungeonMap)
+        .mock.calls.filter(([, index]) => index === 0);
+      expect(floor0).toHaveLength(1);
+      expect(bossNotice(page).exists()).toBe(false);
     });
   });
 
@@ -373,69 +449,6 @@ describe("F05", () => {
       expect(api.joinDungeon).toHaveBeenCalledTimes(2);
       expect(bossSprites(page)).toHaveLength(1);
       expect(page.find(".dungeon-door--opening").exists()).toBe(false);
-    });
-  });
-
-  describe("CA2 — edge cases", () => {
-    it("boss element tagged with the boss room id but outside its bounds: misplaced", () => {
-      const start = map.rooms.find((room) => room.type === "start")!;
-      const moved = withElements(
-        map.elements.map((element) =>
-          element.type === "boss" ? { ...element, ...start.center } : element,
-        ),
-      );
-      expect(findFloorBoss(moved)).toEqual({ ok: false, reason: "misplaced" });
-    });
-
-    it("empty floor: missing, no throw", () => {
-      expect(findFloorBoss({ rooms: [], elements: [] })).toEqual({
-        ok: false,
-        reason: "missing",
-      });
-    });
-  });
-
-  describe("CA5/CA7 — edge cases on the page", () => {
-    it("Reload floor still invalid: notice kept, exploration kept", async () => {
-      vi.mocked(api.fetchDungeonMap).mockResolvedValue(withoutBoss);
-      const page = await mountPage();
-      await buttonNamed(page, "Reload floor")!.trigger("click");
-      await flushPromises();
-      expect(bossNotice(page).exists()).toBe(true);
-      expect(page.find('[role="application"]').exists()).toBe(true);
-    });
-
-    it("Reload floor clicked twice while loading: disabled, one request per resource", async () => {
-      vi.mocked(api.fetchDungeonMap).mockResolvedValueOnce(withoutBoss);
-      const page = await mountPage();
-      vi.mocked(api.joinDungeon).mockClear();
-      vi.mocked(api.fetchDungeonMap).mockClear();
-      const join = deferred<DungeonRunResponse>();
-      vi.mocked(api.joinDungeon).mockReturnValueOnce(join.promise);
-
-      await buttonNamed(page, "Reload floor")!.trigger("click");
-      const again = buttonNamed(page, "Reload floor");
-      if (again) {
-        expect(again.attributes("disabled")).toBeDefined();
-        await again.trigger("click");
-      }
-      join.resolve(initialRun);
-      await flushPromises();
-      expect(api.joinDungeon).toHaveBeenCalledTimes(1);
-      const floor0 = vi
-        .mocked(api.fetchDungeonMap)
-        .mock.calls.filter(([, index]) => index === 0);
-      expect(floor0).toHaveLength(1);
-      expect(bossNotice(page).exists()).toBe(false);
-    });
-
-    it("Retry failing again keeps the error and the Retry button", async () => {
-      vi.mocked(api.joinDungeon).mockRejectedValue(new Error("Network down."));
-      const page = await mountPage();
-      await buttonNamed(page, "Retry")!.trigger("click");
-      await flushPromises();
-      expect(page.get('[role="alert"]').text()).toContain("could not be loaded");
-      expect(buttonNamed(page, "Retry")).toBeDefined();
     });
   });
 

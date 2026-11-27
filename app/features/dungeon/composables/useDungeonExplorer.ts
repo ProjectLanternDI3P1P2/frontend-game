@@ -8,9 +8,10 @@
  * authoritative run is read again: the client never keeps a position the
  * backend did not accept.
  */
-import { computed, ref, shallowRef, watch } from "vue";
+import { computed, markRaw, ref, shallowRef, watch } from "vue";
 import {
   defeatFloorBoss,
+  fetchDungeonMap,
   joinDungeon,
   moveHero,
   openChest as requestOpenChest,
@@ -21,6 +22,7 @@ import {
   Cell,
   cellAt,
   corridorAt,
+  decodeFloor,
   decodeVisitedTiles,
   elementsAt,
   goesDown,
@@ -32,6 +34,7 @@ import { diffRunCues } from "../audio/diffRunCues";
 import type { DungeonSound } from "../audio/useDungeonAudio";
 import { SILENT_DUNGEON } from "../audio/useDungeonAudio";
 import { MOB_DEATH_MS, MOVE_COOLDOWN_MS, reveal } from "../dungeonRules";
+import { renderFloor } from "../tiles/autotile";
 import { heroAppearanceOf } from "../tiles/hero";
 import type {
   Direction,
@@ -44,7 +47,7 @@ import type {
 } from "../types";
 import type { ChestLootInteraction } from "~/features/reward/types";
 import type { LoadedFloor } from "./useDungeonFloor";
-import { clearFloorCache, loadFloor, prefetchFloor } from "./useDungeonFloor";
+import { loadFloor, prefetchFloor } from "./useDungeonFloor";
 import { useFloorBoss } from "./useFloorBoss";
 
 /** Moves typed ahead of the server. Beyond it, key repeats are ignored. */
@@ -153,7 +156,7 @@ export function useDungeonExplorer(
   });
   const canOpenChest = computed(() => openableChest.value !== null);
   // F05: the final boss invariant, checked on the floor received (bossRules.ts).
-  const { floorBoss, bossFailure } = useFloorBoss({ floor, run });
+  const { floorBoss, bossFailure } = useFloorBoss({ floor });
   /** A retry or a floor reload is in flight: one at a time. */
   const isReloading = ref(false);
   let reloadInFlight: Promise<void> | null = null;
@@ -187,17 +190,41 @@ export function useDungeonExplorer(
   }
 
   /**
-   * Reads the run and the floor again when the boss could not be located. The
-   * floor cache never goes stale by design, so it is emptied to fetch it again.
+   * Reads the run and the floor again when the boss could not be located, with
+   * the exploration kept on screen: `status` stays "ready". The floor is fetched
+   * from the API, not the cache, which never goes stale by design. A failure
+   * goes to `errorMessage`, never to the full error screen.
    */
   function reloadFloor(): Promise<void> {
     if (reloadInFlight) return reloadInFlight;
-    clearFloorCache();
-    return retry();
+    isReloading.value = true;
+    reloadInFlight = rereadFloor().finally(() => {
+      reloadInFlight = null;
+      isReloading.value = false;
+    });
+    return reloadInFlight;
   }
 
-  async function enterFloor(state: DungeonRunResponse): Promise<void> {
-    const next = await loadFloor(state.seed, state.currentFloor);
+  async function rereadFloor(): Promise<void> {
+    const reloadGeneration = ++generation;
+    try {
+      const state = await joinDungeon(runId);
+      const map = await fetchDungeonMap(state.seed, state.currentFloor);
+      if (disposed || reloadGeneration !== generation) return;
+      const decoded = decodeFloor(map);
+      await enterFloor(state, markRaw({ floor: decoded, tiles: renderFloor(decoded) }));
+      errorMessage.value = null;
+    } catch (error) {
+      if (disposed || reloadGeneration !== generation) return;
+      errorMessage.value = describe(error);
+    }
+  }
+
+  async function enterFloor(
+    state: DungeonRunResponse,
+    fresh?: LoadedFloor,
+  ): Promise<void> {
+    const next = fresh ?? (await loadFloor(state.seed, state.currentFloor));
     if (disposed) return;
     run.value = state;
     loaded.value = next;
