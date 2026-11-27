@@ -357,9 +357,9 @@ describe("F05", () => {
       const join = deferred<DungeonRunResponse>();
       vi.mocked(api.joinDungeon).mockReturnValue(join.promise);
       const page = await mountPage();
-      const status = page.get('[role="status"]');
+      const status = page.get('[role="status"], output');
       expect(status.text()).toContain("Opening the dungeon");
-      // role="status" carries an implicit aria-live="polite" (WAI-ARIA); an
+      // <output> (implicit role="status") carries an implicit aria-live="polite" (WAI-ARIA); an
       // explicit value, if any, must not be stronger or off.
       expect(status.attributes("aria-live") ?? "polite").toBe("polite");
       join.resolve(initialRun);
@@ -404,7 +404,9 @@ describe("F05", () => {
 
       await buttonNamed(page, "Retry")!.trigger("click");
       expect(buttonNamed(page, "Retry")).toBeUndefined();
-      expect(page.get('[role="status"]').text()).toContain("Opening the dungeon");
+      expect(page.get('[role="status"], output').text()).toContain(
+        "Opening the dungeon",
+      );
 
       join.resolve(initialRun);
       await flushPromises();

@@ -294,7 +294,7 @@ or several). Structural breaks (rows, symbols) still throw
   flight, and a failure goes to `errorMessage`, not to the full error screen.
 - Floor or run not loaded: the existing `role="alert"` error gains a "Retry"
   button (`retry()`); the loading message appears in a
-  `role="status"` region that is always mounted.
+  `<output>` (implicit `role="status"`) region that is always mounted.
 - `retry()` and `reloadFloor()` share one in-flight load: a second call joins
   it (`isReloading`, one request per resource), and responses to moves sent
   before it are discarded.

@@ -128,9 +128,11 @@ async function copyShareLink() {
 
 <template>
   <div class="dungeon-page">
-    <p class="dungeon-page__status" role="status">
+    <!-- A live status message, not a form field: it has nothing to label. -->
+    <!-- eslint-disable-next-line vuejs-accessibility/form-control-has-label -->
+    <output class="dungeon-page__status">
       <template v-if="status === 'loading'">Opening the dungeon…</template>
-    </p>
+    </output>
 
     <div v-if="status === 'error'" class="dungeon-page__status">
       <p role="alert">The dungeon could not be loaded: {{ errorMessage }}</p>
@@ -437,6 +439,11 @@ async function copyShareLink() {
     margin: 0;
     translate: -50% -50%;
     color: var(--color-text-muted);
+  }
+
+  // <output> is inline by default; keep the block box of the former <p>.
+  @at-root output#{&}__status {
+    display: block;
   }
 }
 </style>

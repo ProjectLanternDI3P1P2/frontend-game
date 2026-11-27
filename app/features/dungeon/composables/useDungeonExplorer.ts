@@ -179,7 +179,7 @@ export function useDungeonExplorer(
 
   /** Loads again after an error; a second call while loading joins the first. */
   function retry(): Promise<void> {
-    if (reloadInFlight) return reloadInFlight;
+    if (reloadInFlight !== null) return reloadInFlight;
     isReloading.value = true;
     reloadInFlight = start().finally(() => {
       reloadInFlight = null;
@@ -195,7 +195,7 @@ export function useDungeonExplorer(
    * goes to `errorMessage`, never to the full error screen.
    */
   function reloadFloor(): Promise<void> {
-    if (reloadInFlight) return reloadInFlight;
+    if (reloadInFlight !== null) return reloadInFlight;
     isReloading.value = true;
     reloadInFlight = rereadFloor().finally(() => {
       reloadInFlight = null;
