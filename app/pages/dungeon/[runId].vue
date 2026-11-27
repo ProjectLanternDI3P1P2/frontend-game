@@ -4,6 +4,7 @@
  * Composes the dungeon feature; holds no rule of its own.
  */
 import { useDungeonAudio } from "~/features/dungeon/audio/useDungeonAudio";
+import DungeonBossNotice from "~/features/dungeon/components/DungeonBossNotice.vue";
 import DungeonControls from "~/features/dungeon/components/DungeonControls.vue";
 import DungeonMinimap from "~/features/dungeon/components/DungeonMinimap.vue";
 import DungeonViewport from "~/features/dungeon/components/DungeonViewport.vue";
@@ -54,6 +55,8 @@ const {
   openableChest,
   movementBlocked,
   chestLoot,
+  bossFailure,
+  isReloading,
 } = explorer;
 
 const board = ref<HTMLElement | null>(null);
@@ -124,11 +127,16 @@ async function copyShareLink() {
 
 <template>
   <div class="dungeon-page">
-    <p v-if="status === 'loading'" class="dungeon-page__status">Opening the dungeon…</p>
-
-    <p v-else-if="status === 'error'" class="dungeon-page__status" role="alert">
-      The dungeon could not be loaded: {{ errorMessage }}
+    <p v-if="status === 'loading'" class="dungeon-page__status" aria-live="polite">
+      Opening the dungeon…
     </p>
+
+    <div v-else-if="status === 'error'" class="dungeon-page__status">
+      <p role="alert">The dungeon could not be loaded: {{ errorMessage }}</p>
+      <UiButton :size="ButtonSize.SM" :busy="isReloading" @click="explorer.retry">
+        Retry
+      </UiButton>
+    </div>
 
     <template v-else-if="loaded && run">
       <!-- ADR-FE-015: documented gameplay exception. The board takes the
@@ -226,6 +234,12 @@ async function copyShareLink() {
         >
           Victory! The final boss is defeated.
         </output>
+        <DungeonBossNotice
+          v-if="bossFailure"
+          class="dungeon-page__panel"
+          :loading="isReloading"
+          @reload="explorer.reloadFloor"
+        />
         <p
           v-if="errorMessage"
           class="dungeon-page__panel dungeon-page__error"

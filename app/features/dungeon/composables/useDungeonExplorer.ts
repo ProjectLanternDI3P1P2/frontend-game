@@ -44,7 +44,8 @@ import type {
 } from "../types";
 import type { ChestLootInteraction } from "~/features/reward/types";
 import type { LoadedFloor } from "./useDungeonFloor";
-import { loadFloor, prefetchFloor } from "./useDungeonFloor";
+import { clearFloorCache, loadFloor, prefetchFloor } from "./useDungeonFloor";
+import { useFloorBoss } from "./useFloorBoss";
 
 /** Moves typed ahead of the server. Beyond it, key repeats are ignored. */
 const MAX_PENDING_MOVES = 4;
@@ -151,6 +152,11 @@ export function useDungeonExplorer(
     );
   });
   const canOpenChest = computed(() => openableChest.value !== null);
+  // F05: the final boss invariant, checked on the floor received (bossRules.ts).
+  const { floorBoss, bossFailure } = useFloorBoss({ floor, run });
+  /** A retry or a floor reload is in flight: one at a time. */
+  const isReloading = ref(false);
+  let reloadInFlight: Promise<void> | null = null;
 
   async function start(): Promise<void> {
     disposed = false;
@@ -166,6 +172,28 @@ export function useDungeonExplorer(
       status.value = "error";
       errorMessage.value = describe(error);
     }
+  }
+
+  /** Loads again after an error; a second call while loading joins the first. */
+  function retry(): Promise<void> {
+    if (reloadInFlight) return reloadInFlight;
+    generation++;
+    isReloading.value = true;
+    reloadInFlight = start().finally(() => {
+      reloadInFlight = null;
+      isReloading.value = false;
+    });
+    return reloadInFlight;
+  }
+
+  /**
+   * Reads the run and the floor again when the boss could not be located. The
+   * floor cache never goes stale by design, so it is emptied to fetch it again.
+   */
+  function reloadFloor(): Promise<void> {
+    if (reloadInFlight) return reloadInFlight;
+    clearFloorCache();
+    return retry();
   }
 
   async function enterFloor(state: DungeonRunResponse): Promise<void> {
@@ -520,11 +548,16 @@ export function useDungeonExplorer(
     mobs,
     dyingMobs,
     canFightBoss,
+    floorBoss,
+    bossFailure,
+    isReloading,
     canOpenChest,
     openableChest,
     movementBlocked,
     chestLoot,
     start,
+    retry,
+    reloadFloor,
     move,
     fightBoss,
     openChest,
