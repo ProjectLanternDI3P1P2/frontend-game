@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.1](https://github.com/ProjectLanternDI3P1P2/frontend-game/compare/v0.5.0...v0.5.1) (2026-11-27)
+
+
+### Fixed
+
+* **cd:** publish signed images with the reordered shared workflow ([092c3c0](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/092c3c0a0cffeac4c059360c7741d27451c365c8))
+* **cd:** publish signed images with the reordered shared workflow ([7c9343f](https://github.com/ProjectLanternDI3P1P2/frontend-game/commit/7c9343f8e77c783b7ec576cc07791f4d6dd80f07))
+
 ## [0.5.0](https://github.com/ProjectLanternDI3P1P2/frontend-game/compare/v0.4.0...v0.5.0) (2026-11-27)
 
 
