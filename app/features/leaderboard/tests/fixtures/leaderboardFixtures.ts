@@ -1,4 +1,4 @@
-import { vi } from "vitest";
+import { vi, type Mock } from "vitest";
 import { defaultRankingQuery } from "../../leaderboardRules";
 import {
   HeroClass,
@@ -81,15 +81,28 @@ export function heroStatistics(
   };
 }
 
+type LeaderboardApiMock = {
+  [Method in keyof LeaderboardApi]: Mock<LeaderboardApi[Method]>;
+};
+
 export function apiStub(
   overrides: Partial<Record<keyof LeaderboardApi, ReturnType<typeof vi.fn>>> = {},
-) {
+): LeaderboardApiMock {
   return {
-    getHeroStatistics: vi.fn().mockResolvedValue(heroStatistics()),
-    getRanking: vi.fn().mockResolvedValue(ranking()),
-    getRankingHeroDetail: vi.fn().mockRejectedValue(new Error("not stubbed")),
-    getRankingHeroFacts: vi.fn().mockRejectedValue(new Error("not stubbed")),
-    getPublicRanking: vi.fn().mockRejectedValue(new Error("not stubbed")),
-    ...overrides,
-  } satisfies LeaderboardApi;
+    getHeroStatistics: vi
+      .fn<LeaderboardApi["getHeroStatistics"]>()
+      .mockResolvedValue(heroStatistics()),
+    getRanking: vi.fn<LeaderboardApi["getRanking"]>().mockResolvedValue(ranking()),
+    getRankingHeroDetail: vi
+      .fn<LeaderboardApi["getRankingHeroDetail"]>()
+      .mockRejectedValue(new Error("not stubbed")),
+    getRankingHeroFacts: vi
+      .fn<LeaderboardApi["getRankingHeroFacts"]>()
+      .mockRejectedValue(new Error("not stubbed")),
+    getPublicRanking: vi
+      .fn<LeaderboardApi["getPublicRanking"]>()
+      .mockRejectedValue(new Error("not stubbed")),
+    // Some overrides simulate malformed API responses to exercise error handling.
+    ...(overrides as Partial<LeaderboardApiMock>),
+  };
 }
