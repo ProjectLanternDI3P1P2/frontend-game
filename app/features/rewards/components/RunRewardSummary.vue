@@ -9,8 +9,6 @@ const props = defineProps<{
   summary: RunRewardSummary;
   /** Hero id → display name, from the session members already loaded. */
   heroNames: ReadonlyMap<string, string>;
-  /** Heroes of the connected player; null while unknown. */
-  ownHeroIds: ReadonlySet<string> | null;
 }>();
 
 const groups = computed(() =>
@@ -20,7 +18,7 @@ const groups = computed(() =>
       ...reward,
       rarityKey: normalizeRarity(reward.rarity),
       recipientViews: reward.recipients.map((recipient) =>
-        describeRecipient(recipient, props.heroNames, props.ownHeroIds),
+        describeRecipient(recipient, props.heroNames, props.summary.viewerPlayerId),
       ),
     })),
   })),

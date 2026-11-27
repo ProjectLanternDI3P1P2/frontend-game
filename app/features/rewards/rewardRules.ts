@@ -10,25 +10,23 @@ export interface RecipientView {
 }
 
 /**
- * Reward only returns identifiers and no service exposes player names to the
- * game front, so the receiving player is identified through their hero: one of
- * the connected player's heroes ("you") or another hero of the session
- * ("teammate"). Without the player's heroes, or for a hero outside the session,
- * the recipient keeps a neutral label.
+ * No service exposes player names to the game front, so the receiving player
+ * is identified by comparing player IDs with the connected player's ID, which
+ * Reward returns once Player has confirmed the participation: "you" or
+ * "teammate". Without either ID the recipient keeps a neutral label. Names
+ * come from the session heroes.
  */
 export function describeRecipient(
   recipient: RewardRecipient,
   heroNames: ReadonlyMap<string, string>,
-  ownHeroIds: ReadonlySet<string> | null,
+  viewerPlayerId: string | null,
 ): RecipientView {
   const owner: RecipientOwner =
-    ownHeroIds === null
+    viewerPlayerId === null || recipient.playerId === null
       ? "unknown"
-      : ownHeroIds.has(recipient.heroId)
+      : recipient.playerId === viewerPlayerId
         ? "you"
-        : heroNames.has(recipient.heroId)
-          ? "teammate"
-          : "unknown";
+        : "teammate";
   return {
     heroId: recipient.heroId,
     heroName: heroNames.get(recipient.heroId) ?? "Unknown hero",

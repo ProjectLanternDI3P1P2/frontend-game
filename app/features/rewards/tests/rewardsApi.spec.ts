@@ -4,11 +4,15 @@ import { createGatewayClient } from "~/shared/utils/gateway";
 
 describe("Rewards API", () => {
   it("reads the group reward summary of a run", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ dungeonRunId: "run/1", distributions: [] })),
-      );
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          dungeonRunId: "run/1",
+          viewerPlayerId: null,
+          distributions: [],
+        }),
+      ),
+    );
     const api = createRewardsApi(
       createGatewayClient({ baseUrl: "https://gw.test", apiVersion: "v1", fetchImpl }),
     );

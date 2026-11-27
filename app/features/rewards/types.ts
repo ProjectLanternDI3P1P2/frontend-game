@@ -30,5 +30,7 @@ export interface RewardDistribution {
 
 export interface RunRewardSummary {
   dungeonRunId: string;
+  /** Player ID of the connected player, confirmed by Player; null when unknown. */
+  viewerPlayerId: string | null;
   distributions: RewardDistribution[];
 }

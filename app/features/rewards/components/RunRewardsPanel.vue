@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useId } from "vue";
-import { useOwnHeroIds } from "../composables/useOwnHeroIds";
 import { useRunRewards } from "../composables/useRunRewards";
 import RunRewardSummary from "./RunRewardSummary.vue";
 
@@ -11,7 +10,6 @@ const props = defineProps<{
 
 const titleId = useId();
 const { state, load } = useRunRewards(() => props.runId);
-const ownHeroIds = useOwnHeroIds();
 </script>
 
 <template>
@@ -33,12 +31,7 @@ const ownHeroIds = useOwnHeroIds();
       <p v-if="state.summary.distributions.length === 0">
         No group rewards for this run.
       </p>
-      <RunRewardSummary
-        v-else
-        :summary="state.summary"
-        :hero-names="heroNames"
-        :own-hero-ids="ownHeroIds"
-      />
+      <RunRewardSummary v-else :summary="state.summary" :hero-names="heroNames" />
     </template>
   </section>
 </template>

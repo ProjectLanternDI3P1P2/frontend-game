@@ -7,10 +7,6 @@ const getRunRewards = vi.hoisted(() => vi.fn());
 vi.mock("../api/rewardsApi", () => ({
   useRewardsApi: () => ({ getRunRewards }),
 }));
-vi.mock("../composables/useOwnHeroIds", async () => {
-  const { shallowRef } = await import("vue");
-  return { useOwnHeroIds: () => shallowRef(new Set(["hero-1"])) };
-});
 
 function mountPanel(runId: string | null = "run-1") {
   return mount(RunRewardsPanel, {
@@ -40,7 +36,7 @@ describe("RunRewardsPanel", () => {
     expect(getRunRewards).toHaveBeenCalledWith("run-1", expect.any(AbortSignal));
     expect(wrapper.get('[role="status"]').text()).toBe("Loading rewards…");
 
-    finish({ dungeonRunId: "run-1", distributions: [] });
+    finish({ dungeonRunId: "run-1", viewerPlayerId: null, distributions: [] });
     await flushPromises();
     expect(wrapper.text()).toContain("No group rewards for this run.");
     expect(wrapper.find('[role="status"]').exists()).toBe(false);
@@ -65,7 +61,11 @@ describe("RunRewardsPanel", () => {
           message: "Private server detail",
         }),
       )
-      .mockResolvedValueOnce({ dungeonRunId: "run-1", distributions: [] });
+      .mockResolvedValueOnce({
+        dungeonRunId: "run-1",
+        viewerPlayerId: null,
+        distributions: [],
+      });
     const wrapper = mountPanel();
     await flushPromises();
     expect(wrapper.get('[role="alert"]').text()).toBe(
@@ -83,6 +83,7 @@ describe("RunRewardsPanel", () => {
       .mockRejectedValueOnce(new Error("Private server detail"))
       .mockResolvedValueOnce({
         dungeonRunId: "run-1",
+        viewerPlayerId: "player-1",
         distributions: [
           {
             causeId: "chest-1",

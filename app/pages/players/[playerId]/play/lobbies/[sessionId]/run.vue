@@ -36,8 +36,8 @@ onBeforeUnmount(() => void hub?.disconnect());
     <p class="run-placeholder__eyebrow">Dungeon run</p>
     <h1>Run started</h1>
     <p v-if="error" role="alert">{{ error }}</p>
-    <template v-else-if="session">
-      <p>Your dungeon is ready. The gameplay screen is coming next.</p>
+    <template v-else-if="session"
+      ><p>Your dungeon is ready. The gameplay screen is coming next.</p>
       <dl>
         <dt>Session</dt>
         <dd>{{ session.sessionId }}</dd>
@@ -46,12 +46,15 @@ onBeforeUnmount(() => void hub?.disconnect());
       </dl>
       <NuxtLink
         :to="`/players/${encodeURIComponent(playerId)}/play/lobbies/${encodeURIComponent(sessionId)}`"
-      >
-        Back to lobby
-      </NuxtLink>
-      <RunRewardsPanel :run-id="session.dungeonRunId" :hero-names="heroNames" />
-    </template>
+        >Back to lobby</NuxtLink
+      ></template
+    >
     <p v-else>Loading run…</p>
+    <RunRewardsPanel
+      v-if="session && !error"
+      :run-id="session.dungeonRunId"
+      :hero-names="heroNames"
+    />
   </main>
 </template>
 
