@@ -121,6 +121,23 @@ describe("toFight", () => {
     expect(fight.deadlineUtc).toBeNull();
   });
 
+  it("keeps the server's current resources, including zero mana", () => {
+    const start = snapshot();
+    const fight = toFight(
+      {
+        ...start,
+        fighters: start.fighters.map((fighter) =>
+          fighter.id === "hero-f"
+            ? { ...fighter, currentHp: 42, currentMana: 0 }
+            : fighter,
+        ),
+      },
+      [],
+    );
+
+    expect(fight.heroes[0]).toMatchObject({ hp: 42, maxHp: 156, mana: 0, maxMana: 21 });
+  });
+
   it("maps a boss fight", () => {
     expect(toFight(snapshot({ trigger: "boss", canFlee: false }), []).encounter).toBe(
       "Boss",

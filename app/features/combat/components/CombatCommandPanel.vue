@@ -98,9 +98,12 @@ const percent = (value: number, max: number) =>
             />
           </meter>
         </span>
-        <span class="combat-panel__numbers"
-          >{{ gauge(member).hp }}/{{ member.maxHp }}</span
-        >
+        <span class="combat-panel__numbers">
+          <span>{{ gauge(member).hp }}/{{ member.maxHp }} HP</span>
+          <span v-if="member.maxMana > 0">
+            {{ gauge(member).mana }}/{{ member.maxMana }} MP
+          </span>
+        </span>
       </li>
     </ul>
 
@@ -329,6 +332,7 @@ const percent = (value: number, max: number) =>
   }
 
   &__numbers {
+    display: grid;
     min-inline-size: 4.5rem;
     font-family: var(--font-family-mono);
     font-size: var(--font-size-xs);
