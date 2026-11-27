@@ -11,9 +11,12 @@ Owner: SQUAD - Rewards. `useRewardsApi` builds its own client from the shared
 prefix is carried by the API version (`rewards/v1`), and a 401 is shown as
 unavailable rewards instead of redirecting to the login page.
 
+The local Traefik stack routes `/api/rewards/v1/...` to Reward as is
+(`rewards-api` in `deploy/traefik/backend/routes.yaml`).
+
 ## Integration owned by other squads
 
-The feature is not mounted yet. Wiring it needs changes outside Rewards:
+The feature is not mounted yet. Wiring it needs a change outside Rewards:
 
 - **Pages (Dungeon, Player):** render `RunRewardsPanel` on the victory screen
   (`pages/dungeon/[runId].vue`) and/or the run page, with the dungeon run ID
@@ -22,10 +25,6 @@ The feature is not mounted yet. Wiring it needs changes outside Rewards:
   ```vue
   <RunRewardsPanel :run-id="dungeonRunId" :hero-names="heroNames" />
   ```
-
-- **Local gateway (Traefik):** route `/api/rewards/v1/...` to Reward without
-  rewriting it. The current `rewards-owned-api` rule rewrites `/api/rewards/...`
-  to `/api/v1/...`, which no longer matches Reward's routes.
 
 Each recipient shows the hero name and who plays it: **You** when its player
 ID equals `viewerPlayerId`, **Teammate** for another player. Reward returns
