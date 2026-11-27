@@ -1,16 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
 import { createRewardsApi } from "../api/rewardsApi";
-import type { GatewayClient } from "~/shared/utils/gateway";
+import { createGatewayClient } from "~/shared/utils/gateway";
 
 describe("Rewards API", () => {
   it("reads the group reward summary of a run", async () => {
-    const get = vi.fn().mockResolvedValue({ dungeonRunId: "run/1", distributions: [] });
-    const api = createRewardsApi({ get } as unknown as GatewayClient);
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ dungeonRunId: "run/1", distributions: [] })),
+      );
+    const api = createRewardsApi(
+      createGatewayClient({ baseUrl: "https://gw.test", apiVersion: "v1", fetchImpl }),
+    );
 
     await api.getRunRewards("run/1");
 
-    expect(get).toHaveBeenCalledWith("rewards/runs/run%2F1/rewards", {
-      signal: undefined,
-    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://gw.test/api/rewards/v1/runs/run%2F1/rewards",
+      expect.objectContaining({ method: "GET" }),
+    );
   });
 });

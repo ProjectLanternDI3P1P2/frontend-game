@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { describeRecipient, normalizeRarity } from "../rewardRules";
 import type { RunRewardSummary } from "../types";
 import UiBadge, { BadgeTone } from "~/shared/ui/UiBadge.vue";
@@ -8,7 +9,7 @@ const props = defineProps<{
   summary: RunRewardSummary;
   /** Hero id → display name, from the session members already loaded. */
   heroNames: ReadonlyMap<string, string>;
-  currentPlayerId: string;
+  currentPlayerId: string | null;
 }>();
 
 const groups = computed(() =>
@@ -54,7 +55,15 @@ const groups = computed(() =>
           <ul class="reward__recipients">
             <li v-for="recipient in reward.recipientViews" :key="recipient.heroId">
               {{ recipient.heroName }}
-              <UiBadge v-if="recipient.isYou" :tone="BadgeTone.SUCCESS">You</UiBadge>
+              <UiBadge v-if="recipient.owner === 'you'" :tone="BadgeTone.SUCCESS">
+                You
+              </UiBadge>
+              <UiBadge
+                v-else-if="recipient.owner === 'teammate'"
+                :tone="BadgeTone.ARCANE"
+              >
+                Teammate
+              </UiBadge>
             </li>
           </ul>
         </li>

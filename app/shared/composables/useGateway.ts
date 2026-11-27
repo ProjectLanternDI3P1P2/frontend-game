@@ -7,18 +7,18 @@ import { createGatewayClient, type GatewayClient } from "~/shared/utils/gateway"
 
 let redirectingToAuthentication = false;
 
-export function useGateway(): GatewayClient {
+export function useGateway({ redirectOnUnauthorized = true } = {}): GatewayClient {
   const config = useRuntimeConfig();
   const router = useRouter();
+  const nuxtApp = useNuxtApp();
   return createGatewayClient({
     baseUrl: config.public.apiGatewayUrl,
     apiVersion: config.public.apiVersion,
-    getToken: () =>
-      import.meta.client ? (useNuxtApp().$keycloak.token ?? null) : null,
+    getToken: () => (import.meta.client ? (nuxtApp.$keycloak.token ?? null) : null),
     onUnauthorized: async (afterRefreshRetry) => {
       if (!import.meta.client || redirectingToAuthentication) return false;
 
-      const keycloak = useNuxtApp().$keycloak;
+      const keycloak = nuxtApp.$keycloak;
       if (!afterRefreshRetry) {
         try {
           await keycloak.updateToken(-1);
@@ -27,6 +27,8 @@ export function useGateway(): GatewayClient {
           // A failed refresh means the Keycloak session is no longer usable.
         }
       }
+
+      if (!redirectOnUnauthorized) return false;
 
       redirectingToAuthentication = true;
       const redirect = router.currentRoute.value.fullPath;

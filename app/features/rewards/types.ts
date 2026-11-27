@@ -1,4 +1,4 @@
-/** Contract of GET /api/v1/runs/:dungeonRunId/rewards (Reward service). */
+/** Contract of GET /api/rewards/v1/runs/:dungeonRunId/rewards. */
 export type RewardSourceType = "MONSTER" | "BOSS" | "CHEST";
 
 /** UNIQUE: one recipient. SHARED_PER_PARTICIPANT: every eligible participant got a copy. */

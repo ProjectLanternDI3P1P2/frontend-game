@@ -119,7 +119,7 @@ export function buildGatewayUrl(
   const isRelativeBase = normalisedBase === "" || normalisedBase.startsWith("/");
   const [service, ...servicePath] = normalisedPath.split("/");
   const apiPath =
-    service === "player" || service === "leaderboard"
+    service === "player" || service === "leaderboard" || service === "rewards"
       ? `/api/${service}/${apiVersion}/${servicePath.join("/")}`
       : `/api/${apiVersion}/${normalisedPath}`;
   const url = new URL(`${normalisedBase}${apiPath}`, "http://local-gateway.invalid");

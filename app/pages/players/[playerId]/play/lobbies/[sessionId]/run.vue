@@ -5,8 +5,7 @@ import {
   playerHubUrl,
 } from "~/features/player/api/playerHub";
 import type { GameSessionSnapshot } from "~/features/player/types";
-import RunRewardSummary from "~/features/rewards/components/RunRewardSummary.vue";
-import { useRunRewards } from "~/features/rewards/composables/useRunRewards";
+import RunRewardsPanel from "~/features/rewards/components/RunRewardsPanel.vue";
 definePageMeta({ layout: "default" });
 const route = useRoute();
 const config = useRuntimeConfig();
@@ -17,13 +16,6 @@ const error = ref("");
 const heroNames = computed(
   () => new Map(session.value?.members.map((member) => [member.id, member.name])),
 );
-const {
-  summary: rewardSummary,
-  loading: rewardsLoading,
-  error: rewardsError,
-  isEmpty: noRewards,
-  load: loadRewards,
-} = useRunRewards(computed(() => session.value?.dungeonRunId));
 let hub: PlayerHubClient | null = null;
 onMounted(async () => {
   try {
@@ -31,7 +23,6 @@ onMounted(async () => {
       session.value = snapshot;
     });
     session.value = await hub.getSessionSnapshot(sessionId.value);
-    await loadRewards();
   } catch (cause) {
     error.value =
       cause instanceof PlayerHubError ? cause.message : "Unable to load the run.";
@@ -58,18 +49,11 @@ onBeforeUnmount(() => void hub?.disconnect());
       >
         Back to lobby
       </NuxtLink>
-      <section aria-labelledby="group-rewards-title">
-        <h2 id="group-rewards-title">Group rewards</h2>
-        <p v-if="rewardsLoading" role="status">Loading rewards…</p>
-        <p v-else-if="rewardsError" role="alert">{{ rewardsError }}</p>
-        <p v-else-if="noRewards">No group rewards.</p>
-        <RunRewardSummary
-          v-else-if="rewardSummary"
-          :summary="rewardSummary"
-          :hero-names="heroNames"
-          :current-player-id="playerId"
-        />
-      </section>
+      <RunRewardsPanel
+        :run-id="session.dungeonRunId"
+        :hero-names="heroNames"
+        :current-player-id="playerId"
+      />
     </template>
     <p v-else>Loading run…</p>
   </main>

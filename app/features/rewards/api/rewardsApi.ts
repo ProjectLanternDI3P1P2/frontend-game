@@ -3,11 +3,7 @@ import type { RunRewardSummary } from "../types";
 import { useGateway } from "~/shared/composables/useGateway";
 import type { GatewayClient } from "~/shared/utils/gateway";
 
-/**
- * The Gateway prefix is routed as `/api/rewards/...` and rewritten to
- * `/api/v1/...` by Traefik (`rewards-owned-api`), so the Reward route
- * `GET /api/v1/runs/{id}/rewards` is reached through `rewards/runs/{id}/rewards`.
- */
+/** The Gateway client maps the service path to /api/rewards/v1. */
 export function createRewardsApi(client: GatewayClient) {
   return {
     getRunRewards(
@@ -23,5 +19,5 @@ export function createRewardsApi(client: GatewayClient) {
 }
 
 export function useRewardsApi() {
-  return createRewardsApi(useGateway());
+  return createRewardsApi(useGateway({ redirectOnUnauthorized: false }));
 }

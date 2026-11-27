@@ -1,30 +1,55 @@
+import { onScopeDispose, shallowRef, watch } from "vue";
+import { GatewayError } from "~/shared/utils/gateway";
 import { useRewardsApi } from "../api/rewardsApi";
 import type { RunRewardSummary } from "../types";
 
-/**
- * Reward never notifies the front, so the summary is read once when the
- * end-of-activity screen is displayed. No polling.
- */
-export function useRunRewards(dungeonRunId: Ref<string | null | undefined>) {
-  const api = useRewardsApi();
-  const summary = ref<RunRewardSummary | null>(null);
-  const loading = ref(false);
-  const error = ref("");
+type RewardsState =
+  | {
+      status: "idle" | "loading" | "unavailable" | "participationUnavailable" | "error";
+    }
+  | { status: "success"; summary: RunRewardSummary };
 
-  async function load(): Promise<void> {
-    if (!dungeonRunId.value) return;
-    loading.value = true;
-    error.value = "";
+/**
+ * 401/403/404: the run is unknown or the caller is not a participant; nothing is disclosed.
+ * 503: Reward cannot ask Player to confirm the participation, so access is refused for now.
+ */
+function statusOf(
+  cause: unknown,
+): "unavailable" | "participationUnavailable" | "error" {
+  if (!(cause instanceof GatewayError)) return "error";
+  if ([401, 403, 404].includes(cause.status)) return "unavailable";
+  if (cause.status === 503) return "participationUnavailable";
+  return "error";
+}
+
+export function useRunRewards(getRunId: () => string | null | undefined) {
+  const api = useRewardsApi();
+  const state = shallowRef<RewardsState>({ status: "idle" });
+  let pending: AbortController | undefined;
+
+  async function load() {
+    pending?.abort();
+    const runId = getRunId();
+    if (!runId) {
+      state.value = { status: "idle" };
+      return;
+    }
+
+    const request = new AbortController();
+    pending = request;
+    state.value = { status: "loading" };
     try {
-      summary.value = await api.getRunRewards(dungeonRunId.value);
-    } catch {
-      error.value = "Unable to load the group rewards.";
+      const summary = await api.getRunRewards(runId, request.signal);
+      if (!request.signal.aborted) state.value = { status: "success", summary };
+    } catch (cause) {
+      if (request.signal.aborted) return;
+      state.value = { status: statusOf(cause) };
     } finally {
-      loading.value = false;
+      if (pending === request) pending = undefined;
     }
   }
 
-  const isEmpty = computed(() => summary.value?.distributions.length === 0);
-
-  return { summary, loading, error, isEmpty, load };
+  watch(getRunId, load, { immediate: true });
+  onScopeDispose(() => pending?.abort());
+  return { state, load };
 }

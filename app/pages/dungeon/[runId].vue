@@ -16,7 +16,9 @@ import {
 } from "~/features/dungeon/dungeonRules";
 import { SANDBOX_SEED } from "~/features/dungeon/seed";
 import type { Direction, EnemyKindName, Position } from "~/features/dungeon/types";
+import { PlayerHubClient, playerHubUrl } from "~/features/player/api/playerHub";
 import ChestLootModal from "~/features/reward/components/ChestLootModal.vue";
+import RunRewardsPanel from "~/features/rewards/components/RunRewardsPanel.vue";
 import AudioMuteToggle from "~/shared/audio/AudioMuteToggle.vue";
 import { ButtonSize, ButtonVariant } from "~/shared/ui/ui.types";
 
@@ -25,6 +27,7 @@ definePageMeta({ layout: "game", key: (route) => route.fullPath });
 useHead({ title: "Exploration" });
 
 const route = useRoute();
+const config = useRuntimeConfig();
 const playerId = computed(() =>
   typeof route.query.playerId === "string" ? route.query.playerId : null,
 );
@@ -55,6 +58,40 @@ const {
   movementBlocked,
   chestLoot,
 } = explorer;
+
+const victoryRunId = computed(() =>
+  run.value?.status === "won" ? run.value.id : null,
+);
+const rewardHeroNames = shallowRef<ReadonlyMap<string, string>>(new Map());
+
+watch(
+  () => (victoryRunId.value && playerId.value ? run.value?.gameSessionId : null),
+  async (sessionId, _, onCleanup) => {
+    rewardHeroNames.value = new Map();
+    if (!sessionId) return;
+
+    let active = true;
+    onCleanup(() => {
+      active = false;
+    });
+    const hub = new PlayerHubClient(
+      playerHubUrl(config.public.apiGatewayUrl),
+      () => {},
+    );
+    try {
+      const session = await hub.getSessionSnapshot(sessionId);
+      if (active) {
+        rewardHeroNames.value = new Map(
+          session.members.map(({ id, name }) => [id, name]),
+        );
+      }
+    } catch {
+      // The summary still renders using its fallback labels if names are unavailable.
+    } finally {
+      await hub.disconnect();
+    }
+  },
+);
 
 const board = ref<HTMLElement | null>(null);
 const viewport = useBoardViewport(board);
@@ -90,7 +127,8 @@ function move(direction: Direction) {
 }
 
 function spawnAt(position: Position) {
-  if (isSandbox.value && !movementBlocked.value) explorer.spawn(spawnKind.value, position);
+  if (isSandbox.value && !movementBlocked.value)
+    explorer.spawn(spawnKind.value, position);
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -226,6 +264,13 @@ async function copyShareLink() {
         >
           Victory! The final boss is defeated.
         </output>
+        <RunRewardsPanel
+          v-if="run.status === 'won'"
+          class="dungeon-page__panel dungeon-page__rewards"
+          :run-id="victoryRunId"
+          :hero-names="rewardHeroNames"
+          :current-player-id="playerId"
+        />
         <p
           v-if="errorMessage"
           class="dungeon-page__panel dungeon-page__error"
@@ -395,6 +440,13 @@ async function copyShareLink() {
     margin: 0;
     color: var(--color-accent);
     font-weight: 600;
+  }
+
+  &__rewards {
+    max-inline-size: 100%;
+    max-block-size: 45dvh;
+    overflow: auto;
+    overflow-wrap: anywhere;
   }
 
   &__error {

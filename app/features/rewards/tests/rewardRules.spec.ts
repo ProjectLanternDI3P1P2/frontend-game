@@ -10,7 +10,7 @@ describe("describeRecipient", () => {
       names,
       "p1",
     );
-    expect(view).toEqual({ heroId: "h1", heroName: "Aria", isYou: true });
+    expect(view).toEqual({ heroId: "h1", heroName: "Aria", owner: "you", isYou: true });
   });
 
   it("does not flag another player or a missing player id", () => {
@@ -28,6 +28,15 @@ describe("describeRecipient", () => {
         "p1",
       ).isYou,
     ).toBe(false);
+  });
+
+  it("identifies another participant as a teammate and an unknown player as unknown", () => {
+    const recipient = { heroId: "h1", playerId: "p2", itemInstanceId: null };
+    expect(describeRecipient(recipient, names, "p1").owner).toBe("teammate");
+    expect(describeRecipient({ ...recipient, playerId: null }, names, "p1").owner).toBe(
+      "unknown",
+    );
+    expect(describeRecipient(recipient, names, null).owner).toBe("unknown");
   });
 
   it("falls back to a neutral label for a hero outside the session", () => {
