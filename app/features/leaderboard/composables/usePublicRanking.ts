@@ -10,7 +10,7 @@
  * source (and `?mock=`, read from the route, never from `window`) is chosen
  * by `useLeaderboardApi()`.
  */
-import { computed } from "vue";
+import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { useLeaderboardApi } from "../api/leaderboardSource";
 import { parseConsolidationDate } from "../statisticsRules";
 import { LoadStatus, type LeaderboardApi, type PublicRankingResponse } from "../types";
@@ -35,6 +35,13 @@ export const PUBLIC_RANKING_ERROR = GENERIC_LOAD_ERROR;
 /** Not cached by `swr`, and tells crawlers to come back later. */
 export const PUBLIC_RANKING_ERROR_STATUS = 503;
 
+export function parsePublicRankingPage(value: unknown): number {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  if (typeof candidate !== "string" || !/^[1-9]\d*$/.test(candidate)) return 1;
+  const page = Number(candidate);
+  return Number.isSafeInteger(page) && page <= 1_000_000 ? page : 1;
+}
+
 export const LOADING_PUBLIC_RANKING: Readonly<PublicRankingState> = Object.freeze({
   status: LoadStatus.LOADING,
   ranking: null,
@@ -47,7 +54,8 @@ export function isPublicRankingEmpty(ranking: PublicRankingResponse | null): boo
     !ranking ||
     ((ranking.totalCount ?? 0) <= 0 &&
       (ranking.podium?.length ?? 0) === 0 &&
-      (ranking.top?.length ?? 0) === 0)
+      (ranking.top?.length ?? 0) === 0 &&
+      (ranking.entries?.length ?? 0) === 0)
   );
 }
 
@@ -59,6 +67,9 @@ function normalise(ranking: PublicRankingResponse): PublicRankingResponse {
     podium: ranking.podium ?? [],
     leadersByClass: ranking.leadersByClass ?? [],
     top: ranking.top ?? [],
+    page: ranking.page ?? 1,
+    pageSize: ranking.pageSize ?? 50,
+    entries: ranking.entries ?? ranking.top ?? [],
   };
 }
 
@@ -66,9 +77,13 @@ function normalise(ranking: PublicRankingResponse): PublicRankingResponse {
 export async function loadPublicRanking(
   api: LeaderboardApi,
   signal?: AbortSignal,
+  page = 1,
 ): Promise<PublicRankingState> {
   try {
-    const response = await api.getPublicRanking(signal);
+    const response =
+      page === 1
+        ? await api.getPublicRanking(signal)
+        : await api.getPublicRanking(signal, page);
     const ranking = response ? normalise(response) : null;
     return {
       status: isPublicRankingEmpty(ranking) ? LoadStatus.EMPTY : LoadStatus.READY,
@@ -121,17 +136,20 @@ export function formatRankedHeroes(count: number): string {
   return `${new Intl.NumberFormat("en-GB").format(safe)} ranked ${safe === 1 ? "hero" : "heroes"}`;
 }
 
-export type PublicRankingOptions = Pick<LoaderOptions, "api">;
+export type PublicRankingOptions = Pick<LoaderOptions, "api"> & {
+  page?: MaybeRefOrGetter<number>;
+};
 
 export function usePublicRanking(options: PublicRankingOptions = {}) {
   const api = options.api ?? useLeaderboardApi();
+  const page = computed(() => toValue(options.page) ?? 1);
   // Undefined in the browser; captured now, while the setup context exists.
   const event = useRequestEvent();
 
   const { data, status, error, refresh } = useAsyncData(
     PUBLIC_RANKING_KEY,
     async (_nuxtApp, { signal }) => {
-      const state = await loadPublicRanking(api, signal);
+      const state = await loadPublicRanking(api, signal, page.value);
       // The page still renders its message; only the status keeps it out of
       // the shared `swr` cache.
       if (event && state.status === LoadStatus.ERROR) {
@@ -139,6 +157,7 @@ export function usePublicRanking(options: PublicRankingOptions = {}) {
       }
       return state;
     },
+    { watch: [page] },
   );
 
   const state = computed<PublicRankingState>(() => {

@@ -15,6 +15,7 @@ import LeaderboardLoadState from "./LeaderboardLoadState.vue";
 import PublicClassLeaders from "./PublicClassLeaders.vue";
 import PublicPodium from "./PublicPodium.vue";
 import PublicTopTable from "./PublicTopTable.vue";
+import PublicRankingPageTable from "./PublicRankingPageTable.vue";
 
 const props = withDefaults(
   defineProps<{ state: PublicRankingState; refreshing?: boolean }>(),
@@ -73,12 +74,25 @@ const hasData = computed(
     </div>
 
     <template v-else-if="state.status === LoadStatus.READY && ranking">
-      <PublicPodium v-if="ranking.podium.length > 0" :entries="ranking.podium" />
+      <PublicPodium
+        v-if="ranking.page === 1 && ranking.podium.length > 0"
+        :entries="ranking.podium"
+      />
       <PublicClassLeaders
+        v-if="ranking.page === 1"
         :season-label="seasonLabel || 'Season'"
         :leaders="ranking.leadersByClass"
       />
-      <PublicTopTable v-if="ranking.top.length > 0" :entries="ranking.top" />
+      <PublicTopTable
+        v-if="ranking.page === 1 && ranking.top.length > 0"
+        :entries="ranking.top"
+      />
+      <PublicRankingPageTable
+        :entries="ranking.entries"
+        :total-count="ranking.totalCount"
+        :page="ranking.page"
+        :page-size="ranking.pageSize"
+      />
     </template>
   </main>
 </template>

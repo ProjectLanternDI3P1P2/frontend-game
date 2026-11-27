@@ -99,7 +99,13 @@ describe("isPublicRankingEmpty", () => {
     const ranking = await simulated().getPublicRanking();
     expect(isPublicRankingEmpty(ranking)).toBe(false);
     expect(
-      isPublicRankingEmpty({ ...ranking, totalCount: 0, podium: [], top: [] }),
+      isPublicRankingEmpty({
+        ...ranking,
+        totalCount: 0,
+        podium: [],
+        top: [],
+        entries: [],
+      }),
     ).toBe(true);
     expect(isPublicRankingEmpty(null)).toBe(true);
   });
@@ -207,7 +213,13 @@ describe("usePublicRanking", () => {
 
   it("goes through useAsyncData under a stable key", async () => {
     const { useAsyncData } = setup({ data: undefined, status: "pending" });
-    expect(useAsyncData).toHaveBeenCalledWith(PUBLIC_RANKING_KEY, expect.any(Function));
+    expect(useAsyncData).toHaveBeenCalledWith(
+      PUBLIC_RANKING_KEY,
+      expect.any(Function),
+      {
+        watch: [expect.any(Object)],
+      },
+    );
   });
 
   it("is LOADING until the data arrives", () => {

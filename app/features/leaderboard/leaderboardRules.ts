@@ -20,6 +20,10 @@ export const HERO_CLASS_LABELS: Record<HeroClass, string> = {
   [HeroClass.MAGE]: "Mage",
 };
 
+export function displayHeroClass(heroClass: HeroClass | "unknown"): string {
+  return heroClass === "unknown" ? "Unknown class" : HERO_CLASS_LABELS[heroClass];
+}
+
 /** The season label carries its number ("Season 3"): see `RankingSeason.label`. */
 export const RANKING_PERIOD_LABELS: Record<RankingPeriod, string> = {
   [RankingPeriod.ALL_TIME]: "All time",

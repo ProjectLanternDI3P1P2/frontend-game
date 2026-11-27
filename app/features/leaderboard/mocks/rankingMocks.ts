@@ -451,6 +451,7 @@ export function simulatedRanking(
 export function simulatedPublicRanking(
   scenario: MockScenario,
   now: Date,
+  page = 1,
 ): PublicRankingResponse {
   const heroes = scenario === MockScenario.EMPTY ? [] : simulatedHeroes(now);
   const entries = rankedEntries(heroes, RankingPeriod.ALL_TIME, scenario);
@@ -464,6 +465,9 @@ export function simulatedPublicRanking(
       entry: entries.find((entry) => entry.heroClass === heroClass) ?? null,
     })),
     top: entries.slice(0, 10),
+    page,
+    pageSize: 50,
+    entries: entries.slice((page - 1) * 50, page * 50),
   };
 }
 

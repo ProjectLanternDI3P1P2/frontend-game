@@ -70,8 +70,12 @@ export function createLeaderboardApi(client: GatewayClient): LeaderboardApi {
       return client.get<RankingFactsResponse>(`${heroPath(heroId)}/facts`, { signal });
     },
 
-    getPublicRanking(signal?: AbortSignal): Promise<PublicRankingResponse> {
+    getPublicRanking(
+      signal?: AbortSignal,
+      page?: number,
+    ): Promise<PublicRankingResponse> {
       return client.get<PublicRankingResponse>("leaderboard/public", {
+        ...(page && page > 1 ? { query: { page } } : {}),
         signal,
       });
     },

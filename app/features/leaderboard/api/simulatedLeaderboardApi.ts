@@ -82,8 +82,8 @@ export function createSimulatedLeaderboardApi(
         signal,
       );
     },
-    getPublicRanking(signal) {
-      return respond(() => simulatedPublicRanking(scenario, now()), signal);
+    getPublicRanking(signal, page) {
+      return respond(() => simulatedPublicRanking(scenario, now(), page), signal);
     },
   };
 }

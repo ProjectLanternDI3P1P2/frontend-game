@@ -20,7 +20,11 @@ import { renderToString } from "vue/server-renderer";
 import { LEADERBOARD_API_KEY } from "../api/leaderboardSource";
 import { GENERIC_LOAD_ERROR } from "../composables/loadError";
 import { createSimulatedLeaderboardApi } from "../api/simulatedLeaderboardApi";
-import { ANONYMOUS_HERO, HERO_CLASS_LABELS } from "../leaderboardRules";
+import {
+  ANONYMOUS_HERO,
+  HERO_CLASS_LABELS,
+  displayHeroClass,
+} from "../leaderboardRules";
 import {
   HeroClass,
   MockScenario,
@@ -165,7 +169,7 @@ describe("F04", () => {
       expect(html).toContain("Podium");
       for (const hero of expected.podium) expect(html).toContain(hero.heroName);
       expect(html).toContain("Top 10");
-      expect(html.match(/<tr/g)?.length).toBe(11); // header + 10 heroes
+      expect(html.match(/<tr/g)?.length).toBe(62); // top 10 and full page of 50
       for (const hero of expected.top) expect(html).toContain(hero.heroName);
     });
 
@@ -203,7 +207,7 @@ describe("F04", () => {
         const hero = expected.podium[index]!;
         expect(card.text()).toContain(medals[index]);
         expect(card.get("h3").text()).toBe(hero.heroName);
-        expect(card.text()).toContain(HERO_CLASS_LABELS[hero.heroClass]);
+        expect(card.text()).toContain(displayHeroClass(hero.heroClass));
         expect(card.text()).toContain(String(hero.level));
         expect(card.text()).toContain(hero.totalXp.toLocaleString("en-GB"));
         expect(card.text()).toContain(hero.playerName ?? ANONYMOUS_HERO);
@@ -403,7 +407,7 @@ describe("F04", () => {
         expect(cells[0]!.text()).toBe(String(hero.rank));
         expect(cells[2]!.text()).toBe(hero.playerName ?? ANONYMOUS_HERO);
         expect(cells[3]!.text()).toBe(hero.heroName);
-        expect(cells[4]!.text()).toBe(HERO_CLASS_LABELS[hero.heroClass]);
+        expect(cells[4]!.text()).toBe(displayHeroClass(hero.heroClass));
         expect(cells[5]!.text()).toBe(String(hero.level));
         expect(cells[6]!.text()).toBe(hero.totalXp.toLocaleString("en-GB"));
       });
@@ -620,6 +624,22 @@ describe("F04", () => {
           if (external) expect(["vue"], `${file}: ${spec}`).toContain(spec);
         }
       }
+    });
+  });
+
+  describe("US #368 — public pages of 50", () => {
+    it("renders the next 50 heroes on the server without repeating the top 10", async () => {
+      route.query.page = "2";
+      const ranking = await simulated().getPublicRanking(undefined, 2);
+
+      const html = await renderOnServer(simulated());
+
+      expect(ranking.entries).toHaveLength(50);
+      expect(ranking.entries[0]?.rank).toBe(51);
+      expect(html).toContain(ranking.entries[0]!.heroName);
+      expect(html).toContain("Full ranking");
+      expect(html).not.toContain("Top 10");
+      expect(html).toContain("/rankings?page=3");
     });
   });
 });

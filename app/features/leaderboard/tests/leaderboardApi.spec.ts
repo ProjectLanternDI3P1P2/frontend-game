@@ -105,4 +105,15 @@ describe("Leaderboard API", () => {
       signal: undefined,
     });
   });
+
+  it("requests the next public page", async () => {
+    const gateway = gatewayStub();
+
+    await createLeaderboardApi(gateway).getPublicRanking(undefined, 2);
+
+    expect(gateway.get).toHaveBeenCalledWith("leaderboard/public", {
+      query: { page: 2 },
+      signal: undefined,
+    });
+  });
 });
