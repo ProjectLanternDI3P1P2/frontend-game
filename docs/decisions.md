@@ -4,6 +4,13 @@
 
 <!-- Le plus récent en haut. Format : voir le skill decision-log. -->
 
+## D26 - 2026-11-27 - « Reload floor » relit sans repasser par l'écran de chargement
+
+Décision : `reloadFloor()` relit le run et l'étage directement (étage frais transmis à `enterFloor` par un paramètre optionnel), sans passer par `start()` ; l'exploration et le message restent affichés pendant la relecture. `retry()` (erreur initiale) repasse, lui, par `start()`.
+Pourquoi : `start()` met le statut à `loading`, ce qui masquait l'exploration et la notice (contraire à CA5 et CA7, bloquant du tour 1).
+Écarté : réutiliser `start()` pour les deux reprises.
+Source : rapport F05
+
 ## D25 - 2026-11-27 - F05 : logique du boss dans des fichiers neufs, diff minimal dans l'explorateur
 
 Décision : l'invariant du boss vit dans `bossRules.ts`, `useFloorBoss.ts` et `DungeonBossNotice.vue` (nouveaux) ; `useDungeonExplorer.ts` et `[runId].vue` ne reçoivent que des lignes de branchement, sans refactoring.
